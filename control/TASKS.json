@@ -439,6 +439,50 @@
       "depends_on": ["W-0130", "W-0131"],
       "files": ["examples/gauntlet_branch.ts", "scripts/verify/gate_gauntlet.sh"],
       "acceptance_criteria": "Demo: T0 state → clone → main + branch diverge → recall on each returns different AAPL values; recall(as_of=T0) on main sees T0 state only. gate_gauntlet.sh asserts all three value lines AND runs the replay CLI on the incident the demo exports."
+    },
+    {
+      "id": "W-0140",
+      "title": "Reputation aggregate via recall filters (Phase G.5)",
+      "owner": "D",
+      "status": "completed",
+      "priority": "P0",
+      "phase": "G.5",
+      "depends_on": ["W-0101"],
+      "files": ["src/engine/bazaar.ts", "src/engine/state.ts", "src/engine/ops.ts", "src/mcp/server.ts"],
+      "acceptance_criteria": "getReputation returns signer summary (topics, avg_trust, attestation_count, beliefs_authored/live/tombstoned). SubscriptionFilters.reputation_of restricts recall to authored beliefs AND attaches the reputation to output.reputation."
+    },
+    {
+      "id": "W-0141",
+      "title": "Capability ad convention + discovery helper (Phase G.5)",
+      "owner": "D",
+      "status": "completed",
+      "priority": "P0",
+      "phase": "G.5",
+      "depends_on": ["W-0101"],
+      "files": ["src/engine/bazaar.ts"],
+      "acceptance_criteria": "CAPABILITY_OFFERS_PREDICATE='capability.offers'. findCapabilities(state, name?) enumerates offers, newest-first, flags withdrawn ones."
+    },
+    {
+      "id": "W-0142",
+      "title": "Lightweight escrow via causally-linked beliefs (Phase G.5)",
+      "owner": "D",
+      "status": "completed",
+      "priority": "P0",
+      "phase": "G.5",
+      "depends_on": ["W-0141"],
+      "files": ["src/engine/bazaar.ts"],
+      "acceptance_criteria": "walkEscrowThread(state, root_id) BFS over causes[]. escrowStatus aggregates stages. isEscrowSettled=true iff latest settled step has outcome='accepted'."
+    },
+    {
+      "id": "W-0143",
+      "title": "bazaar_trade demo + gate_bazaar verify (Phase G.5)",
+      "owner": "E",
+      "status": "completed",
+      "priority": "P0",
+      "phase": "G.5",
+      "depends_on": ["W-0142"],
+      "files": ["examples/bazaar_trade.ts", "scripts/verify/gate_bazaar.sh"],
+      "acceptance_criteria": "Demo: alice offers → bob discovers + checks reputation → bob pays → alice delivers → bob settles (accepted). walkEscrowThread returns exactly [offer,payment,delivered,settled]. gate_bazaar.sh asserts all five."
     }
   ]
 }

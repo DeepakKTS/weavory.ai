@@ -301,3 +301,37 @@ Shipped as three small commits so each step is individually verifiable:
 
 ### Next
 **Phase G.5 — The Bazaar** (W-0140..W-0143): reputation aggregate via `recall(filters.reputation_of)`, capability-ads convention, lightweight escrow via causally-linked beliefs, demo + `gate_bazaar.sh`.
+
+## 2026-04-21 · Phase G.5 · The Bazaar — SHIPPED · **Gate Bazaar PASS**
+
+Three small commits, each self-verifying.
+
+### W-0140 + W-0141 · reputation + capabilities (commit `c6720f4`)
+- `src/engine/bazaar.ts` (new): `getReputation(state, signer_id) → ReputationSummary` (topics sorted alphabetically for determinism, avg_trust over known topics, authored beliefs counted separately live vs tombstoned). `findCapabilities(state, name?)` enumerates beliefs with predicate `"capability.offers"`, optionally filtered by `object.name`, sorted newest-first, carrying a `withdrawn` flag for tombstoned offers. Canonical constant `CAPABILITY_OFFERS_PREDICATE` exported.
+- `src/engine/state.ts`: `SubscriptionFilters.reputation_of?: string` (hex-64 pubkey), documented as restricting recall to authored beliefs + attaching a reputation summary.
+- `src/engine/ops.ts`: recall filters out non-authored beliefs when `filters.reputation_of` is set; attaches `RecallOutput.reputation` via `getReputation`. Additive only — no existing callers affected.
+- `src/mcp/server.ts`: Zod `SubscriptionFiltersSchema` gains the `reputation_of` regex (`^[0-9a-f]{64}$`). No new MCP tool — still exactly five.
+- `tests/unit/engine/bazaar.test.ts` (new, 10 tests): reputation zeros / aggregation / tombstoned counts / sorted topics; capability discovery / name filter / withdrawn flag / newest-first sort; recall integration attaches + respects unset.
+
+### W-0142 · escrow thread walker (commit `33570e3`)
+- `src/engine/bazaar.ts` (extended): canonical predicates for the three escrow stages; `walkEscrowThread(state, root_id)` BFS over `belief.causes[]` via a one-pass parent→children index; per-level sort by `recorded_at` (id tiebreak) for deterministic output; diamond-shaped DAGs not double-counted (seen set). `escrowStatus` aggregates has_offer / has_payment / has_delivered / has_settled + latest-settled outcome extraction; `settled: true` iff the latest settled step has `outcome: "accepted"`. `isEscrowSettled` shorthand.
+- `tests/unit/engine/bazaar.test.ts` (+7 tests): missing root → empty; root-only; full four-stage happy path; later-disputed overrides accepted; fan-out traversal; diamond DAG no double-counting.
+
+### W-0143 · demo + Gate Bazaar (commit this commit)
+- `examples/bazaar_trade.ts` (new, 150 LOC): single MCP client drives alice + bob + wally roles against a shared EngineState. Alice publishes `capability.offers` (name="summarize_paragraph", price=5). Wally attests alice on two topics (avg_trust lands at 0.85). Bob discovers via `recall(filters.predicate)` and looks up reputation via `recall(filters.reputation_of)`. Bob pays (`escrow.payment`, causes=[offer_id]); alice delivers (`escrow.delivered`, causes=[payment_id]); bob settles accepted (`escrow.settled`, causes=[delivered_id]). Final verification via `escrowStatus(state, offer_id)` + `isEscrowSettled(state, offer_id)`.
+- `scripts/verify/gate_bazaar.sh` (new, 5 checks): demo exit 0; discovery; reputation threshold (avg_trust ≥ 0.85, attestations ≥ 2); four-stage order `offer,payment,delivered,settled`; isEscrowSettled=true with outcome=accepted.
+
+### Tests & verification
+- Vitest across all three commits: **120/120** green (103 previous + 10 reputation/capability + 7 escrow).
+- `pnpm exec tsc --noEmit` strict clean throughout.
+- All existing gate scripts re-run PASS: `gate3`, `gate4`, `gate5`, `gate_commons`, `gate_wall`, `gate_gauntlet`.
+- New: **Gate Bazaar PASS (5/5)**. Recorded in `ops/data/gates.json`.
+- Five-tool MCP API surface unchanged. All Bazaar primitives ride on existing `weavory.believe` / `weavory.recall` / `weavory.attest` + the existing `belief.causes[]` field.
+
+### Control updates
+- `STATUS.json`: `current_phase=G.5_complete`, `last_arena_gate_passed=bazaar`, `active_phase_g_sub='G.6 The Throne'`, `active_tasks=[W-0150]`.
+- `TASKS.json`: W-0140..W-0143 → completed.
+- `ops/data/gates.json`: appended `{gate: "bazaar", ...}`.
+
+### Next
+**Phase G.6 — The Throne** (W-0150..W-0160): compose all four arena features (Commons + Wall + Gauntlet + Bazaar) in one integrated demo + `gate_throne.sh`. Final Phase-G sub-phase.

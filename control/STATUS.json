@@ -1,16 +1,16 @@
 {
   "schema_version": "1.0.0",
   "project": "weavory.ai",
-  "updated_at": "2026-04-21T22:58:40Z",
-  "current_phase": "G.4_complete",
-  "current_milestone": "Phase G.4 (The Gauntlet) complete — in-memory branch snapshots + replay CLI verified",
+  "updated_at": "2026-04-21T23:14:30Z",
+  "current_phase": "G.5_complete",
+  "current_milestone": "Phase G.5 (The Bazaar) complete — discovery + reputation + escrow chain verified",
   "current_branch": "main",
   "current_remote": "https://github.com/DeepakKTS/weavory.ai (private)",
   "last_gate_passed": 7,
-  "last_arena_gate_passed": "gauntlet",
+  "last_arena_gate_passed": "bazaar",
   "next_gate": null,
-  "active_phase_g_sub": "G.5 The Bazaar",
-  "active_tasks": ["W-0140"],
+  "active_phase_g_sub": "G.6 The Throne",
+  "active_tasks": ["W-0150"],
   "blockers": [],
-  "notes": "Phase G.4 end-to-end verified. gauntlet_branch demo clones a weavory state at T0, then main and branch diverge (main AAPL=110 spike, branch AAPL=90 dip); recall on each returns different values; main recall(as_of=T0) rewinds to the original [100]. Demo exports an incident; gate_gauntlet.sh invokes `weavory replay --from <incident>` and asserts both AAPL=100 and AAPL=110 surface in the rehydrated state. Vitest 103/103 green. gate_gauntlet.sh 6/6. Phase-1 regression (Gates 3/4/5) + Gate Commons + Gate Wall all re-run green. Five-tool MCP API unchanged; CLI gained replay subcommand only."
+  "notes": "Phase G.5 end-to-end verified. bazaar_trade demo runs a full four-stage escrow over MCP: alice advertises capability.offers, bob discovers via recall(filters.predicate='capability.offers'), bob checks alice's reputation via recall(filters.reputation_of=...), bob pays (escrow.payment causes=[offer]), alice delivers (escrow.delivered causes=[payment]), bob settles (escrow.settled outcome='accepted' causes=[delivered]). walkEscrowThread returns 4 stages in order; isEscrowSettled=true. Vitest 120/120 green. Five-tool MCP API unchanged — all Bazaar primitives ride on existing believe/recall/attest + belief.causes[]. Phase-1 regression + all arena gates re-run green. Next: G.6 The Throne — compose all arena features into one integrated demo."
 }

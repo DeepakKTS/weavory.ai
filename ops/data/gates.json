@@ -83,6 +83,14 @@
       "script": "scripts/verify/gate_gauntlet.sh",
       "runner": "local/darwin-arm64/node-v23.7.0/pnpm-10.30.3",
       "notes": "6/6 checks green: gauntlet_branch demo exit 0; main live = [100,110]; branch live = [100,90]; main as_of=T0 = [100] (rewind works); incident file written; weavory replay CLI against the incident surfaces both AAPL=100 and AAPL=110. Phase G.4 (The Gauntlet) end-to-end verified — in-memory branch snapshots + bi-temporal as_of rewind + replay CLI all live."
+    },
+    {
+      "gate": "bazaar",
+      "passed_at": "2026-04-21T23:14:30Z",
+      "commit": "33570e37a7505034ae527dc978c5ef9751357f44",
+      "script": "scripts/verify/gate_bazaar.sh",
+      "runner": "local/darwin-arm64/node-v23.7.0/pnpm-10.30.3",
+      "notes": "5/5 checks green: bazaar_trade demo exit 0; bob discovered alice's summarize_paragraph offer via recall(filters.predicate='capability.offers'); reputation summary attached via recall(filters.reputation_of=alice.signer_id) with avg_trust=0.85 attestations=2; four-stage escrow thread walked in order offer,payment,delivered,settled; isEscrowSettled=true with outcome=accepted. Phase G.5 (The Bazaar) end-to-end verified — reputation + capability discovery + causal-chain escrow all live, all via the existing five-tool MCP API."
     }
   ]
 }
