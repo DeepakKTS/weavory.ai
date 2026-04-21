@@ -11,6 +11,7 @@
  * will expose, so swapping later is mechanical.
  */
 import {
+  AuditEntrySchema,
   GENESIS_PREV_HASH,
   type AuditEntry,
   type AuditOperation,
@@ -72,5 +73,24 @@ export class AuditStore {
       throw new RangeError(`audit mutate: index ${index} out of bounds (length=${this.#entries.length})`);
     }
     this.#entries[index] = mutator(this.#entries[index]);
+  }
+
+  /**
+   * Bulk-replace the chain with pre-built entries (Phase G.4 W-0131). Used
+   * by `cloneState` and `replay` to rehydrate a previously-exported chain
+   * without recomputing entry_hashes. Entries are schema-validated and
+   * defensively copied; callers cannot mutate internal state afterwards.
+   *
+   * Intentionally accepts any entry array — including tampered chains —
+   * so forensic replay can reproduce the exact state that was captured.
+   */
+  restoreEntries(entries: AuditEntry[]): void {
+    const next: AuditEntry[] = [];
+    for (const e of entries) {
+      const parsed = AuditEntrySchema.parse(e);
+      next.push(parsed);
+    }
+    this.#entries.length = 0;
+    for (const e of next) this.#entries.push(e);
   }
 }
