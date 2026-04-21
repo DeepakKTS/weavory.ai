@@ -46,6 +46,12 @@ export type CreateServerOptions = {
    * under Vitest (avoids cross-test file contention).
    */
   runtimeWriter?: boolean;
+  /**
+   * Enable Phase-G.3 adversarial mode (`WEAVORY_ADVERSARIAL=1`). Raises
+   * default recall min_trust 0.3 → 0.6 so unknown signers are
+   * hostile-until-proven-otherwise. Explicit attestations still win.
+   */
+  adversarialMode?: boolean;
 };
 
 function runtimeWriterDefault(): boolean {
@@ -63,6 +69,12 @@ export function createServer(
   state: EngineState;
 } {
   const server = new McpServer({ name: "weavory", version: VERSION });
+
+  // Phase G.3 — adversarial mode is a per-state flag read once at server
+  // construction. WEAVORY_ADVERSARIAL=1 enables it globally; the opts field
+  // overrides the env var when explicitly set.
+  state.adversarialMode =
+    opts.adversarialMode ?? process.env.WEAVORY_ADVERSARIAL === "1";
 
   // Phase G.1: attach a runtime snapshot writer so the dashboard reflects live
   // activity. Attach is idempotent per state; tests running under Vitest bypass

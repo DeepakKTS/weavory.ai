@@ -67,6 +67,14 @@
       "script": "scripts/verify/gate_commons.sh",
       "runner": "local/darwin-arm64/node-v23.7.0/pnpm-10.30.3",
       "notes": "5/5 checks green: commons_swarm demo exit 0; subscription drain delivered=3 dropped=0; include_conflicts surfaced 1 group with 3 variants; consensus winner.X=42 (alice+bob outvote mallet); lww winner.X=0 (latest recorded_at). Phase G.2 (The Commons) end-to-end verified."
+    },
+    {
+      "gate": "wall",
+      "passed_at": "2026-04-21T22:36:00Z",
+      "commit": "0da0465b96e10c83eb31ee6e28c093cdf4852531",
+      "script": "scripts/verify/gate_wall.sh",
+      "runner": "local/darwin-arm64/node-v23.7.0/pnpm-10.30.3",
+      "notes": "5/5 checks green: wall_incident demo exit 0; pre-tamper scan:ok, post-tamper scan:bad_index=1 reason=entry_hash; runtime.json.tamper_alarm surfaced; new incident file written under ops/data/incidents/; incident verify.ok=false bad_index=1. Phase G.3 (The Wall) adversarial drill end-to-end verified — adversarial mode, tamper detection, incident export all wired."
     }
   ]
 }

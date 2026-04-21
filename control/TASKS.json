@@ -362,6 +362,50 @@
       "depends_on": ["W-0111"],
       "files": ["examples/commons_swarm.ts", "scripts/verify/gate_commons.sh"],
       "acceptance_criteria": "Three agents publish overlapping beliefs; subscriber drains queue deterministically; conflict surfaces when include_conflicts is true."
+    },
+    {
+      "id": "W-0120",
+      "title": "Adversarial mode flag (Phase G.3)",
+      "owner": "A",
+      "status": "completed",
+      "priority": "P0",
+      "phase": "G.3",
+      "depends_on": ["W-0101"],
+      "files": ["src/engine/state.ts", "src/engine/ops.ts", "src/mcp/server.ts"],
+      "acceptance_criteria": "EngineState.adversarialMode flag; createServer reads WEAVORY_ADVERSARIAL=1 or opts.adversarialMode; recall default min_trust bumps 0.3 → 0.6. Explicit input.min_trust still overrides."
+    },
+    {
+      "id": "W-0121",
+      "title": "Tamper-alarm detector (Phase G.3)",
+      "owner": "G",
+      "status": "completed",
+      "priority": "P0",
+      "phase": "G.3",
+      "depends_on": ["W-0100"],
+      "files": ["src/engine/incident.ts"],
+      "acceptance_criteria": "scanForTamper(state, writer?) runs audit.verify() and sets runtime.json.tamper_alarm via writer.setTamperAlarm when a mutation is detected. Never throws."
+    },
+    {
+      "id": "W-0122",
+      "title": "Incident export (Phase G.3)",
+      "owner": "G",
+      "status": "completed",
+      "priority": "P0",
+      "phase": "G.3",
+      "depends_on": ["W-0120", "W-0121"],
+      "files": ["src/engine/incident.ts", "src/store/audit.ts"],
+      "acceptance_criteria": "exportIncident writes ops/data/incidents/incident-<ts>.json atomically with audit entries, verify result, all beliefs, trust, subscriptions. AuditStore has _adversarialMutate for simulation."
+    },
+    {
+      "id": "W-0123",
+      "title": "wall_incident demo + gate_wall verify (Phase G.3)",
+      "owner": "E",
+      "status": "completed",
+      "priority": "P0",
+      "phase": "G.3",
+      "depends_on": ["W-0122"],
+      "files": ["examples/wall_incident.ts", "scripts/verify/gate_wall.sh"],
+      "acceptance_criteria": "Demo: honest chain → attacker mutates entry → scanForTamper fires alarm → runtime.json.tamper_alarm surfaced → exportIncident writes a new file with verify.ok=false. gate_wall.sh asserts all 5."
     }
   ]
 }

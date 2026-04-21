@@ -1,16 +1,16 @@
 {
   "schema_version": "1.0.0",
   "project": "weavory.ai",
-  "updated_at": "2026-04-21T21:54:30Z",
-  "current_phase": "G.2_complete",
-  "current_milestone": "Phase G.2 (The Commons) complete — subscribe/drain + consensus merge verified",
+  "updated_at": "2026-04-21T22:36:00Z",
+  "current_phase": "G.3_complete",
+  "current_milestone": "Phase G.3 (The Wall) complete — adversarial mode + tamper alarm + incident export verified",
   "current_branch": "main",
   "current_remote": "https://github.com/DeepakKTS/weavory.ai (private)",
   "last_gate_passed": 7,
-  "last_arena_gate_passed": "commons",
+  "last_arena_gate_passed": "wall",
   "next_gate": null,
-  "active_phase_g_sub": "G.3 The Wall",
-  "active_tasks": ["W-0120"],
+  "active_phase_g_sub": "G.4 The Gauntlet",
+  "active_tasks": ["W-0130"],
   "blockers": [],
-  "notes": "Phase G.2 end-to-end verified. commons_swarm demo runs three agents + one subscriber against a shared weavory, drains 3 queued beliefs, detects 1 conflict group with 3 variants, consensus picks X=42 (alice+bob trust outweighs mallet), lww picks X=0 (latest recorded_at). gate_commons.sh 5/5 green. Vitest 78/78. All Phase-1 gates 3/4/5 re-run green. Next: G.3 The Wall — adversarial mode + tamper alarms (W-0120..W-0123)."
+  "notes": "Phase G.3 end-to-end verified. wall_incident demo runs a full adversarial drill: honest publishes → attacker mutates audit entry #1 → scanForTamper fires alarm → runtime.json.tamper_alarm surfaced → exportIncident writes ops/data/incidents/incident-<ts>.json with verify.ok=false. Adversarial mode raises default recall min_trust 0.3 → 0.6; explicit attestations still win. Vitest 85/85. gate_wall.sh 5/5 green. Phase-1 Gates 3/4/5 + Gate Commons all re-run green. Next: G.4 The Gauntlet — weavory replay --as-of CLI + branch snapshot."
 }

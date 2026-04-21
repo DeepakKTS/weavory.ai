@@ -228,3 +228,38 @@ W-0113 — `examples/commons_swarm.ts` three-agent demo + `scripts/verify/gate_c
 
 ### Next
 **Phase G.3 — The Wall** (W-0120..W-0123): adversarial mode (tighter trust thresholds, signed-lineage-only recall), chain tamper alarm wired into `runtime.json.tamper_alarm`, incident export to `ops/data/incidents/<id>.json`, demo + verify.
+
+## 2026-04-21 · Phase G.3 · The Wall — SHIPPED · **Gate Wall PASS**
+
+### W-0120 · Adversarial mode
+- `src/engine/state.ts`: `EngineState.adversarialMode` boolean (default false).
+- `src/engine/ops.ts`: `recall` default min_trust bumped 0.3 → 0.6 when `state.adversarialMode` is true. Explicit `input.min_trust` (even `-1` for audit views) still wins.
+- `src/mcp/server.ts`: `createServer` reads `process.env.WEAVORY_ADVERSARIAL === "1"` or `opts.adversarialMode` at construction. Signed-lineage enforcement was already inherent — all beliefs are server-signed so there's no unsigned path to disable.
+- Note: Gate 4 still passes because its scenario always invokes recall with explicit `min_trust: -1` for the audit view; adversarial mode only raises the implicit default.
+
+### W-0121 · Tamper-alarm detector
+- `src/engine/incident.ts` (new): pure `scanForTamper(state, writer?)`. Calls `state.audit.verify()`; on failure builds `{ detected_at, bad_index, reason }` and pushes it to the RuntimeWriter so runtime.json surfaces it immediately. On success clears any prior alarm. Never throws.
+
+### W-0122 · Incident export
+- `src/engine/incident.ts`: `exportIncident(state, { reason?, outDir? })` writes `ops/data/incidents/incident-<compact-ts>.json` atomically (tmp + rename) via `mkdirSync({recursive})`. Record includes `schema_version`, `incident_id`, `exported_at`, `reason`, `adversarial_mode`, full audit `{length, verify, entries}`, beliefs `{total, live, quarantined, tombstoned, records}`, trust vector, subscription summaries.
+- `src/store/audit.ts`: added `_adversarialMutate(index, mutator)` — explicitly labeled `@internal` simulation hook so demos can reproduce a broken chain without a separate process.
+- `.gitignore`: added `ops/data/incidents/` so drill artefacts stay local.
+
+### W-0123 · wall_incident demo + gate_wall.sh
+- `examples/wall_incident.ts` (new): runs `createServer({ adversarialMode: true, runtimeWriter: false })` + a manually-attached RuntimeWriter pointing at the real `ops/data/runtime.json`. Publishes 3 honest beliefs → pre-scan ok → `_adversarialMutate` corrupts entry 1 → post-scan reports `bad_index=1 reason=entry_hash` → writer.flushNow surfaces alarm in runtime.json → exportIncident creates a new file → demo asserts the file count increased and the on-disk record reports `verify.ok=false`. After the drill the script clears the alarm so the dashboard's last snapshot is tidy.
+- `scripts/verify/gate_wall.sh` (new): snapshots incident file count before, runs the demo, asserts 5 real conditions via grep + `node -e` on the latest incident file (verify.ok=false, bad_index=1). 5/5 green.
+
+### Tests & verification
+- `pnpm exec tsc --noEmit` strict clean.
+- Vitest: **85/85 green** (78 previous + 4 incident-unit + 3 wall-integration).
+- Gate scripts re-run locally — all PASS: `gate3`, `gate4`, `gate5`, `gate_commons`, `gate_wall`.
+- Gate 7 regression to be confirmed on next CI run.
+- Recorded in `ops/data/gates.json` as gate "wall" with commit `0da0465`.
+
+### Control updates
+- `STATUS.json`: `current_phase=G.3_complete`, `last_arena_gate_passed=wall`, `active_phase_g_sub='G.4 The Gauntlet'`, `active_tasks=[W-0130]`.
+- `TASKS.json`: W-0120..W-0123 → completed.
+- `.gitignore`: added incidents directory.
+
+### Next
+**Phase G.4 — The Gauntlet** (W-0130..W-0132): `weavory replay --as-of <T>` CLI command, in-memory branch snapshot via `--branch <name>`, demo + verify.

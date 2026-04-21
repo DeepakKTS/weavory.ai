@@ -16,6 +16,8 @@ ops/data/*.json
 !ops/data/.gitkeep
 # gates.json is a committed audit trail of passed gates — not transient
 !ops/data/gates.json
+# Adversarial drill artefacts (Phase G.3) — transient, regenerated per run
+ops/data/incidents/
 
 # Editor artefacts
 .DS_Store

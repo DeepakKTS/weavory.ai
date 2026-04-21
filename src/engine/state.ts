@@ -85,6 +85,16 @@ export class EngineState {
    */
   onOp: ((op: EngineOp) => void) | undefined = undefined;
 
+  /**
+   * Phase G.3 — Adversarial mode (`WEAVORY_ADVERSARIAL=1`). When true, the
+   * default `min_trust` used by `recall` is raised from 0.3 → 0.6 so unknown
+   * signers (default neutral trust = 0.5) are hostile-until-proven-otherwise.
+   * Explicit attestations still win. All other semantics (signed beliefs,
+   * audit chain, quarantine flag) are unchanged — all beliefs are already
+   * server-signed, so signed-lineage is enforced on every recall regardless.
+   */
+  adversarialMode = false;
+
   /** Return a signer_id + keypair for a seed, caching in the keyring. */
   signerFromSeed(seed: string): { signer_id: string; keyPair: KeyPair } {
     // Derive deterministically.

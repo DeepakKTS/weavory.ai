@@ -139,10 +139,14 @@ export type RecallOutput = {
 };
 
 const DEFAULT_MIN_TRUST = 0.3;
+const ADVERSARIAL_MIN_TRUST = 0.6;
 
 export function recall(state: EngineState, input: RecallInput): RecallOutput {
   const top_k = input.top_k ?? 10;
-  const min_trust = input.min_trust ?? DEFAULT_MIN_TRUST;
+  // Adversarial mode raises the implicit trust floor; explicit input.min_trust
+  // (including input.min_trust=-1 for audit views) always takes precedence.
+  const defaultFloor = state.adversarialMode ? ADVERSARIAL_MIN_TRUST : DEFAULT_MIN_TRUST;
+  const min_trust = input.min_trust ?? defaultFloor;
   const now = new Date().toISOString();
   const asOf = input.as_of ?? null;
   const includeQ = input.include_quarantined ?? false;

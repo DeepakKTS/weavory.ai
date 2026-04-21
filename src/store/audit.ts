@@ -58,4 +58,19 @@ export class AuditStore {
   verify(): ChainVerifyResult {
     return verifyChain(this.#entries);
   }
+
+  /**
+   * Test / adversarial-simulation hook — directly mutate a stored entry so
+   * that `verify()` will report the mutation. Production code MUST NOT call
+   * this; it exists so wall-arena demos and tamper tests can reproduce a
+   * broken chain without a second backend. The underscore prefix + JSDoc
+   * are the explicit "do not use" signal.
+   * @internal
+   */
+  _adversarialMutate(index: number, mutator: (e: AuditEntry) => AuditEntry): void {
+    if (index < 0 || index >= this.#entries.length) {
+      throw new RangeError(`audit mutate: index ${index} out of bounds (length=${this.#entries.length})`);
+    }
+    this.#entries[index] = mutator(this.#entries[index]);
+  }
 }
