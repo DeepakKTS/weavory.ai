@@ -1,13 +1,13 @@
 {
   "schema_version": "1.0.0",
   "project": "weavory.ai",
-  "updated_at": "2026-04-21T00:00:00Z",
-  "current_phase": "A",
-  "current_milestone": "Gate 1 — repo boots, control files exist, dashboard loads",
+  "updated_at": "2026-04-21T20:05:00Z",
+  "current_phase": "B",
+  "current_milestone": "Gate 2 — all five MCP tools callable with valid schemas",
   "current_branch": "main",
-  "last_gate_passed": null,
-  "next_gate": 1,
-  "active_tasks": ["W-0007", "W-0008"],
+  "last_gate_passed": 1,
+  "next_gate": 2,
+  "active_tasks": ["W-0010"],
   "blockers": [],
-  "notes": "Phase A near complete. Repo initialized (main). Control files seeded. Dashboard shell created. Git + gate1 verification pending run. No gates passed yet."
+  "notes": "Phase A complete. Gate 1 passed at commit ae65da1 (4/4 checks green). Moving to Phase B: belief schema (W-0010), Ed25519 signing (W-0011), BLAKE3 audit chain (W-0012)."
 }

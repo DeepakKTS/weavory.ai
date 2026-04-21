@@ -31,7 +31,13 @@ Chronological engineering log. One entry per meaningful work unit. Never fabrica
 - Built `scripts/verify/gate1.sh`: four-step check (control files, dashboard, node project, git collector). Executable bit set.
 - Status: complete.
 
-### W-0008 · Git init (in progress)
-- `git init`; initial branch switched to `main`. Not yet committed.
-- Updated `STATUS.json.current_branch` from "UNKNOWN" to "main".
-- Next: stage tracked files, commit with task-id-mapped message, run `scripts/verify/gate1.sh`.
+### W-0008 · Git init + first commit
+- `git init`; branch = `main`.
+- Staged 17 files. First commit `ae65da1` with message mapping to W-0001..W-0008.
+- Status: complete.
+
+### Gate 1 — PASS @ ae65da1
+- `pnpm install` resolved 197 packages in 2.1s. `tsx` v4.21.0 / Node v23.7.0 / pnpm 10.30.3.
+- `pnpm exec tsx scripts/collect/git.ts` wrote `ops/data/git.json` — real branch, real HEAD, 1 real commit, no fabricated entries.
+- `bash scripts/verify/gate1.sh` — 4/4 checks green. Recorded in `ops/data/gates.json`.
+- Phase A complete. STATUS.json bumped: `current_phase=B`, `last_gate_passed=1`, `next_gate=2`.
