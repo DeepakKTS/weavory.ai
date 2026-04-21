@@ -55,6 +55,14 @@ export type SubscriptionFilters = {
   predicate?: string;
   min_confidence?: number;
   min_trust?: number;
+  /**
+   * Phase G.5 — restricts recall to beliefs authored by this `signer_id`
+   * AND attaches a `ReputationSummary` to the recall output. Hex-encoded
+   * Ed25519 public key (64 chars). The filter is intentionally in this
+   * block (rather than a top-level input) so it composes with the
+   * existing subject/predicate filters.
+   */
+  reputation_of?: string;
 };
 
 export type TrustVector = Map<string /*topic*/, number /*score -1..1*/>;

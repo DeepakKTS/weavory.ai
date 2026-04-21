@@ -19,6 +19,7 @@ import {
 } from "../core/schema.js";
 import type { EngineState, SubscriptionFilters } from "./state.js";
 import { mergeConflicts, type ConflictGroup, type MergeStrategy } from "./merge.js";
+import { getReputation, type ReputationSummary } from "./bazaar.js";
 
 // ---------- believe ----------
 
@@ -136,6 +137,8 @@ export type RecallOutput = {
   conflicts?: ConflictGroup[];
   /** Phase G.2 — the merge strategy actually applied this call. */
   merge_strategy?: MergeStrategy;
+  /** Phase G.5 — present iff `filters.reputation_of` was set. */
+  reputation?: ReputationSummary;
 };
 
 const DEFAULT_MIN_TRUST = 0.3;
@@ -189,6 +192,10 @@ export function recall(state: EngineState, input: RecallInput): RecallOutput {
     if (input.filters?.subject && belief.subject !== input.filters.subject) continue;
     if (input.filters?.predicate && belief.predicate !== input.filters.predicate) continue;
     if (input.filters?.min_confidence !== undefined && belief.confidence < input.filters.min_confidence) {
+      continue;
+    }
+    // Phase G.5 — reputation filter: keep only beliefs authored by that signer.
+    if (input.filters?.reputation_of && belief.signer_id !== input.filters.reputation_of) {
       continue;
     }
 
@@ -259,6 +266,10 @@ export function recall(state: EngineState, input: RecallInput): RecallOutput {
   }
   if (input.include_conflicts && conflicts.length > 0) {
     out.conflicts = conflicts;
+  }
+  // Phase G.5 — attach reputation summary when the caller filtered by signer.
+  if (input.filters?.reputation_of) {
+    out.reputation = getReputation(state, input.filters.reputation_of);
   }
   return out;
 }

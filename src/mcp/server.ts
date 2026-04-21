@@ -36,6 +36,7 @@ const SubscriptionFiltersSchema = z
     predicate: z.string().optional(),
     min_confidence: z.number().min(0).max(1).optional(),
     min_trust: z.number().min(-1).max(1).optional(),
+    reputation_of: z.string().regex(/^[0-9a-f]{64}$/u).optional(),
   })
   .strict();
 
