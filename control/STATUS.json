@@ -1,0 +1,13 @@
+{
+  "schema_version": "1.0.0",
+  "project": "weavory.ai",
+  "updated_at": "2026-04-21T00:00:00Z",
+  "current_phase": "A",
+  "current_milestone": "Gate 1 — repo boots, control files exist, dashboard loads",
+  "current_branch": "main",
+  "last_gate_passed": null,
+  "next_gate": 1,
+  "active_tasks": ["W-0007", "W-0008"],
+  "blockers": [],
+  "notes": "Phase A near complete. Repo initialized (main). Control files seeded. Dashboard shell created. Git + gate1 verification pending run. No gates passed yet."
+}

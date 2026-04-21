@@ -1,0 +1,69 @@
+{
+  "schema_version": "1.0.0",
+  "updated_at": "2026-04-21T00:00:00Z",
+  "risks": [
+    {
+      "id": "R-01",
+      "description": "Similar belief/coordination substrate ships before Jun 13",
+      "severity": "high",
+      "likelihood": "medium",
+      "mitigation": "Publish benchmarks and the 'belief-as-a-message' category flag by end of Phase D. Stake out the differentiator early via docs/ARCHITECTURE.md.",
+      "owner": "E",
+      "status": "open"
+    },
+    {
+      "id": "R-02",
+      "description": "LLM-judge merge is slow or flaky on stage",
+      "severity": "medium",
+      "likelihood": "medium",
+      "mitigation": "LLM-judge is opt-in; default merge path is deterministic (LWW + OR-set).",
+      "owner": "D",
+      "status": "open"
+    },
+    {
+      "id": "R-03",
+      "description": "Embedding costs spike during the demo",
+      "severity": "medium",
+      "likelihood": "medium",
+      "mitigation": "Local bge-small fallback; aggressive cache; batched embeddings. Feature-flag via WEAVORY_EMBEDDING=local.",
+      "owner": "C",
+      "status": "open"
+    },
+    {
+      "id": "R-04",
+      "description": "weavory.ai trademark or npm scope clash",
+      "severity": "medium",
+      "likelihood": "low",
+      "mitigation": "Week-1 npm-scope + USPTO/WIPO name check. Fallback names: Koine, Plexus.",
+      "owner": "F",
+      "status": "open"
+    },
+    {
+      "id": "R-05",
+      "description": "NANDA AgentFacts schema drifts during build",
+      "severity": "medium",
+      "likelihood": "medium",
+      "mitigation": "Pin to a specific AgentFacts commit; document the pin in docs/NANDA.md; track upstream weekly.",
+      "owner": "A",
+      "status": "open"
+    },
+    {
+      "id": "R-06",
+      "description": "Phase-1 judge test fails on stage",
+      "severity": "high",
+      "likelihood": "low",
+      "mitigation": "Three end-to-end dress-rehearsals on fresh VMs before May 7. Gate 7 script is the non-negotiable blocker.",
+      "owner": "G",
+      "status": "open"
+    },
+    {
+      "id": "R-07",
+      "description": "Federation (libp2p) destabilizes the demo",
+      "severity": "low",
+      "likelihood": "medium",
+      "mitigation": "Feature-flagged (WEAVORY_FEDERATION=1), off by default, Phase G only.",
+      "owner": "A",
+      "status": "open"
+    }
+  ]
+}

@@ -1,0 +1,290 @@
+{
+  "schema_version": "1.0.0",
+  "generated_at": "2026-04-21T00:00:00Z",
+  "tasks": [
+    {
+      "id": "W-0001",
+      "title": "Create weavory project directory tree",
+      "owner": "F",
+      "status": "completed",
+      "priority": "P0",
+      "phase": "A",
+      "depends_on": [],
+      "files": ["weavory/"],
+      "acceptance_criteria": "All planned directories exist; repo boots on 'ls'."
+    },
+    {
+      "id": "W-0002",
+      "title": "Bootstrap package.json, tsconfig.json, .gitignore",
+      "owner": "F",
+      "status": "completed",
+      "priority": "P0",
+      "phase": "A",
+      "depends_on": ["W-0001"],
+      "files": ["package.json", "tsconfig.json", ".gitignore"],
+      "acceptance_criteria": "package.json has 5 scripts (dev, test, verify:gate*, collect:*, build). tsconfig has strict:true."
+    },
+    {
+      "id": "W-0003",
+      "title": "Seed /control/ files with real data",
+      "owner": "F",
+      "status": "completed",
+      "priority": "P0",
+      "phase": "A",
+      "depends_on": ["W-0001"],
+      "files": [
+        "control/MASTER_PLAN.md",
+        "control/DECISIONS.md",
+        "control/TASKS.json",
+        "control/STATUS.json",
+        "control/RISKS.json",
+        "control/BACKLOG.json",
+        "control/WORKLOG.md",
+        "control/TEST_MATRIX.md",
+        "control/JUDGE_GATES.md"
+      ],
+      "acceptance_criteria": "All nine control files exist with real seeded content; no placeholder fabrication."
+    },
+    {
+      "id": "W-0004",
+      "title": "Build dashboard shell at /ops/weavory-dashboard.html",
+      "owner": "F",
+      "status": "completed",
+      "priority": "P0",
+      "phase": "A",
+      "depends_on": ["W-0003"],
+      "files": ["ops/weavory-dashboard.html"],
+      "acceptance_criteria": "Static HTML fetches /ops/data/*.json and /control/*.json; renders 12 sections; missing data shows 'Not collected yet'; no inline fabricated content."
+    },
+    {
+      "id": "W-0005",
+      "title": "Implement git collector (scripts/collect/git.ts)",
+      "owner": "F",
+      "status": "completed",
+      "priority": "P0",
+      "phase": "A",
+      "depends_on": ["W-0001"],
+      "files": ["scripts/collect/git.ts"],
+      "acceptance_criteria": "Running the script produces /ops/data/git.json with branch, last_commit, status_counts, recent_commits[]. No fabricated entries."
+    },
+    {
+      "id": "W-0006",
+      "title": "Implement tasks collector (scripts/collect/tasks.ts)",
+      "owner": "F",
+      "status": "pending",
+      "priority": "P0",
+      "phase": "A",
+      "depends_on": ["W-0003"],
+      "files": ["scripts/collect/tasks.ts"],
+      "acceptance_criteria": "Produces /ops/data/tasks-summary.json from control/TASKS.json counts-by-status."
+    },
+    {
+      "id": "W-0007",
+      "title": "Gate 1 verification script (scripts/verify/gate1.sh)",
+      "owner": "G",
+      "status": "in_progress",
+      "priority": "P0",
+      "phase": "A",
+      "depends_on": ["W-0002", "W-0003", "W-0004", "W-0005"],
+      "files": ["scripts/verify/gate1.sh"],
+      "acceptance_criteria": "Script exits 0 iff: control files present, dashboard present, git.json produced, package.json scripts runnable."
+    },
+    {
+      "id": "W-0008",
+      "title": "Initialize git repo and first commit",
+      "owner": "F",
+      "status": "in_progress",
+      "priority": "P0",
+      "phase": "A",
+      "depends_on": ["W-0007"],
+      "files": [".git"],
+      "acceptance_criteria": "git init done; first commit message references W-0001..W-0007 with no bypassed hooks."
+    },
+    {
+      "id": "W-0010",
+      "title": "Implement belief schema (Phase B)",
+      "owner": "A",
+      "status": "pending",
+      "priority": "P0",
+      "phase": "B",
+      "depends_on": ["W-0008"],
+      "files": ["src/core/belief.ts", "src/core/schema.ts"],
+      "acceptance_criteria": "Belief type is NANDA AgentFacts superset; Zod schema validates; unit tests green."
+    },
+    {
+      "id": "W-0011",
+      "title": "Implement Ed25519 sign/verify (Phase B)",
+      "owner": "A",
+      "status": "pending",
+      "priority": "P0",
+      "phase": "B",
+      "depends_on": ["W-0010"],
+      "files": ["src/core/sign.ts"],
+      "acceptance_criteria": "generateKey/sign/verify round-trip; tamper detected; unit tests green."
+    },
+    {
+      "id": "W-0012",
+      "title": "Implement BLAKE3 hash-chain audit (Phase B)",
+      "owner": "A",
+      "status": "pending",
+      "priority": "P0",
+      "phase": "B",
+      "depends_on": ["W-0011"],
+      "files": ["src/core/chain.ts", "src/store/audit.ts"],
+      "acceptance_criteria": "Append-only log; each entry references prev hash; tamper detection unit test green."
+    },
+    {
+      "id": "W-0020",
+      "title": "MCP server wiring + five tool stubs (Phase C)",
+      "owner": "B",
+      "status": "pending",
+      "priority": "P0",
+      "phase": "C",
+      "depends_on": ["W-0010", "W-0011", "W-0012"],
+      "files": [
+        "src/mcp/server.ts",
+        "src/mcp/tools/believe.ts",
+        "src/mcp/tools/recall.ts",
+        "src/mcp/tools/subscribe.ts",
+        "src/mcp/tools/attest.ts",
+        "src/mcp/tools/forget.ts"
+      ],
+      "acceptance_criteria": "All five tools registered with Zod schemas; MCP Inspector can list and invoke each."
+    },
+    {
+      "id": "W-0021",
+      "title": "LanceDB vector store integration (Phase C)",
+      "owner": "C",
+      "status": "pending",
+      "priority": "P0",
+      "phase": "C",
+      "depends_on": ["W-0010"],
+      "files": ["src/store/vector.ts"],
+      "acceptance_criteria": "Beliefs embedded and persisted; top-k similarity returns expected neighbors in integration test."
+    },
+    {
+      "id": "W-0022",
+      "title": "DuckDB bi-temporal store (Phase C)",
+      "owner": "C",
+      "status": "pending",
+      "priority": "P0",
+      "phase": "C",
+      "depends_on": ["W-0010"],
+      "files": ["src/store/bitemporal.ts"],
+      "acceptance_criteria": "Beliefs stored with valid_from/valid_to + recorded_at; as_of query returns prior state; unit tests green."
+    },
+    {
+      "id": "W-0023",
+      "title": "OR-set CRDT + LWW default merge (Phase C)",
+      "owner": "D",
+      "status": "pending",
+      "priority": "P1",
+      "phase": "C",
+      "depends_on": ["W-0010"],
+      "files": ["src/coord/crdt.ts", "src/coord/merge.ts"],
+      "acceptance_criteria": "Concurrent writes reconciled; tombstones respected; unit tests green."
+    },
+    {
+      "id": "W-0024",
+      "title": "Semantic subscribe via SSE (Phase C)",
+      "owner": "D",
+      "status": "pending",
+      "priority": "P0",
+      "phase": "C",
+      "depends_on": ["W-0021", "W-0020"],
+      "files": ["src/coord/subscribe.ts"],
+      "acceptance_criteria": "Subscribe stream emits matching beliefs via SSE; backpressure tested; integration test green."
+    },
+    {
+      "id": "W-0025",
+      "title": "Trust vector + quarantine (Phase C)",
+      "owner": "D",
+      "status": "pending",
+      "priority": "P0",
+      "phase": "C",
+      "depends_on": ["W-0011"],
+      "files": ["src/trust/vector.ts", "src/trust/quarantine.ts"],
+      "acceptance_criteria": "Unsigned/low-trust beliefs filtered from recall by default; quarantine set observable via runtime events."
+    },
+    {
+      "id": "W-0030",
+      "title": "Two-agent example + judge walkthrough (Phase D)",
+      "owner": "E",
+      "status": "pending",
+      "priority": "P0",
+      "phase": "D",
+      "depends_on": ["W-0020", "W-0021", "W-0022", "W-0024", "W-0025"],
+      "files": [
+        "examples/two_agents_collaborate.ts",
+        "examples/openclaw_walkthrough.md"
+      ],
+      "acceptance_criteria": "Two agents exchange a belief and both answer the scripted task correctly."
+    },
+    {
+      "id": "W-0031",
+      "title": "README + QUICKSTART (Phase D)",
+      "owner": "E",
+      "status": "pending",
+      "priority": "P0",
+      "phase": "D",
+      "depends_on": ["W-0030"],
+      "files": ["docs/README.md", "docs/QUICKSTART.md"],
+      "acceptance_criteria": "Judge runbook: three-line install + 60s OpenClaw walkthrough; time-to-first-belief < 90s on a clean machine."
+    },
+    {
+      "id": "W-0032",
+      "title": "Judge verification script (Phase D)",
+      "owner": "G",
+      "status": "pending",
+      "priority": "P0",
+      "phase": "D",
+      "depends_on": ["W-0030"],
+      "files": ["scripts/verify/gate3.sh"],
+      "acceptance_criteria": "Script exercises two-agent exchange; exits 0 on success."
+    },
+    {
+      "id": "W-0040",
+      "title": "Wire dashboard to real data (Phase E)",
+      "owner": "F",
+      "status": "pending",
+      "priority": "P0",
+      "phase": "E",
+      "depends_on": ["W-0004", "W-0005", "W-0020"],
+      "files": ["ops/weavory-dashboard.html", "scripts/collect/runtime.ts", "scripts/collect/tests.ts"],
+      "acceptance_criteria": "Dashboard displays only real data from collectors; no mock entries; missing data clearly labeled."
+    },
+    {
+      "id": "W-0050",
+      "title": "Unit + integration test suite ≥90% core coverage (Phase F)",
+      "owner": "G",
+      "status": "pending",
+      "priority": "P0",
+      "phase": "F",
+      "depends_on": ["W-0020", "W-0021", "W-0022", "W-0024", "W-0025"],
+      "files": ["tests/unit/", "tests/integration/"],
+      "acceptance_criteria": "Coverage JSON shows ≥90% on src/core, src/coord, src/trust."
+    },
+    {
+      "id": "W-0051",
+      "title": "Fresh-machine CI (Phase F)",
+      "owner": "G",
+      "status": "pending",
+      "priority": "P0",
+      "phase": "F",
+      "depends_on": ["W-0031", "W-0032"],
+      "files": [".github/workflows/fresh-machine.yml"],
+      "acceptance_criteria": "GitHub Actions on Ubuntu + macOS clean runners runs gate3 and gate7 scripts, green."
+    },
+    {
+      "id": "W-0052",
+      "title": "Gate 7 judge simulation (Phase F)",
+      "owner": "G",
+      "status": "pending",
+      "priority": "P0",
+      "phase": "F",
+      "depends_on": ["W-0031", "W-0051"],
+      "files": ["tests/judge/gate7_simulation.ts", "scripts/verify/gate7.sh"],
+      "acceptance_criteria": "Stock OpenClaw-compatible agent completes scripted task using only docs/README.md."
+    }
+  ]
+}

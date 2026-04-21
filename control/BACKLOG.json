@@ -1,0 +1,83 @@
+{
+  "schema_version": "1.0.0",
+  "updated_at": "2026-04-21T00:00:00Z",
+  "note": "Phase G items — gated behind Gate 7 per ADR-007. Nothing here is in active scope until Phase 1 judge test passes.",
+  "items": [
+    {
+      "id": "B-0001",
+      "title": "Consensus merge strategy",
+      "phase": "G",
+      "arena": "Commons",
+      "depends_on": ["W-0023"],
+      "notes": "Quorum vote across signers before accepting conflicting claims."
+    },
+    {
+      "id": "B-0002",
+      "title": "LLM-judge merge strategy",
+      "phase": "G",
+      "arena": "Commons",
+      "depends_on": ["W-0023"],
+      "notes": "Opt-in; uses a small local model or API to reconcile semantic conflicts with lineage."
+    },
+    {
+      "id": "B-0003",
+      "title": "Adversarial mode + incident replay UI",
+      "phase": "G",
+      "arena": "Wall",
+      "depends_on": ["W-0025"],
+      "notes": "Auto-quarantine on trust decay; tamper alarms; incident export."
+    },
+    {
+      "id": "B-0004",
+      "title": "as_of strategy replay CLI",
+      "phase": "G",
+      "arena": "Gauntlet",
+      "depends_on": ["W-0022"],
+      "notes": "`weavory replay --as-of=T` to rewind belief state for strategy branching."
+    },
+    {
+      "id": "B-0005",
+      "title": "Attestation API + reputation queries",
+      "phase": "G",
+      "arena": "Bazaar",
+      "depends_on": ["W-0025"],
+      "notes": "Capability advertisements piggybacked on beliefs; hash-locked belief exchange for lightweight escrow."
+    },
+    {
+      "id": "B-0006",
+      "title": "libp2p gossipsub federation",
+      "phase": "G",
+      "arena": "Throne",
+      "depends_on": ["W-0024"],
+      "notes": "Feature-flagged; eventual consistency with bounded staleness. Disabled by default."
+    },
+    {
+      "id": "B-0007",
+      "title": "Client SDKs (TS + Python)",
+      "phase": "G",
+      "depends_on": ["W-0020"],
+      "notes": "Thin MCP wrappers; not new interfaces."
+    },
+    {
+      "id": "B-0008",
+      "title": "Multi-tenant namespaces + quotas + OIDC",
+      "phase": "G",
+      "depends_on": ["W-0020"],
+      "notes": "Enterprise SKU readiness."
+    },
+    {
+      "id": "B-0009",
+      "title": "Prometheus + OpenTelemetry full wiring",
+      "phase": "G",
+      "depends_on": ["W-0020"],
+      "notes": "Production observability. Minimum viable OTel traces in Phase F."
+    },
+    {
+      "id": "B-0010",
+      "title": "Homebrew tap + Docker image",
+      "phase": "G",
+      "depends_on": ["W-0031"],
+      "notes": "Distribution polish. `npx` is sufficient for Phase 1."
+    }
+  ]
+}

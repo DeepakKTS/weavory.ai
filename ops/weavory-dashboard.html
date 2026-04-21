@@ -1,0 +1,500 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>weavory.ai — control dashboard</title>
+    <style>
+      :root {
+        --bg: #0b0d10;
+        --panel: #12161b;
+        --panel-2: #181d24;
+        --border: #222933;
+        --muted: #6b7582;
+        --text: #d7dde5;
+        --text-dim: #9aa4b2;
+        --accent: #7dd3fc;
+        --ok: #86efac;
+        --warn: #fde68a;
+        --bad: #fca5a5;
+        --unknown: #6b7582;
+        --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
+      }
+      * { box-sizing: border-box; }
+      html, body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: var(--sans);
+        font-size: 14px;
+        line-height: 1.45;
+      }
+      header {
+        padding: 20px 28px;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: linear-gradient(180deg, #14181e 0%, var(--bg) 100%);
+      }
+      header h1 {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+      }
+      header h1 .dot {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--accent);
+        margin-right: 10px;
+        vertical-align: middle;
+        box-shadow: 0 0 0 3px rgba(125, 211, 252, 0.15);
+      }
+      header .meta { color: var(--text-dim); font-family: var(--mono); font-size: 12px; }
+      header .meta .label { color: var(--muted); }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+        gap: 16px;
+        padding: 20px;
+      }
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 16px 18px;
+        display: flex;
+        flex-direction: column;
+        min-height: 140px;
+      }
+      .card h2 {
+        margin: 0 0 4px 0;
+        font-size: 13px;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+        color: var(--text-dim);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .card h2 .src {
+        font-size: 11px;
+        color: var(--muted);
+        font-family: var(--mono);
+        text-transform: none;
+        letter-spacing: 0;
+      }
+      .card .body { flex: 1; margin-top: 10px; }
+      .not-collected {
+        color: var(--muted);
+        font-style: italic;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .not-collected::before {
+        content: "";
+        display: inline-block;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--unknown);
+      }
+      .kv {
+        display: grid;
+        grid-template-columns: max-content 1fr;
+        gap: 4px 14px;
+        font-family: var(--mono);
+        font-size: 12.5px;
+      }
+      .kv .k { color: var(--muted); }
+      .kv .v { color: var(--text); word-break: break-word; }
+      .kv .v.mono { font-family: var(--mono); }
+      .kv .v.ok { color: var(--ok); }
+      .kv .v.warn { color: var(--warn); }
+      .kv .v.bad { color: var(--bad); }
+      ul.list { margin: 0; padding: 0; list-style: none; }
+      ul.list li {
+        padding: 6px 0;
+        border-bottom: 1px solid var(--border);
+        font-family: var(--mono);
+        font-size: 12.5px;
+      }
+      ul.list li:last-child { border-bottom: none; }
+      .tag {
+        display: inline-block;
+        padding: 1px 6px;
+        border-radius: 4px;
+        font-size: 10.5px;
+        font-family: var(--mono);
+        margin-right: 6px;
+        background: var(--panel-2);
+        color: var(--text-dim);
+        border: 1px solid var(--border);
+      }
+      .tag.p0 { color: var(--bad); border-color: rgba(252, 165, 165, 0.3); }
+      .tag.p1 { color: var(--warn); border-color: rgba(253, 230, 138, 0.3); }
+      .tag.done { color: var(--ok); border-color: rgba(134, 239, 172, 0.3); }
+      .tag.progress { color: var(--accent); border-color: rgba(125, 211, 252, 0.3); }
+      .tag.pending { color: var(--muted); }
+      footer {
+        padding: 12px 28px;
+        border-top: 1px solid var(--border);
+        color: var(--muted);
+        font-family: var(--mono);
+        font-size: 11.5px;
+      }
+      .section-heading {
+        grid-column: 1 / -1;
+        margin: 10px 4px -6px 4px;
+        font-size: 11px;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1><span class="dot"></span>weavory.ai — control dashboard</h1>
+      <div class="meta">
+        <span class="label">refreshed</span>
+        <span id="refreshed-at">—</span>
+        &nbsp;·&nbsp;
+        <span class="label">auto-refresh</span>
+        <span>5s</span>
+      </div>
+    </header>
+
+    <main class="grid">
+      <div class="section-heading">Project</div>
+      <section class="card" id="card-status">
+        <h2>1. Project status <span class="src">control/STATUS.json</span></h2>
+        <div class="body" data-slot="status"><div class="not-collected">Not collected yet</div></div>
+      </section>
+
+      <section class="card" id="card-milestone">
+        <h2>2. Current milestone &amp; gate <span class="src">control/STATUS.json · control/JUDGE_GATES.md</span></h2>
+        <div class="body" data-slot="milestone"><div class="not-collected">Not collected yet</div></div>
+      </section>
+
+      <div class="section-heading">Tasks</div>
+      <section class="card" id="card-active">
+        <h2>3. Active tasks <span class="src">control/TASKS.json</span></h2>
+        <div class="body" data-slot="active-tasks"><div class="not-collected">Not collected yet</div></div>
+      </section>
+
+      <section class="card" id="card-completed">
+        <h2>4. Completed tasks <span class="src">control/TASKS.json</span></h2>
+        <div class="body" data-slot="completed-tasks"><div class="not-collected">Not collected yet</div></div>
+      </section>
+
+      <section class="card" id="card-upcoming">
+        <h2>11. Upcoming tasks <span class="src">control/TASKS.json</span></h2>
+        <div class="body" data-slot="upcoming-tasks"><div class="not-collected">Not collected yet</div></div>
+      </section>
+
+      <div class="section-heading">Risks &amp; blockers</div>
+      <section class="card" id="card-risks">
+        <h2>5. Blockers / risks <span class="src">control/RISKS.json · STATUS.json</span></h2>
+        <div class="body" data-slot="risks"><div class="not-collected">Not collected yet</div></div>
+      </section>
+
+      <div class="section-heading">Git</div>
+      <section class="card" id="card-commits">
+        <h2>6. Recent commits <span class="src">ops/data/git.json</span></h2>
+        <div class="body" data-slot="commits"><div class="not-collected">Not collected yet</div></div>
+      </section>
+
+      <section class="card" id="card-changed">
+        <h2>7. Changed files <span class="src">ops/data/git.json</span></h2>
+        <div class="body" data-slot="changed"><div class="not-collected">Not collected yet</div></div>
+      </section>
+
+      <div class="section-heading">Tests &amp; coverage</div>
+      <section class="card" id="card-tests">
+        <h2>8. Test status <span class="src">ops/data/tests.json</span></h2>
+        <div class="body" data-slot="tests"><div class="not-collected">Not collected yet</div></div>
+      </section>
+
+      <section class="card" id="card-coverage">
+        <h2>9. Coverage summary <span class="src">ops/data/coverage.json</span></h2>
+        <div class="body" data-slot="coverage"><div class="not-collected">Not collected yet</div></div>
+      </section>
+
+      <div class="section-heading">Runtime</div>
+      <section class="card" id="card-runtime">
+        <h2>10. Current weavory runtime activity <span class="src">ops/data/runtime.json</span></h2>
+        <div class="body" data-slot="runtime"><div class="not-collected">Not collected yet</div></div>
+      </section>
+
+      <div class="section-heading">Gates</div>
+      <section class="card" id="card-gates">
+        <h2>12. Judge-readiness checklist <span class="src">ops/data/gates.json · JUDGE_GATES.md</span></h2>
+        <div class="body" data-slot="gates"><div class="not-collected">Not collected yet</div></div>
+      </section>
+    </main>
+
+    <footer>
+      truthfulness rule: every value above is fetched from the source shown in the card header. no value is inferred, summarized, or invented. when a source is missing, the panel reads &ldquo;Not collected yet&rdquo;.
+    </footer>
+
+    <script>
+      // Relative paths so the dashboard works whether served from /ops or the repo root.
+      const SOURCES = {
+        status: "../control/STATUS.json",
+        tasks: "../control/TASKS.json",
+        risks: "../control/RISKS.json",
+        gates_md: null, // parsed from JSON only
+        git: "./data/git.json",
+        tests: "./data/tests.json",
+        coverage: "./data/coverage.json",
+        runtime: "./data/runtime.json",
+        gates: "./data/gates.json",
+      };
+
+      async function fetchJson(url) {
+        try {
+          const r = await fetch(url, { cache: "no-store" });
+          if (!r.ok) return null;
+          return await r.json();
+        } catch {
+          return null;
+        }
+      }
+
+      const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+      const notCollected = () => `<div class="not-collected">Not collected yet</div>`;
+
+      function setSlot(name, html) {
+        const el = document.querySelector(`[data-slot="${name}"]`);
+        if (el) el.innerHTML = html;
+      }
+
+      function renderStatus(status) {
+        if (!status) return setSlot("status", notCollected());
+        const rows = [
+          ["project", status.project ?? "UNKNOWN"],
+          ["phase", status.current_phase ?? "UNKNOWN"],
+          ["branch", status.current_branch ?? "UNKNOWN"],
+          ["updated_at", status.updated_at ?? "UNKNOWN"],
+          ["last_gate_passed", status.last_gate_passed === null || status.last_gate_passed === undefined ? "none" : String(status.last_gate_passed)],
+          ["next_gate", String(status.next_gate ?? "UNKNOWN")],
+        ];
+        setSlot(
+          "status",
+          `<div class="kv">${rows.map(([k, v]) => `<div class="k">${esc(k)}</div><div class="v mono">${esc(v)}</div>`).join("")}</div>`
+        );
+      }
+
+      function renderMilestone(status) {
+        if (!status) return setSlot("milestone", notCollected());
+        const rows = [
+          ["milestone", status.current_milestone ?? "UNKNOWN"],
+          ["blockers", Array.isArray(status.blockers) ? (status.blockers.length ? status.blockers.join(", ") : "none") : "UNKNOWN"],
+          ["notes", status.notes ?? ""],
+        ];
+        setSlot(
+          "milestone",
+          `<div class="kv">${rows.map(([k, v]) => `<div class="k">${esc(k)}</div><div class="v">${esc(v)}</div>`).join("")}</div>`
+        );
+      }
+
+      function taskTag(status) {
+        if (status === "completed") return `<span class="tag done">done</span>`;
+        if (status === "in_progress") return `<span class="tag progress">in progress</span>`;
+        return `<span class="tag pending">pending</span>`;
+      }
+      function priTag(pri) {
+        if (pri === "P0") return `<span class="tag p0">P0</span>`;
+        if (pri === "P1") return `<span class="tag p1">P1</span>`;
+        return `<span class="tag">${esc(pri ?? "—")}</span>`;
+      }
+
+      function renderTaskList(slot, tasks, predicate, emptyMsg) {
+        if (!tasks) return setSlot(slot, notCollected());
+        const filtered = tasks.filter(predicate);
+        if (!filtered.length) {
+          setSlot(slot, `<div class="not-collected">${esc(emptyMsg)}</div>`);
+          return;
+        }
+        const html = `<ul class="list">${filtered
+          .slice(0, 12)
+          .map(
+            (t) =>
+              `<li>${priTag(t.priority)}${taskTag(t.status)}<span class="tag">${esc(t.phase ?? "")}</span> <strong>${esc(t.id)}</strong> ${esc(t.title)}</li>`
+          )
+          .join("")}</ul>`;
+        setSlot(slot, html);
+      }
+
+      function renderTasks(tasksDoc) {
+        if (!tasksDoc || !Array.isArray(tasksDoc.tasks)) {
+          setSlot("active-tasks", notCollected());
+          setSlot("completed-tasks", notCollected());
+          setSlot("upcoming-tasks", notCollected());
+          return;
+        }
+        const tasks = tasksDoc.tasks;
+        renderTaskList("active-tasks", tasks, (t) => t.status === "in_progress", "No tasks in progress");
+        renderTaskList("completed-tasks", tasks, (t) => t.status === "completed", "No tasks completed yet");
+        renderTaskList(
+          "upcoming-tasks",
+          tasks,
+          (t) => t.status === "pending",
+          "No pending tasks"
+        );
+      }
+
+      function renderRisks(risksDoc, status) {
+        if (!risksDoc && !status) return setSlot("risks", notCollected());
+        const open = (risksDoc?.risks ?? []).filter((r) => r.status === "open");
+        const blockers = (status?.blockers ?? []);
+        if (!open.length && !blockers.length) {
+          setSlot("risks", `<div class="not-collected">No open risks or blockers recorded</div>`);
+          return;
+        }
+        const blockerHtml = blockers.length
+          ? `<div class="kv"><div class="k">blockers</div><div class="v bad mono">${blockers.map(esc).join(", ")}</div></div>`
+          : "";
+        const risksHtml = open.length
+          ? `<ul class="list">${open
+              .slice(0, 8)
+              .map(
+                (r) =>
+                  `<li><span class="tag ${r.severity === "high" ? "p0" : r.severity === "medium" ? "p1" : ""}">${esc(r.severity)}</span><strong>${esc(r.id)}</strong> ${esc(r.description)}</li>`
+              )
+              .join("")}</ul>`
+          : "";
+        setSlot("risks", blockerHtml + risksHtml);
+      }
+
+      function renderGit(git) {
+        if (!git) {
+          setSlot("commits", notCollected());
+          setSlot("changed", notCollected());
+          return;
+        }
+        const commits = Array.isArray(git.recent_commits) ? git.recent_commits : [];
+        setSlot(
+          "commits",
+          commits.length
+            ? `<ul class="list">${commits
+                .slice(0, 8)
+                .map(
+                  (c) => `<li><span class="tag">${esc((c.hash ?? "").slice(0, 7))}</span>${esc(c.subject ?? "")} <span class="tag">${esc(c.date ?? "")}</span></li>`
+                )
+                .join("")}</ul>`
+            : `<div class="not-collected">No commits yet</div>`
+        );
+        const changed = Array.isArray(git.changed_files) ? git.changed_files : [];
+        setSlot(
+          "changed",
+          changed.length
+            ? `<ul class="list">${changed.slice(0, 12).map((f) => `<li><span class="tag">${esc(f.status ?? "?")}</span>${esc(f.path)}</li>`).join("")}</ul>`
+            : `<div class="not-collected">Working tree clean</div>`
+        );
+      }
+
+      function renderTests(tests) {
+        if (!tests) return setSlot("tests", notCollected());
+        const r = tests.numTotalTests !== undefined
+          ? {
+              total: tests.numTotalTests,
+              passed: tests.numPassedTests,
+              failed: tests.numFailedTests,
+              pending: tests.numPendingTests,
+              duration_ms: tests.startTime && tests.endTime ? tests.endTime - tests.startTime : null,
+            }
+          : tests;
+        setSlot(
+          "tests",
+          `<div class="kv">${Object.entries(r)
+            .map(([k, v]) => `<div class="k">${esc(k)}</div><div class="v mono ${k === "failed" && v > 0 ? "bad" : k === "passed" ? "ok" : ""}">${esc(v)}</div>`)
+            .join("")}</div>`
+        );
+      }
+
+      function renderCoverage(cov) {
+        if (!cov) return setSlot("coverage", notCollected());
+        const tot = cov.total ?? cov;
+        const pct = (x) => (x && typeof x.pct === "number" ? x.pct.toFixed(1) + "%" : "UNKNOWN");
+        setSlot(
+          "coverage",
+          `<div class="kv">
+            <div class="k">lines</div><div class="v mono">${esc(pct(tot.lines))}</div>
+            <div class="k">statements</div><div class="v mono">${esc(pct(tot.statements))}</div>
+            <div class="k">functions</div><div class="v mono">${esc(pct(tot.functions))}</div>
+            <div class="k">branches</div><div class="v mono">${esc(pct(tot.branches))}</div>
+          </div>`
+        );
+      }
+
+      function renderRuntime(rt) {
+        if (!rt) return setSlot("runtime", notCollected());
+        const rows = [
+          ["server_status", rt.server_status ?? "UNKNOWN"],
+          ["beliefs_total", rt.beliefs_total ?? "UNKNOWN"],
+          ["active_subscriptions", rt.active_subscriptions ?? "UNKNOWN"],
+          ["quarantine_count", rt.quarantine_count ?? "UNKNOWN"],
+          ["last_event", rt.last_event_ts ?? "UNKNOWN"],
+        ];
+        setSlot(
+          "runtime",
+          `<div class="kv">${rows.map(([k, v]) => `<div class="k">${esc(k)}</div><div class="v mono">${esc(v)}</div>`).join("")}</div>`
+        );
+      }
+
+      function renderGates(gates) {
+        if (!gates) return setSlot("gates", notCollected());
+        const entries = Array.isArray(gates.entries) ? gates.entries : Array.isArray(gates) ? gates : [];
+        if (!entries.length) {
+          setSlot("gates", `<div class="not-collected">No gates passed yet</div>`);
+          return;
+        }
+        setSlot(
+          "gates",
+          `<ul class="list">${entries
+            .map(
+              (g) =>
+                `<li><span class="tag done">Gate ${esc(g.gate)}</span>${esc(g.passed_at ?? "")} <span class="tag">${esc((g.commit ?? "").slice(0, 7))}</span> ${esc(g.runner ?? "")}</li>`
+            )
+            .join("")}</ul>`
+        );
+      }
+
+      async function refresh() {
+        const [status, tasks, risks, git, tests, coverage, runtime, gates] = await Promise.all([
+          fetchJson(SOURCES.status),
+          fetchJson(SOURCES.tasks),
+          fetchJson(SOURCES.risks),
+          fetchJson(SOURCES.git),
+          fetchJson(SOURCES.tests),
+          fetchJson(SOURCES.coverage),
+          fetchJson(SOURCES.runtime),
+          fetchJson(SOURCES.gates),
+        ]);
+
+        renderStatus(status);
+        renderMilestone(status);
+        renderTasks(tasks);
+        renderRisks(risks, status);
+        renderGit(git);
+        renderTests(tests);
+        renderCoverage(coverage);
+        renderRuntime(runtime);
+        renderGates(gates);
+
+        document.getElementById("refreshed-at").textContent = new Date().toISOString();
+      }
+
+      refresh();
+      setInterval(refresh, 5000);
+    </script>
+  </body>
+</html>

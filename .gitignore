@@ -1,0 +1,25 @@
+node_modules/
+dist/
+coverage/
+.env
+.env.*
+*.log
+*.tsbuildinfo
+
+# LanceDB / DuckDB local data
+.weavory-data/
+*.duckdb
+*.duckdb.wal
+
+# Generated dashboard data (but keep the dashboard HTML itself)
+ops/data/*.json
+!ops/data/.gitkeep
+
+# Editor artefacts
+.DS_Store
+.vscode/
+.idea/
+
+# Keys (we never commit signer keys)
+*.pem
+keys/
