@@ -114,14 +114,18 @@ export function createServer(
         min_trust: z.number().min(-1).max(1).optional(),
         include_quarantined: z.boolean().optional(),
         filters: SubscriptionFiltersSchema.optional(),
+        subscription_id: z.string().regex(/^sub_[0-9a-f]+$/u).optional(),
       },
     },
     async (args) => {
       const input: RecallInput = args as RecallInput;
       const out = recall(state, input);
       const summary =
-        `recalled ${out.beliefs.length} / ${out.total_matched} match(es)` +
-        (input.as_of ? ` @as_of=${input.as_of}` : "");
+        input.subscription_id
+          ? `drained ${out.delivered_count ?? 0} from ${input.subscription_id}` +
+            (out.dropped_count ? ` (dropped=${out.dropped_count})` : "")
+          : `recalled ${out.beliefs.length} / ${out.total_matched} match(es)` +
+            (input.as_of ? ` @as_of=${input.as_of}` : "");
       return {
         content: [{ type: "text", text: summary }],
         structuredContent: out,
@@ -140,12 +144,13 @@ export function createServer(
         pattern: z.string().min(1).max(2048),
         filters: SubscriptionFiltersSchema.optional(),
         signer_seed: z.string().min(1).max(256).optional(),
+        queue_cap: z.number().int().min(1).max(100000).optional(),
       },
     },
     async (args) => {
       const out = subscribe(state, args);
       return {
-        content: [{ type: "text", text: `subscription ${out.subscription_id} created` }],
+        content: [{ type: "text", text: `subscription ${out.subscription_id} created (queue_cap=${out.queue_cap})` }],
         structuredContent: out,
       };
     }

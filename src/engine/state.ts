@@ -40,6 +40,14 @@ export type Subscription = {
   created_at: string;
   signer_id: string | null; // null = anonymous / dashboard
   matches_since_created: number;
+  /** Bounded FIFO of beliefs queued for this subscription; drained by recall(subscription_id). */
+  queue: StoredBelief[];
+  /** Max queue size; oldest dropped on overflow. */
+  queue_cap: number;
+  /** Count of beliefs dropped due to overflow since creation. */
+  dropped_count: number;
+  /** Timestamp of the last drain (via recall). */
+  last_drained_at: string | null;
 };
 
 export type SubscriptionFilters = {
@@ -146,4 +154,66 @@ export class EngineState {
   }): AuditEntry {
     return this.audit.append(entry);
   }
+
+  /**
+   * Push a newly-stored belief into every matching subscription's queue.
+   * Called from `believe` after storeBelief. Match logic mirrors recall's
+   * pattern/filter semantics so subscribers see the same beliefs recall would.
+   * Queue is bounded; oldest entries drop when full (dropped_count increments).
+   */
+  enqueueMatches(belief: StoredBelief): void {
+    for (const sub of this.subscriptions.values()) {
+      if (!subscriptionMatches(sub, belief)) continue;
+      sub.queue.push(belief);
+      sub.matches_since_created += 1;
+      if (sub.queue.length > sub.queue_cap) {
+        const overflow = sub.queue.length - sub.queue_cap;
+        sub.queue.splice(0, overflow);
+        sub.dropped_count += overflow;
+      }
+    }
+  }
+
+  /**
+   * Drain and return the queued beliefs for a subscription, then clear it.
+   * Returns null if the subscription does not exist.
+   */
+  drainSubscription(
+    subscription_id: string,
+    now: string
+  ): { delivered: StoredBelief[]; dropped_count: number } | null {
+    const sub = this.subscriptions.get(subscription_id);
+    if (!sub) return null;
+    const delivered = sub.queue.slice();
+    const dropped = sub.dropped_count;
+    sub.queue.length = 0;
+    sub.dropped_count = 0;
+    sub.last_drained_at = now;
+    return { delivered, dropped_count: dropped };
+  }
+}
+
+/** Shared predicate used by both `enqueueMatches` and recall's query branch. */
+export function subscriptionMatches(sub: Subscription, belief: StoredBelief): boolean {
+  // Filters first (cheap checks).
+  if (sub.filters.subject && belief.subject !== sub.filters.subject) return false;
+  if (sub.filters.predicate && belief.predicate !== sub.filters.predicate) return false;
+  if (
+    sub.filters.min_confidence !== undefined &&
+    belief.confidence < sub.filters.min_confidence
+  ) {
+    return false;
+  }
+  // Pattern is a case-insensitive substring over subject/predicate/object.
+  // Empty pattern matches everything passing the filters.
+  const p = sub.pattern.toLowerCase();
+  if (p.length === 0) return true;
+  const blob = (
+    belief.subject +
+    " " +
+    belief.predicate +
+    " " +
+    JSON.stringify(belief.object)
+  ).toLowerCase();
+  return blob.includes(p);
 }

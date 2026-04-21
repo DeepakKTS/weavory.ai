@@ -1,15 +1,15 @@
 {
   "schema_version": "1.0.0",
   "project": "weavory.ai",
-  "updated_at": "2026-04-21T21:32:30Z",
-  "current_phase": "G.1_complete",
-  "current_milestone": "Phase G.1 runtime collection shipped — dashboard panel 10 is live",
+  "updated_at": "2026-04-21T21:44:30Z",
+  "current_phase": "G.2_in_progress",
+  "current_milestone": "Phase G.2 W-0110 complete: subscription match queue + recall drain",
   "current_branch": "main",
   "current_remote": "https://github.com/DeepakKTS/weavory.ai (private)",
   "last_gate_passed": 7,
   "next_gate": null,
   "active_phase_g_sub": "G.2 The Commons",
-  "active_tasks": ["W-0110"],
+  "active_tasks": ["W-0111"],
   "blockers": [],
-  "notes": "Gates 1-7 all still green. Phase G.1 complete: src/engine/runtime_writer.ts ships atomic snapshots with 50ms debounce, idempotent attach, shutdown handlers, and tamper-alarm surface. EngineState gained an onOp hook; ops.ts calls it after every mutation; MCP server installs the writer by default (off in Vitest). 54/54 Vitest green (45 existing + 9 new); tsc --noEmit clean. All five local gate scripts (1-5) re-run green. runtime.json now populates on every real weavory process and surfaces in dashboard panel 10."
+  "notes": "Gates 1-7 still green. Phase G.1 shipped. W-0110 shipped: Subscription gained queue/queue_cap/dropped_count/last_drained_at; believe() fan-outs to matching subscriptions; recall(subscription_id) drains + returns delivered_count/dropped_count. Vitest 65/65 green (54 + 11 new commons tests). tsc strict clean. Local Gate 3/4/5 still green. Next: W-0111 consensus merge + conflict visibility."
 }

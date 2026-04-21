@@ -146,3 +146,29 @@ Chronological engineering log. One entry per meaningful work unit. Never fabrica
 
 ### Next
 G.2 — The Commons. Starts with W-0110 (subscription match queue + delivery-receipt ack), followed by W-0111 (consensus merge + conflict surfacing), W-0113 (`commons_swarm` demo + `gate_commons.sh`).
+
+## 2026-04-21 · Phase G.2 · W-0110 subscription match queue — SHIPPED
+
+### What shipped
+- `src/engine/state.ts`:
+  - `Subscription` gained `queue: StoredBelief[]`, `queue_cap`, `dropped_count`, `last_drained_at`.
+  - New `enqueueMatches(belief)` iterates subscriptions, pushes matches, drops oldest on overflow.
+  - New `drainSubscription(id, now)` returns `{ delivered, dropped_count }` and clears the queue.
+  - Shared predicate `subscriptionMatches(sub, belief)` — filters (subject/predicate/min_confidence) and a case-insensitive pattern substring over `subject + " " + predicate + " " + JSON.stringify(object)`.
+- `src/engine/ops.ts`:
+  - `believe()` now calls `state.enqueueMatches(stored)` after storeBelief (so subscribers never see a belief that isn't durably stored).
+  - `RecallInput` gains optional `subscription_id`; when present, recall drains the subscription's queue instead of scanning state.beliefs. All other filters (as_of, min_trust, quarantine, query, subject/predicate) still apply to the drained candidates.
+  - `RecallOutput` gains optional `subscription_id`, `delivered_count`, `dropped_count`.
+  - `subscribe()` signature gains `queue_cap?` (default 1000, min 1).
+- `src/mcp/server.ts`: `weavory.recall` input schema gains `subscription_id: /^sub_[0-9a-f]+$/`. `weavory.subscribe` gains `queue_cap`. Both text summaries reflect the drain branch.
+- `tests/integration/commons.test.ts` (new, 11 tests): subscribe shape, enqueue on match, no-enqueue on non-match, multi-subscription routing, subject/predicate filters, drain happy path, unknown subscription_id handling, re-drain shows only new beliefs, queue-overflow dropped count, plain recall (non-subscription) still works.
+
+### Tests & verification
+- `pnpm test` — **65/65 green** (54 previous + 11 new).
+- `pnpm exec tsc --noEmit` — strict clean.
+- Regression: `bash scripts/verify/gate3.sh`, `gate4.sh`, `gate5.sh` all re-run PASS.
+- `ops/data/runtime.json` continues to populate on each run (G.1 still working).
+
+### Control updates
+- `STATUS.json`: `current_phase=G.2_in_progress`, `active_tasks=[W-0111]`.
+- `TASKS.json`: W-0110 → completed; W-0111 remains active next.

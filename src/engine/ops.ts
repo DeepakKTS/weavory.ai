@@ -82,6 +82,9 @@ export function believe(state: EngineState, input: BelieveInput): BelieveOutput 
     recorded_at: ingested_at,
   });
 
+  // Phase G.2: fan out to matching subscriptions. Happens after storeBelief
+  // so subscribers never see a belief that isn't also durably stored.
+  state.enqueueMatches(stored);
   state.onOp?.("believe");
   return {
     id: stored.id,
@@ -101,12 +104,22 @@ export type RecallInput = {
   min_trust?: number;
   filters?: SubscriptionFilters;
   include_quarantined?: boolean;
+  /**
+   * Phase G.2 — if set, recall drains the subscription queue instead of
+   * scanning all beliefs. All other filters still apply to the drained set.
+   * Returns `delivered_count` and `dropped_count` in addition to beliefs.
+   */
+  subscription_id?: string;
 };
 
 export type RecallOutput = {
   beliefs: StoredBelief[];
   total_matched: number;
   now: string;
+  /** Populated when `subscription_id` was provided on input. */
+  delivered_count?: number;
+  dropped_count?: number;
+  subscription_id?: string;
 };
 
 const DEFAULT_MIN_TRUST = 0.3;
@@ -119,9 +132,27 @@ export function recall(state: EngineState, input: RecallInput): RecallOutput {
   const includeQ = input.include_quarantined ?? false;
   const q = input.query.toLowerCase();
 
+  // Phase G.2 — subscription drain branch.
+  // When subscription_id is provided, the source of candidates is the
+  // subscription's queue rather than state.beliefs. All other filters
+  // (as_of, min_trust, quarantine, filters, query) still apply — this lets
+  // a subscriber say "drain what still matches my current criteria".
+  let queuedSource: StoredBelief[] | null = null;
+  let dropped_count = 0;
+  if (input.subscription_id !== undefined) {
+    const drained = state.drainSubscription(input.subscription_id, now);
+    if (drained) {
+      queuedSource = drained.delivered;
+      dropped_count = drained.dropped_count;
+    } else {
+      queuedSource = [];
+    }
+  }
+
+  const candidates: Iterable<StoredBelief> = queuedSource ?? state.beliefs.values();
   const matches: Array<{ belief: StoredBelief; score: number }> = [];
 
-  for (const belief of state.beliefs.values()) {
+  for (const belief of candidates) {
     // Bi-temporal: if as_of is set, skip beliefs ingested after as_of or invalidated at/before as_of.
     if (asOf) {
       if (belief.ingested_at > asOf) continue;
@@ -162,7 +193,13 @@ export function recall(state: EngineState, input: RecallInput): RecallOutput {
   matches.sort((a, b) => b.score - a.score);
   const top = matches.slice(0, top_k).map((m) => m.belief);
   state.onOp?.("recall");
-  return { beliefs: top, total_matched: matches.length, now };
+  const out: RecallOutput = { beliefs: top, total_matched: matches.length, now };
+  if (input.subscription_id !== undefined) {
+    out.subscription_id = input.subscription_id;
+    out.delivered_count = top.length;
+    out.dropped_count = dropped_count;
+  }
+  return out;
 }
 
 // ---------- subscribe ----------
@@ -171,18 +208,24 @@ export type SubscribeInput = {
   pattern: string;
   filters?: SubscriptionFilters;
   signer_seed?: string;
+  /** Max queued beliefs per subscription; oldest dropped on overflow. Default 1000. */
+  queue_cap?: number;
 };
 
 export type SubscribeOutput = {
   subscription_id: string;
   created_at: string;
   signer_id: string | null;
+  queue_cap: number;
 };
+
+const DEFAULT_SUBSCRIPTION_QUEUE_CAP = 1000;
 
 export function subscribe(state: EngineState, input: SubscribeInput): SubscribeOutput {
   const signer_id = input.signer_seed ? state.signerFromSeed(input.signer_seed).signer_id : null;
   const subscription_id = "sub_" + cryptoRandomId();
   const created_at = new Date().toISOString();
+  const queue_cap = Math.max(1, input.queue_cap ?? DEFAULT_SUBSCRIPTION_QUEUE_CAP);
   state.subscriptions.set(subscription_id, {
     id: subscription_id,
     pattern: input.pattern,
@@ -190,9 +233,13 @@ export function subscribe(state: EngineState, input: SubscribeInput): SubscribeO
     created_at,
     signer_id,
     matches_since_created: 0,
+    queue: [],
+    queue_cap,
+    dropped_count: 0,
+    last_drained_at: null,
   });
   state.onOp?.("subscribe");
-  return { subscription_id, created_at, signer_id };
+  return { subscription_id, created_at, signer_id, queue_cap };
 }
 
 // ---------- attest ----------
