@@ -3,6 +3,11 @@ name: fresh-machine
 # Gate 6 — Fresh-machine setup succeeds.
 # Runs every gate script (1–5) on a clean Ubuntu and macOS runner so the
 # "stock OpenClaw on a new laptop" story is verified on every push.
+#
+# Gate 7 (README-only judge simulation) runs as a separate job and only when
+# the ANTHROPIC_API_KEY secret is configured. When the secret is absent, the
+# preflight job emits has_anthropic_key=false and the gate7 job is skipped
+# entirely — no failure, no noise.
 
 on:
   push:
@@ -15,15 +20,45 @@ concurrency:
   group: fresh-machine-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  # Silences the "Node 20 actions are deprecated" warning by opting JS actions
+  # into their Node 24 runtime. The actions themselves are unchanged — this
+  # only affects which Node the runner uses to execute their bundled JS.
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 jobs:
+  preflight:
+    # Checks whether the ANTHROPIC_API_KEY secret is set without leaking its
+    # value. Outputs a boolean used by downstream jobs' `if:` conditions.
+    name: preflight-check-secrets
+    runs-on: ubuntu-latest
+    outputs:
+      has_anthropic_key: ${{ steps.check.outputs.has_key }}
+    steps:
+      - name: Check for ANTHROPIC_API_KEY
+        id: check
+        env:
+          # Pulling the secret into an env var produces no output if missing —
+          # we only ever test -n / -z against ${#VAR}, never echo the value.
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          if [[ -n "${ANTHROPIC_API_KEY:-}" ]]; then
+            echo "has_key=true" >> "$GITHUB_OUTPUT"
+            echo "secret present (length: ${#ANTHROPIC_API_KEY}) — gate7 will run"
+          else
+            echo "has_key=false" >> "$GITHUB_OUTPUT"
+            echo "secret not set — gate7 will be skipped"
+          fi
+
   gates:
     name: gates-${{ matrix.os }}-node${{ matrix.node }}
     runs-on: ${{ matrix.os }}
+    needs: preflight
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
-        node: ['20']
+        node: ['22']
 
     steps:
       - name: Checkout
@@ -73,10 +108,15 @@ jobs:
 
   gate7:
     name: gate7-judge-simulation
-    # Gate 7 calls the Anthropic API. Only run on push events (never on PRs from
-    # forks, which cannot receive repo secrets). Only run if the secret is set.
-    if: github.event_name == 'push' && github.repository == 'DeepakKTS/weavory.ai'
-    needs: gates
+    # Runs iff: push event, on DeepakKTS/weavory.ai, AND the secret is set.
+    # PRs from forks cannot receive secrets, so exclude them explicitly.
+    # needs.preflight.outputs.has_anthropic_key gates on secret availability,
+    # so the job is simply "skipped" (not failed) when absent.
+    if: >
+      github.event_name == 'push' &&
+      github.repository == 'DeepakKTS/weavory.ai' &&
+      needs.preflight.outputs.has_anthropic_key == 'true'
+    needs: [preflight, gates]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -86,7 +126,7 @@ jobs:
           run_install: false
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Gate 7 — README-only judge simulation

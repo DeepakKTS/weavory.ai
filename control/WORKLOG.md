@@ -95,3 +95,13 @@ Chronological engineering log. One entry per meaningful work unit. Never fabrica
 - **Gate 7 CI job:** added `gate7` job to the fresh-machine workflow. Runs only on push events from `DeepakKTS/weavory.ai` (never PRs from forks) and only when the repo secret `ANTHROPIC_API_KEY` is populated — prevents secret leakage to untrusted PRs.
 - **Deps:** `@anthropic-ai/sdk 0.90.0` added.
 - **Local execution:** currently blocked by the sandbox's credential-context policy after the earlier `.env` attempt — user can run `pnpm verify:gate7` locally with `ANTHROPIC_API_KEY` in env, or rely on the CI job once the secret is added to the repo.
+
+### Phase F · CI run #1 on commit `e4705d2` — Gate 6 PASS, Gate 7 mis-skipped
+- **Gate 6:** Ubuntu + macOS jobs both completed; artefacts `ops-data-ubuntu-latest-node20` (3.1KB) and `ops-data-macos-latest-node20` (3.08KB) produced. Gate 6 is green.
+- **Gate 7:** job ran, script skipped cleanly via `exit 2` (ANTHROPIC_API_KEY not configured), but CI treated exit 2 as a job failure — not the intent. Also surfaced Node-20-runtime deprecation warnings from GitHub.
+- **Fix:** rewrote the workflow:
+  1. New `preflight` job reads `secrets.ANTHROPIC_API_KEY` into an env var, outputs `has_anthropic_key=true|false` without ever echoing the value.
+  2. `gate7` job now gates on `needs.preflight.outputs.has_anthropic_key == 'true'` — when the secret is absent, the job is simply not scheduled instead of failing.
+  3. Runner Node bumped `20 → 22` (current LTS, post-deprecation).
+  4. `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true` at workflow level silences the "Node 20 actions are deprecated" runner warning.
+- Next: push this commit; re-verify Gate 6 green on Node 22; Gate 7 job will show as "skipped" (not failed) until the secret is added.
