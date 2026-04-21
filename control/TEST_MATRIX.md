@@ -13,12 +13,12 @@ Legend:
 
 | ID | Name | Expected behaviour | Status |
 |----|------|--------------------|--------|
-| T-C-001 | `belief.parse` accepts NANDA-AgentFacts-shaped input | Zod validates; produces typed `Belief` | Planned |
-| T-C-002 | `belief.parse` rejects missing `signer_id` | Validation error with field path | Planned |
-| T-C-003 | Ed25519 round-trip: sign → verify | `verify(signed)` returns `true` | Planned |
-| T-C-004 | Ed25519 tamper detection | Modified payload → `verify` returns `false` | Planned |
-| T-C-005 | BLAKE3 chain: each entry references prev hash | `chain.append(x)` produces entry whose `prev === last.hash` | Planned |
-| T-C-006 | BLAKE3 chain tamper detection | Modifying any entry breaks the chain on `chain.verify()` | Planned |
+| T-C-001 | `belief.parse` accepts NANDA-AgentFacts-shaped input | Zod validates; produces typed `Belief` | Passing |
+| T-C-002 | `belief.parse` rejects missing `signer_id` | Validation error with field path | Passing |
+| T-C-003 | Ed25519 round-trip: sign → verify | `verify(signed)` returns `ok: true` | Passing |
+| T-C-004 | Ed25519 tamper detection | Modified payload → `verify` returns `ok: false` with typed reason | Passing |
+| T-C-005 | BLAKE3 chain: each entry references prev hash | `chain.append(x)` produces entry whose `prev === last.hash` | Passing |
+| T-C-006 | BLAKE3 chain tamper detection | Modifying any entry breaks the chain on `chain.verify()` | Passing |
 
 ## Storage (src/store/*)
 
@@ -26,7 +26,7 @@ Legend:
 |----|------|--------------------|--------|
 | T-S-001 | LanceDB persist + top-k recall | `recall(query, top_k=5)` returns 5 nearest beliefs | Planned |
 | T-S-002 | DuckDB bi-temporal `as_of` | Belief invalidated at T1; `recall(..., as_of=T0)` returns original | Planned |
-| T-S-003 | Append-only audit log | Entries are strictly ordered; `audit.length` monotonic | Planned |
+| T-S-003 | Append-only audit log | Entries are strictly ordered; `audit.length` monotonic | Passing |
 | T-S-004 | OR-set tombstone respected by recall | `forget(id)` excludes the belief from default recall | Planned |
 
 ## Coordination (src/coord/*)
@@ -64,3 +64,11 @@ Legend:
 | T-I-003 | `as_of` recall | Deterministic prior-state reconstruction | 5 | Planned |
 | T-I-004 | Fresh-machine install | `npx @weavory/mcp start` on clean VM → Gate 3 passes | 6 | Planned |
 | T-I-005 | README-only judge simulation | Generic agent completes scripted task using only `docs/README.md` | 7 | Planned |
+
+---
+
+## Current totals (2026-04-21, post-Phase-B core)
+
+- **Implemented + Passing:** 7 matrix entries (T-C-001..T-C-006, T-S-003)
+- **Implemented total tests (Vitest units):** 33 / 33 passing (see `ops/data/tests.json`)
+- **Planned:** 18 matrix entries

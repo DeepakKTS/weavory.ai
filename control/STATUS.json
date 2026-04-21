@@ -1,13 +1,14 @@
 {
   "schema_version": "1.0.0",
   "project": "weavory.ai",
-  "updated_at": "2026-04-21T20:05:00Z",
-  "current_phase": "B",
+  "updated_at": "2026-04-21T20:26:00Z",
+  "current_phase": "C",
   "current_milestone": "Gate 2 — all five MCP tools callable with valid schemas",
   "current_branch": "main",
+  "current_remote": "https://github.com/DeepakKTS/weavory.ai (private)",
   "last_gate_passed": 1,
   "next_gate": 2,
-  "active_tasks": ["W-0010"],
+  "active_tasks": ["W-0020"],
   "blockers": [],
-  "notes": "Phase A complete. Gate 1 passed at commit ae65da1 (4/4 checks green). Moving to Phase B: belief schema (W-0010), Ed25519 signing (W-0011), BLAKE3 audit chain (W-0012)."
+  "notes": "Phase B core protocol complete. Belief schema (W-0010), Ed25519 sign/verify (W-0011), BLAKE3 audit chain (W-0012) all implemented and tested — 33/33 Vitest units green; tsc strict clean. Moving to Phase C: MCP server + five tool wiring."
 }
