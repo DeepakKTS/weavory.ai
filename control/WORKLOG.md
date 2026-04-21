@@ -61,3 +61,16 @@ Chronological engineering log. One entry per meaningful work unit. Never fabrica
 - **Tests (source of truth: `ops/data/tests.json`):** 33/33 passing — 17 belief, 8 sign, 8 chain. Covers TEST_MATRIX T-C-001..T-C-006 + T-S-003.
 - **Type check:** `pnpm exec tsc --noEmit` clean (strict: true, no `any` in src/).
 - **Vitest config:** JSON reporter writes to `ops/data/tests.json` via existing `pnpm test` script. Dashboard reads it directly.
+
+### W-0020 · Phase C MCP server + five-tool wiring — Gate 2 PASS @ 020483b
+- **Engine state (`src/engine/state.ts`):** `EngineState` class with `beliefs` map, `AuditStore`, per-(signer×topic) trust vectors, subscription registry, keyring. Deterministic signer derivation from `signer_seed` via HKDF-SHA256 → demo agents get stable identities.
+- **Engine ops (`src/engine/ops.ts`):** `believe`, `recall`, `subscribe`, `attest`, `forget`. Each op: validates inputs, signs on client's behalf, defensively re-verifies, appends to audit chain, returns typed structured output. Default `min_trust=0.3`; default neutral trust `0.5` for unseen signers; topic-scoped trust vectors.
+- **MCP server (`src/mcp/server.ts`):** `@modelcontextprotocol/sdk` `McpServer` with **exactly five** tools registered, each with a Zod input schema and structured-content output. Public surface locked per ADR-005. `StdioServerTransport` wired via `runStdio()`.
+- **CLI (`src/cli.ts`):** `weavory start` — starts the stdio MCP server. Doc flags: `--help`.
+- **Integration tests (`tests/integration/`):**
+  - `engine.test.ts` (5 tests): two-agent belief exchange, deterministic signer identity, trust gating + attestation, forget + bi-temporal `as_of` recall, audit chain monotonicity across ops.
+  - `mcp.test.ts` (7 tests): uses `InMemoryTransport` to spin up a real MCP Client ⇄ Server. Asserts T-M-001 (exactly five tools), T-M-002 (Zod rejects bad args), recall happy path, subscribe, attest, forget-unknown.
+- **Gate 2 script (`scripts/verify/gate2.sh`):** runs `pnpm test`, reads `ops/data/tests.json`, asserts `success=true`, `numFailedTests=0`, that `mcp.test.ts` actually ran, and that T-M-001 specifically passed.
+- **Test totals:** 45 / 45 green. Coverage of src/core, src/engine, src/mcp via integration.
+- **tsc --noEmit:** clean, strict, no `any` in `src/`.
+- **Gate 2:** PASS. Recorded in `ops/data/gates.json` with commit `020483b`. STATUS bumped `current_phase=D`, `last_gate_passed=2`, `next_gate=3`.

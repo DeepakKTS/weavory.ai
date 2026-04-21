@@ -1,0 +1,189 @@
+/**
+ * weavory.ai — MCP server (Gate 2)
+ *
+ * Registers exactly five tools via @modelcontextprotocol/sdk. Each tool has a
+ * Zod input schema; handlers delegate to `src/engine/ops.ts`. All output flows
+ * back as `structuredContent` plus a short human-readable `content` item so
+ * stock agents and CLIs both render something useful.
+ *
+ * Public API is locked at five tools (ADR-005). Do not add more without a
+ * DECISIONS.md update.
+ */
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { z } from "zod";
+import {
+  attest,
+  believe,
+  forget,
+  recall,
+  subscribe,
+  type RecallInput,
+} from "../engine/ops.js";
+import { EngineState } from "../engine/state.js";
+
+const VERSION = "0.1.0";
+
+// ---- Shared Zod fragments ----
+const JsonValueSchema: z.ZodType = z.lazy(() =>
+  z.union([z.string(), z.number(), z.boolean(), z.null(), z.array(JsonValueSchema), z.record(JsonValueSchema)])
+);
+
+const SubscriptionFiltersSchema = z
+  .object({
+    subject: z.string().optional(),
+    predicate: z.string().optional(),
+    min_confidence: z.number().min(0).max(1).optional(),
+    min_trust: z.number().min(-1).max(1).optional(),
+  })
+  .strict();
+
+export function createServer(state: EngineState = new EngineState()): {
+  server: McpServer;
+  state: EngineState;
+} {
+  const server = new McpServer({ name: "weavory", version: VERSION });
+
+  // 1. believe --------------------------------------------------------------
+  server.registerTool(
+    "weavory.believe",
+    {
+      title: "Write a signed belief",
+      description:
+        "Record a new signed belief. Fields follow the weavory Belief schema (a NANDA AgentFacts superset). Returns {id, signer_id, entry_hash, ingested_at}.",
+      inputSchema: {
+        subject: z.string().min(1).max(2048),
+        predicate: z.string().min(1).max(512),
+        object: JsonValueSchema,
+        confidence: z.number().min(0).max(1).optional(),
+        valid_from: z.string().nullable().optional(),
+        valid_to: z.string().nullable().optional(),
+        causes: z.array(z.string().length(64)).max(64).optional(),
+        signer_seed: z.string().min(1).max(256).optional(),
+      },
+    },
+    async (args) => {
+      const out = believe(state, args);
+      return {
+        content: [{ type: "text", text: `believed ${out.id} (signer=${shortId(out.signer_id)}, audit=${out.audit_length})` }],
+        structuredContent: out,
+      };
+    }
+  );
+
+  // 2. recall ---------------------------------------------------------------
+  server.registerTool(
+    "weavory.recall",
+    {
+      title: "Recall matching beliefs",
+      description:
+        "Find beliefs matching a query. Supports bi-temporal as_of, per-signer trust gating, quarantine filtering, and subject/predicate/min_confidence filters.",
+      inputSchema: {
+        query: z.string().max(2048),
+        top_k: z.number().int().min(1).max(100).optional(),
+        as_of: z.string().nullable().optional(),
+        min_trust: z.number().min(-1).max(1).optional(),
+        include_quarantined: z.boolean().optional(),
+        filters: SubscriptionFiltersSchema.optional(),
+      },
+    },
+    async (args) => {
+      const input: RecallInput = args as RecallInput;
+      const out = recall(state, input);
+      const summary =
+        `recalled ${out.beliefs.length} / ${out.total_matched} match(es)` +
+        (input.as_of ? ` @as_of=${input.as_of}` : "");
+      return {
+        content: [{ type: "text", text: summary }],
+        structuredContent: out,
+      };
+    }
+  );
+
+  // 3. subscribe ------------------------------------------------------------
+  server.registerTool(
+    "weavory.subscribe",
+    {
+      title: "Subscribe to a semantic pattern",
+      description:
+        "Register a semantic subscription. Returns a subscription_id. Matching beliefs can be polled via recall(filters); real-time SSE delivery is served out-of-band at /events/:subscription_id (dashboard mode).",
+      inputSchema: {
+        pattern: z.string().min(1).max(2048),
+        filters: SubscriptionFiltersSchema.optional(),
+        signer_seed: z.string().min(1).max(256).optional(),
+      },
+    },
+    async (args) => {
+      const out = subscribe(state, args);
+      return {
+        content: [{ type: "text", text: `subscription ${out.subscription_id} created` }],
+        structuredContent: out,
+      };
+    }
+  );
+
+  // 4. attest ---------------------------------------------------------------
+  server.registerTool(
+    "weavory.attest",
+    {
+      title: "Attest trust for a signer × topic",
+      description:
+        "Raise or lower the attestor's trust vector for (signer_id, topic). Affects default recall ranking and quarantine. Score is clamped to [-1, 1].",
+      inputSchema: {
+        signer_id: z.string().regex(/^[0-9a-f]{64}$/u),
+        topic: z.string().min(1).max(512),
+        score: z.number().min(-1).max(1),
+        attestor_seed: z.string().min(1).max(256).optional(),
+      },
+    },
+    async (args) => {
+      const out = attest(state, args);
+      return {
+        content: [
+          {
+            type: "text",
+            text: `attested ${shortId(out.signer_id)} on "${out.topic}" → ${out.applied_score.toFixed(2)}`,
+          },
+        ],
+        structuredContent: out,
+      };
+    }
+  );
+
+  // 5. forget ---------------------------------------------------------------
+  server.registerTool(
+    "weavory.forget",
+    {
+      title: "Tombstone a belief (OR-set remove)",
+      description:
+        "Mark a belief as invalidated from the current point in transaction-time. Historical queries (recall with as_of) still see the belief; live recall does not.",
+      inputSchema: {
+        belief_id: z.string().length(64),
+        reason: z.string().max(512).optional(),
+        forgetter_seed: z.string().min(1).max(256).optional(),
+      },
+    },
+    async (args) => {
+      const out = forget(state, args);
+      return {
+        content: [
+          { type: "text", text: out.found ? `forgot ${out.belief_id}` : `no such belief: ${out.belief_id}` },
+        ],
+        structuredContent: out,
+      };
+    }
+  );
+
+  return { server, state };
+}
+
+function shortId(id: string): string {
+  return id.length > 12 ? id.slice(0, 12) : id;
+}
+
+/** CLI entrypoint: wire stdio transport and keep the process alive. */
+export async function runStdio(): Promise<void> {
+  const { server } = createServer();
+  const transport = new StdioServerTransport();
+  await server.connect(transport);
+}

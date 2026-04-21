@@ -1,14 +1,14 @@
 {
   "schema_version": "1.0.0",
   "project": "weavory.ai",
-  "updated_at": "2026-04-21T20:26:00Z",
-  "current_phase": "C",
-  "current_milestone": "Gate 2 — all five MCP tools callable with valid schemas",
+  "updated_at": "2026-04-21T20:33:00Z",
+  "current_phase": "D",
+  "current_milestone": "Gate 3 — two-agent belief exchange via stock MCP client",
   "current_branch": "main",
   "current_remote": "https://github.com/DeepakKTS/weavory.ai (private)",
-  "last_gate_passed": 1,
-  "next_gate": 2,
-  "active_tasks": ["W-0020"],
+  "last_gate_passed": 2,
+  "next_gate": 3,
+  "active_tasks": ["W-0030"],
   "blockers": [],
-  "notes": "Phase B core protocol complete. Belief schema (W-0010), Ed25519 sign/verify (W-0011), BLAKE3 audit chain (W-0012) all implemented and tested — 33/33 Vitest units green; tsc strict clean. Moving to Phase C: MCP server + five tool wiring."
+  "notes": "Phase C complete. MCP server wired via @modelcontextprotocol/sdk with all five tools (W-0020). Engine layer (believe/recall/subscribe/attest/forget) over in-memory state. 45/45 Vitest tests green (17 belief + 8 sign + 8 chain + 5 engine integration + 7 MCP integration). Gate 2 passed. Next: runnable two-agent example + judge walkthrough doc → Gate 3."
 }

@@ -137,7 +137,7 @@
       "id": "W-0020",
       "title": "MCP server wiring + five tool stubs (Phase C)",
       "owner": "B",
-      "status": "pending",
+      "status": "completed",
       "priority": "P0",
       "phase": "C",
       "depends_on": ["W-0010", "W-0011", "W-0012"],
