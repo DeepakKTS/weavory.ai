@@ -64,6 +64,42 @@
       "mitigation": "Feature-flagged (WEAVORY_FEDERATION=1), off by default, Phase G only.",
       "owner": "A",
       "status": "open"
+    },
+    {
+      "id": "R-10",
+      "description": "Runtime snapshot writes add perceptible latency under burst ops",
+      "severity": "low",
+      "likelihood": "low",
+      "mitigation": "50ms debounce + atomic tmp+rename + single-writer invariant. In-memory state updates synchronously; only disk writes are debounced.",
+      "owner": "F",
+      "status": "open"
+    },
+    {
+      "id": "R-11",
+      "description": "LLM-judge merge introduces external API dependency mid-session (Phase G.2)",
+      "severity": "medium",
+      "likelihood": "medium",
+      "mitigation": "Opt-in behind WEAVORY_LLM_JUDGE=1. Default merge is deterministic (LWW + OR-set + consensus vote).",
+      "owner": "D",
+      "status": "open"
+    },
+    {
+      "id": "R-12",
+      "description": "Phase-G features creep outside the five-tool public API",
+      "severity": "high",
+      "likelihood": "low",
+      "mitigation": "Every Phase-G change must leave src/mcp/server.ts tool registration untouched; Gate 2 script enforces the five-tool whitelist on every CI run.",
+      "owner": "B",
+      "status": "open"
+    },
+    {
+      "id": "R-13",
+      "description": "Phase-G work regresses the Phase-1 judge path (Gate 7)",
+      "severity": "high",
+      "likelihood": "low",
+      "mitigation": "Every sub-phase re-runs full Vitest suite and local gate scripts 1-5 before committing; CI re-runs fresh-machine workflow including Gate 7 on every push.",
+      "owner": "G",
+      "status": "open"
     }
   ]
 }

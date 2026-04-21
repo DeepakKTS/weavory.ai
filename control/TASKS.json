@@ -285,6 +285,83 @@
       "depends_on": ["W-0031", "W-0051"],
       "files": ["tests/judge/gate7_simulation.ts", "scripts/verify/gate7.sh"],
       "acceptance_criteria": "Stock OpenClaw-compatible agent completes scripted task using only docs/README.md."
+    },
+    {
+      "id": "W-0100",
+      "title": "RuntimeWriter atomic snapshot (Phase G.1)",
+      "owner": "F",
+      "status": "completed",
+      "priority": "P0",
+      "phase": "G.1",
+      "depends_on": ["W-0052"],
+      "files": ["src/engine/runtime_writer.ts"],
+      "acceptance_criteria": "Atomic tmp+rename writes; debounce ≥50ms; idempotent attach; process-exit handlers flush 'stopped' snapshot; never crashes engine on disk errors."
+    },
+    {
+      "id": "W-0101",
+      "title": "EngineState onOp hooks + MCP writer install (Phase G.1)",
+      "owner": "F",
+      "status": "completed",
+      "priority": "P0",
+      "phase": "G.1",
+      "depends_on": ["W-0100"],
+      "files": ["src/engine/state.ts", "src/engine/ops.ts", "src/mcp/server.ts"],
+      "acceptance_criteria": "onOp callback fires after every believe/recall/subscribe/attest/forget. createServer attaches writer by default; off under VITEST=true or WEAVORY_RUNTIME_WRITER=off."
+    },
+    {
+      "id": "W-0102",
+      "title": "RuntimeWriter tests + live dashboard verification (Phase G.1)",
+      "owner": "G",
+      "status": "completed",
+      "priority": "P0",
+      "phase": "G.1",
+      "depends_on": ["W-0101"],
+      "files": ["tests/unit/engine/runtime_writer.test.ts"],
+      "acceptance_criteria": "9 unit tests cover startup snapshot, op snapshots, atomicity, shutdown snapshot, tamper alarm, resilience, idempotent attach. Full Vitest suite 54/54 green. All Phase-1 gate scripts 1-5 still pass. Real runtime.json surfaces in dashboard panel 10 after example demos run."
+    },
+    {
+      "id": "W-0110",
+      "title": "Subscription match queue + delivery-receipt ack (Phase G.2)",
+      "owner": "D",
+      "status": "pending",
+      "priority": "P0",
+      "phase": "G.2",
+      "depends_on": ["W-0101"],
+      "files": ["src/engine/state.ts", "src/engine/ops.ts"],
+      "acceptance_criteria": "Subscription accumulates matching beliefs in a queue on every believe; recall(subscription_id) drains the queue and returns delivered_count. Queue bounded; back-pressure when full."
+    },
+    {
+      "id": "W-0111",
+      "title": "Consensus merge + conflict visibility (Phase G.2)",
+      "owner": "D",
+      "status": "pending",
+      "priority": "P0",
+      "phase": "G.2",
+      "depends_on": ["W-0110"],
+      "files": ["src/engine/merge.ts", "src/engine/ops.ts"],
+      "acceptance_criteria": "recall can surface conflicting live beliefs on same (subject, predicate); merge strategy pluggable (LWW default, consensus, LLM-judge opt-in)."
+    },
+    {
+      "id": "W-0112",
+      "title": "LLM-judge merge opt-in via WEAVORY_LLM_JUDGE=1 (Phase G.2)",
+      "owner": "D",
+      "status": "pending",
+      "priority": "P1",
+      "phase": "G.2",
+      "depends_on": ["W-0111"],
+      "files": ["src/engine/merge.ts"],
+      "acceptance_criteria": "Env flag enables LLM-judge merge path; default stays deterministic (LWW + consensus)."
+    },
+    {
+      "id": "W-0113",
+      "title": "commons_swarm demo + gate_commons verify (Phase G.2)",
+      "owner": "E",
+      "status": "pending",
+      "priority": "P0",
+      "phase": "G.2",
+      "depends_on": ["W-0111"],
+      "files": ["examples/commons_swarm.ts", "scripts/verify/gate_commons.sh"],
+      "acceptance_criteria": "Three agents publish overlapping beliefs; subscriber drains queue deterministically; conflict surfaces when include_conflicts is true."
     }
   ]
 }

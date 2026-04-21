@@ -21,6 +21,7 @@ import {
   type RecallInput,
 } from "../engine/ops.js";
 import { EngineState } from "../engine/state.js";
+import { RuntimeWriter } from "../engine/runtime_writer.js";
 
 const VERSION = "0.1.0";
 
@@ -38,11 +39,39 @@ const SubscriptionFiltersSchema = z
   })
   .strict();
 
-export function createServer(state: EngineState = new EngineState()): {
+export type CreateServerOptions = {
+  /**
+   * Attach a RuntimeWriter that snapshots state to ops/data/runtime.json
+   * on every op. Default: on, unless WEAVORY_RUNTIME_WRITER=off or running
+   * under Vitest (avoids cross-test file contention).
+   */
+  runtimeWriter?: boolean;
+};
+
+function runtimeWriterDefault(): boolean {
+  if (process.env.WEAVORY_RUNTIME_WRITER === "off") return false;
+  if (process.env.WEAVORY_RUNTIME_WRITER === "on") return true;
+  if (process.env.VITEST === "true") return false;
+  return true;
+}
+
+export function createServer(
+  state: EngineState = new EngineState(),
+  opts: CreateServerOptions = {}
+): {
   server: McpServer;
   state: EngineState;
 } {
   const server = new McpServer({ name: "weavory", version: VERSION });
+
+  // Phase G.1: attach a runtime snapshot writer so the dashboard reflects live
+  // activity. Attach is idempotent per state; tests running under Vitest bypass
+  // it by default to avoid writing to a shared ops/data/runtime.json.
+  const attachWriter = opts.runtimeWriter ?? runtimeWriterDefault();
+  if (attachWriter) {
+    const writer = new RuntimeWriter(state);
+    writer.attach();
+  }
 
   // 1. believe --------------------------------------------------------------
   server.registerTool(

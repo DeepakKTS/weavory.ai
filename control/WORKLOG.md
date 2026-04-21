@@ -117,3 +117,32 @@ Chronological engineering log. One entry per meaningful work unit. Never fabrica
 - **All seven gates are now green.** Recorded in `ops/data/gates.json` with run URL, timings, and commit hashes.
 - Node 20 deprecation warnings still appear as annotations because the action-vendor bundles still target Node 20 — the `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true` env var correctly forces them onto the Node 24 runtime, so they remain functional warnings and not failures.
 - STATUS: `current_phase=F_complete`, `last_gate_passed=7`, `next_gate=null`. Phase G (arena extensions) is unblocked per ADR-007 but intentionally held until Phase-1 submission is locked.
+
+## 2026-04-21 · Phase G.1 · Live runtime collection — SHIPPED
+
+### W-0100 · RuntimeWriter (`src/engine/runtime_writer.ts`)
+- Snapshot shape: `schema_version`, `updated_at`, `pid`, `server_status`, `beliefs_total`, `beliefs_live`, `active_subscriptions`, `quarantine_count`, `audit_length`, `last_event_ts`, `last_op`, `tamper_alarm`.
+- Atomic write via `writeFileSync(tmp) + renameSync(tmp → out)`; tmp carries pid to avoid cross-process collisions.
+- Debounced at 50ms default; `flushNow()` escape hatch for tests.
+- Timer is `unref()`'d so a pending flush never blocks process exit.
+- `attach()` is idempotent per state; installs `beforeExit` + `SIGINT` + `SIGTERM` handlers (unless `disableExitHandlers`) that flush a "stopped" snapshot and re-raise the signal.
+- Disk-write failures log to stderr and never propagate — engine stays alive even on ENOENT / EPERM.
+
+### W-0101 · Engine hooks
+- `src/engine/state.ts`: added `onOp: ((op: EngineOp) => void) | undefined = undefined` and exported `EngineOp` union.
+- `src/engine/ops.ts`: call `state.onOp?.(…)` at the end of every op (believe/recall/subscribe/attest/forget) after state mutation and audit-chain append. Zero change to return shapes.
+- `src/mcp/server.ts`: `createServer` now instantiates + attaches a `RuntimeWriter` by default. Disabled under `VITEST=true` (avoids multi-test contention on a shared `ops/data/runtime.json`) or when `WEAVORY_RUNTIME_WRITER=off`. A `createServer(state, { runtimeWriter: false })` override is also exposed for callers that need explicit control.
+
+### W-0102 · Tests + live verification
+- `tests/unit/engine/runtime_writer.test.ts` — 9 tests: startup snapshot, op-triggered snapshots, atomic rename (no `.tmp` leftovers), shutdown snapshot, tamper-alarm surface, unwritable-path resilience, idempotent attach. Each test uses a per-test `tmpdir()` so they don't race with production `ops/data/runtime.json` or each other.
+- Vitest: **54/54 green** (45 existing + 9 new). `tsc --noEmit` strict clean.
+- Phase-1 regression check: `bash scripts/verify/gate{1,2,3,4,5}.sh` all re-run PASS.
+- Live dashboard check: after `scripts/verify/gate3.sh` runs `examples/two_agents_collaborate.ts`, `ops/data/runtime.json` is populated with real values (pid=98237, audit_length=3, last_op=shutdown, server_status=stopped). Fetched via dashboard server at `http://localhost:4317/ops/data/runtime.json` — 200, matches on-disk content.
+
+### Control-file updates
+- `STATUS.json`: `current_phase=G.1_complete`, `active_phase_g_sub=G.2 The Commons`, `active_tasks=[W-0110]`.
+- `TASKS.json`: W-0100, W-0101, W-0102 `completed`; W-0110..W-0113 (G.2) seeded as `pending` with deps.
+- `RISKS.json`: added R-10 (write latency), R-11 (LLM-judge external dep), R-12 (five-tool API creep), R-13 (Gate-7 regression).
+
+### Next
+G.2 — The Commons. Starts with W-0110 (subscription match queue + delivery-receipt ack), followed by W-0111 (consensus merge + conflict surfacing), W-0113 (`commons_swarm` demo + `gate_commons.sh`).

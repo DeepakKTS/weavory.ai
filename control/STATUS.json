@@ -1,14 +1,15 @@
 {
   "schema_version": "1.0.0",
   "project": "weavory.ai",
-  "updated_at": "2026-04-21T21:07:00Z",
-  "current_phase": "F_complete",
-  "current_milestone": "All seven gates PASS — Phase 1 judge-test infrastructure is done",
+  "updated_at": "2026-04-21T21:32:30Z",
+  "current_phase": "G.1_complete",
+  "current_milestone": "Phase G.1 runtime collection shipped — dashboard panel 10 is live",
   "current_branch": "main",
   "current_remote": "https://github.com/DeepakKTS/weavory.ai (private)",
   "last_gate_passed": 7,
   "next_gate": null,
-  "active_tasks": [],
+  "active_phase_g_sub": "G.2 The Commons",
+  "active_tasks": ["W-0110"],
   "blockers": [],
-  "notes": "Gates 1-7 all green as of commit 510da98. Gate 6 verified on Ubuntu + macOS matrix runners via GitHub Actions. Gate 7 (README-only stock-agent judge simulation against Claude Opus 4.7 with adaptive thinking + effort:xhigh + prompt-cached README + dot-to-underscore tool-name bridge) confirmed the end-to-end flow: seeded Alice's belief → Claude read only docs/README.md → called the five MCP tools via the Anthropic-to-MCP bridge → produced the scripted answer containing 'congested' and '14'. Phase 2 arena extensions (Phase G) are unblocked but intentionally gated until the Phase-1 submission is locked."
+  "notes": "Gates 1-7 all still green. Phase G.1 complete: src/engine/runtime_writer.ts ships atomic snapshots with 50ms debounce, idempotent attach, shutdown handlers, and tamper-alarm surface. EngineState gained an onOp hook; ops.ts calls it after every mutation; MCP server installs the writer by default (off in Vitest). 54/54 Vitest green (45 existing + 9 new); tsc --noEmit clean. All five local gate scripts (1-5) re-run green. runtime.json now populates on every real weavory process and surfaces in dashboard panel 10."
 }

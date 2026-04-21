@@ -23,6 +23,16 @@ import {
 import { AuditStore } from "../store/audit.js";
 import { generateKeyPair, signerIdOf, type KeyPair } from "../core/sign.js";
 
+/** Phase-G-visible op names — mirrored in runtime_writer.ts. */
+export type EngineOp =
+  | "believe"
+  | "recall"
+  | "subscribe"
+  | "attest"
+  | "forget"
+  | "startup"
+  | "shutdown";
+
 export type Subscription = {
   id: string;
   pattern: string;
@@ -58,6 +68,14 @@ export class EngineState {
   readonly trust = new Map<string /*signer_id*/, TrustVector>();
   readonly subscriptions = new Map<string /*subscription_id*/, Subscription>();
   readonly keyring = new Map<string /*signer_id*/, KeyPair>();
+
+  /**
+   * Optional post-op hook — called after each engine op mutates state.
+   * Used by `RuntimeWriter` (Phase G.1) to snapshot live metrics to
+   * `ops/data/runtime.json`. Never throws; the writer is responsible for
+   * isolating its own errors.
+   */
+  onOp: ((op: EngineOp) => void) | undefined = undefined;
 
   /** Return a signer_id + keypair for a seed, caching in the keyring. */
   signerFromSeed(seed: string): { signer_id: string; keyPair: KeyPair } {

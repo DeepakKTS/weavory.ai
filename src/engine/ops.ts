@@ -82,6 +82,7 @@ export function believe(state: EngineState, input: BelieveInput): BelieveOutput 
     recorded_at: ingested_at,
   });
 
+  state.onOp?.("believe");
   return {
     id: stored.id,
     signer_id,
@@ -160,6 +161,7 @@ export function recall(state: EngineState, input: RecallInput): RecallOutput {
 
   matches.sort((a, b) => b.score - a.score);
   const top = matches.slice(0, top_k).map((m) => m.belief);
+  state.onOp?.("recall");
   return { beliefs: top, total_matched: matches.length, now };
 }
 
@@ -189,6 +191,7 @@ export function subscribe(state: EngineState, input: SubscribeInput): SubscribeO
     signer_id,
     matches_since_created: 0,
   });
+  state.onOp?.("subscribe");
   return { subscription_id, created_at, signer_id };
 }
 
@@ -223,6 +226,7 @@ export function attest(state: EngineState, input: AttestInput): AttestOutput {
     operation: "attest",
     recorded_at,
   });
+  state.onOp?.("attest");
   return {
     signer_id: input.signer_id,
     topic: input.topic,
@@ -266,6 +270,7 @@ export function forget(state: EngineState, input: ForgetInput): ForgetOutput {
     operation: "forget",
     recorded_at: invalidated_at,
   });
+  state.onOp?.("forget");
   return {
     belief_id: input.belief_id,
     found: true,
