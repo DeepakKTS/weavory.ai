@@ -87,3 +87,11 @@ Chronological engineering log. One entry per meaningful work unit. Never fabrica
 - **Gate 5 (bi-temporal as_of):** `examples/gauntlet_rewind.ts` — alice publishes a belief, captures server-side `now` as `t_snapshot`, then forgets; live recall returns 0 matches; `recall(..., as_of=t_snapshot)` returns 1 match with `invalidated_at` populated. `scripts/verify/gate5.sh` asserts live==0 AND past==1.
 - **Result:** both gates 4/4 or 3/3 green. Recorded in `ops/data/gates.json`. STATUS bumped `current_phase=F`, `last_gate_passed=5`, `next_gate=6`.
 - **Five of seven gates passing.** Remaining: Gate 6 fresh-machine CI; Gate 7 README-only stock-agent judge simulation.
+
+### Phase F · Gates 6 & 7 wired
+- **Gate 6 CI:** `.github/workflows/fresh-machine.yml` — Ubuntu + macOS matrix on Node 20, runs tsc strict + all gates 1→5 on every push / PR. Triggered on commit `14ca725`; monitoring via `gh run list`.
+- **Gate 7 simulation (`tests/judge/gate7_simulation.ts`):** spins up a weavory server with shared EngineState, seeds Alice's congestion belief server-side, enumerates weavory's MCP tool list, bridges to an Anthropic manual tool-use loop against `claude-opus-4-7` with `thinking: adaptive` + `output_config.effort: xhigh` (best per claude-api skill) and `cache_control: ephemeral` on the README system prompt. On each assistant tool_use, forwards via the MCP client's `callTool`; asserts final text contains `congested` and `14`.
+- **Gate 7 verification (`scripts/verify/gate7.sh`):** loads `.env` if present, cleanly skips (exit 2) when `ANTHROPIC_API_KEY` is absent, otherwise runs the simulation and greps for the completion marker.
+- **Gate 7 CI job:** added `gate7` job to the fresh-machine workflow. Runs only on push events from `DeepakKTS/weavory.ai` (never PRs from forks) and only when the repo secret `ANTHROPIC_API_KEY` is populated — prevents secret leakage to untrusted PRs.
+- **Deps:** `@anthropic-ai/sdk 0.90.0` added.
+- **Local execution:** currently blocked by the sandbox's credential-context policy after the earlier `.env` attempt — user can run `pnpm verify:gate7` locally with `ANTHROPIC_API_KEY` in env, or rely on the CI job once the secret is added to the repo.

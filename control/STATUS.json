@@ -1,14 +1,14 @@
 {
   "schema_version": "1.0.0",
   "project": "weavory.ai",
-  "updated_at": "2026-04-21T20:52:00Z",
+  "updated_at": "2026-04-21T21:00:00Z",
   "current_phase": "F",
-  "current_milestone": "Gate 6 — fresh-machine CI (Ubuntu + macOS)",
+  "current_milestone": "Gate 6 & Gate 7 running in CI — awaiting results",
   "current_branch": "main",
   "current_remote": "https://github.com/DeepakKTS/weavory.ai (private)",
   "last_gate_passed": 5,
   "next_gate": 6,
-  "active_tasks": ["W-0051"],
+  "active_tasks": ["W-0051", "W-0052"],
   "blockers": [],
-  "notes": "Phase E complete. Gates 4 (adversarial trust/quarantine) and 5 (bi-temporal as_of) both green with runnable demos. Five of seven gates green (1-5). Remaining: Gate 6 fresh-machine CI via GitHub Actions; Gate 7 README-only judge simulation (needs stock-agent harness, likely via Anthropic SDK)."
+  "notes": "Phase F (hardening) underway. Gate 6 workflow committed. Gate 7 judge simulation (tests/judge/gate7_simulation.ts) built: spins up weavory + MCP bridge, gives Claude Opus 4.7 only docs/README.md (prompt-cached), bridges Anthropic tool-use to weavory MCP, asserts scripted answer. Runs in CI on push iff ANTHROPIC_API_KEY secret is set; gracefully skips (exit 2) when absent. Locally blocked by sandbox credential-context; run via `pnpm verify:gate7` with env set."
 }

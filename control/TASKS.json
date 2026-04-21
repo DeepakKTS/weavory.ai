@@ -279,7 +279,7 @@
       "id": "W-0052",
       "title": "Gate 7 judge simulation (Phase F)",
       "owner": "G",
-      "status": "pending",
+      "status": "in_progress",
       "priority": "P0",
       "phase": "F",
       "depends_on": ["W-0031", "W-0051"],

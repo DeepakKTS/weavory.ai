@@ -70,3 +70,26 @@ jobs:
           path: ops/data/*.json
           if-no-files-found: warn
           retention-days: 14
+
+  gate7:
+    name: gate7-judge-simulation
+    # Gate 7 calls the Anthropic API. Only run on push events (never on PRs from
+    # forks, which cannot receive repo secrets). Only run if the secret is set.
+    if: github.event_name == 'push' && github.repository == 'DeepakKTS/weavory.ai'
+    needs: gates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.30.3
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Gate 7 — README-only judge simulation
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: bash scripts/verify/gate7.sh
