@@ -81,3 +81,9 @@ Chronological engineering log. One entry per meaningful work unit. Never fabrica
 - **scripts/verify/gate3.sh:** Runs the demo; asserts on four literal log lines (demo exit 0 / alice publish / bob independent verify / scripted answer). Fails loudly on any mismatch.
 - **Result:** `bash scripts/verify/gate3.sh` → 4/4 green. Recorded in `ops/data/gates.json` with commit `3b29518`.
 - STATUS bumped `current_phase=E`, `last_gate_passed=3`, `next_gate=4`. TEST_MATRIX T-I-001 moved to Passing (engine-level) + E2E MCP walkthrough now real.
+
+### W-0040..W-0050 · Phase E adversarial + bi-temporal — Gates 4 & 5 PASS @ 8e8a18e
+- **Gate 4 (trust & quarantine):** `examples/wall_adversarial.ts` — alice (honest) and mallet (attacker) publish contradictory beliefs about the same scenario; charlie (observer) attests alice=+0.9, mallet=-0.9; default recall returns only alice's belief (1 match); `min_trust=-1` audit recall returns both (2 matches); scripted answer is the honest reading. `scripts/verify/gate4.sh` asserts 4 real checks via sed-parsed log lines.
+- **Gate 5 (bi-temporal as_of):** `examples/gauntlet_rewind.ts` — alice publishes a belief, captures server-side `now` as `t_snapshot`, then forgets; live recall returns 0 matches; `recall(..., as_of=t_snapshot)` returns 1 match with `invalidated_at` populated. `scripts/verify/gate5.sh` asserts live==0 AND past==1.
+- **Result:** both gates 4/4 or 3/3 green. Recorded in `ops/data/gates.json`. STATUS bumped `current_phase=F`, `last_gate_passed=5`, `next_gate=6`.
+- **Five of seven gates passing.** Remaining: Gate 6 fresh-machine CI; Gate 7 README-only stock-agent judge simulation.

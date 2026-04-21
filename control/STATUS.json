@@ -1,14 +1,14 @@
 {
   "schema_version": "1.0.0",
   "project": "weavory.ai",
-  "updated_at": "2026-04-21T20:43:00Z",
-  "current_phase": "E",
-  "current_milestone": "Gate 4 — trust & quarantine verified adversarially",
+  "updated_at": "2026-04-21T20:52:00Z",
+  "current_phase": "F",
+  "current_milestone": "Gate 6 — fresh-machine CI (Ubuntu + macOS)",
   "current_branch": "main",
   "current_remote": "https://github.com/DeepakKTS/weavory.ai (private)",
-  "last_gate_passed": 3,
-  "next_gate": 4,
-  "active_tasks": ["W-0040"],
+  "last_gate_passed": 5,
+  "next_gate": 6,
+  "active_tasks": ["W-0051"],
   "blockers": [],
-  "notes": "Phase D runnable demo complete. examples/two_agents_collaborate.ts runs alice+bob through MCP round-trip with independent signature verify; docs/README.md is the judge runbook (3-line install + 60s walkthrough). Gate 3 verification script asserts 4 real checks. 45/45 Vitest tests green; gates 1, 2, 3 all passing. Phase 1 core is now runnable — the judge-test substrate is live."
+  "notes": "Phase E complete. Gates 4 (adversarial trust/quarantine) and 5 (bi-temporal as_of) both green with runnable demos. Five of seven gates green (1-5). Remaining: Gate 6 fresh-machine CI via GitHub Actions; Gate 7 README-only judge simulation (needs stock-agent harness, likely via Anthropic SDK)."
 }
