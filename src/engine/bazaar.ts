@@ -123,11 +123,183 @@ export function findCapabilities(state: EngineState, name?: string): CapabilityO
 
 // ---------- internal: belief lookup ----------
 
-/** Used by escrow walker (next commit) and by recall's reputation branch. */
+/** Used by escrow walker and by recall's reputation branch. */
 export function beliefsAuthoredBy(state: EngineState, signer_id: string): StoredBelief[] {
   const out: StoredBelief[] = [];
   for (const b of state.beliefs.values()) {
     if (b.signer_id === signer_id) out.push(b);
   }
   return out;
+}
+
+// ---------- W-0142 escrow thread walker ----------
+
+/**
+ * Escrow stage machine, keyed by `predicate`:
+ *
+ *   capability.offers   (offer)      — posted by seller
+ *   escrow.payment      (payment)    — posted by buyer; causes: [offer]
+ *   escrow.delivered    (delivered)  — posted by seller; causes: [payment]
+ *   escrow.settled      (settled)    — posted by buyer; causes: [delivered]
+ *                                      object.outcome: "accepted" | "disputed"
+ *
+ * `walkEscrowThread(state, root_id)` returns the root + every belief that
+ * causally descends from it via the `causes[]` field, stage-tagged.
+ */
+export const ESCROW_PAYMENT_PREDICATE = "escrow.payment" as const;
+export const ESCROW_DELIVERED_PREDICATE = "escrow.delivered" as const;
+export const ESCROW_SETTLED_PREDICATE = "escrow.settled" as const;
+
+export type EscrowStage =
+  | "offer"
+  | "payment"
+  | "delivered"
+  | "settled"
+  | "other";
+
+export type EscrowStep = {
+  belief_id: string;
+  stage: EscrowStage;
+  signer_id: string;
+  subject: string;
+  recorded_at: string;
+  causes: string[];
+  object: JsonValue;
+  invalidated_at: string | null;
+};
+
+function stageOf(predicate: string): EscrowStage {
+  switch (predicate) {
+    case CAPABILITY_OFFERS_PREDICATE:
+      return "offer";
+    case ESCROW_PAYMENT_PREDICATE:
+      return "payment";
+    case ESCROW_DELIVERED_PREDICATE:
+      return "delivered";
+    case ESCROW_SETTLED_PREDICATE:
+      return "settled";
+    default:
+      return "other";
+  }
+}
+
+function toStep(belief: StoredBelief): EscrowStep {
+  return {
+    belief_id: belief.id,
+    stage: stageOf(belief.predicate),
+    signer_id: belief.signer_id,
+    subject: belief.subject,
+    recorded_at: belief.recorded_at,
+    causes: [...belief.causes],
+    object: belief.object,
+    invalidated_at: belief.invalidated_at,
+  };
+}
+
+/**
+ * Breadth-first traversal of the causal graph starting at `root_id`.
+ * Returns the root belief plus every belief whose `causes[]` transitively
+ * lists it. Children within a level are sorted by `recorded_at` so the
+ * output is deterministic even when multiple publishes happen in the
+ * same millisecond.
+ */
+export function walkEscrowThread(state: EngineState, root_id: string): EscrowStep[] {
+  const root = state.beliefs.get(root_id);
+  if (!root) return [];
+
+  // Build a one-pass parent → children index. O(beliefs + causes).
+  const childrenOf = new Map<string, StoredBelief[]>();
+  for (const b of state.beliefs.values()) {
+    for (const parent of b.causes) {
+      let arr = childrenOf.get(parent);
+      if (!arr) {
+        arr = [];
+        childrenOf.set(parent, arr);
+      }
+      arr.push(b);
+    }
+  }
+
+  const out: EscrowStep[] = [toStep(root)];
+  const seen = new Set<string>([root_id]);
+  const queue: string[] = [root_id];
+
+  while (queue.length > 0) {
+    const current = queue.shift() as string;
+    const kids = childrenOf.get(current);
+    if (!kids) continue;
+    kids.sort((a, b) =>
+      a.recorded_at < b.recorded_at ? -1 : a.recorded_at > b.recorded_at ? 1 : a.id.localeCompare(b.id)
+    );
+    for (const k of kids) {
+      if (seen.has(k.id)) continue;
+      seen.add(k.id);
+      out.push(toStep(k));
+      queue.push(k.id);
+    }
+  }
+  return out;
+}
+
+export type EscrowOutcome = "accepted" | "disputed" | null;
+
+export type EscrowStatus = {
+  root_id: string;
+  steps: EscrowStep[];
+  has_offer: boolean;
+  has_payment: boolean;
+  has_delivered: boolean;
+  has_settled: boolean;
+  settled: boolean; // true iff at least one settled step has outcome="accepted"
+  outcome: EscrowOutcome; // the outcome of the (latest) settled step, if any
+};
+
+/** Aggregate view over `walkEscrowThread` plus outcome extraction. */
+export function escrowStatus(state: EngineState, root_id: string): EscrowStatus {
+  const steps = walkEscrowThread(state, root_id);
+  const status: EscrowStatus = {
+    root_id,
+    steps,
+    has_offer: false,
+    has_payment: false,
+    has_delivered: false,
+    has_settled: false,
+    settled: false,
+    outcome: null,
+  };
+  let latestSettled: EscrowStep | null = null;
+  for (const s of steps) {
+    if (s.stage === "offer") status.has_offer = true;
+    if (s.stage === "payment") status.has_payment = true;
+    if (s.stage === "delivered") status.has_delivered = true;
+    if (s.stage === "settled") {
+      status.has_settled = true;
+      if (
+        latestSettled === null ||
+        s.recorded_at > latestSettled.recorded_at ||
+        (s.recorded_at === latestSettled.recorded_at && s.belief_id > latestSettled.belief_id)
+      ) {
+        latestSettled = s;
+      }
+    }
+  }
+  if (latestSettled) {
+    const obj = latestSettled.object;
+    const outcome =
+      typeof obj === "object" && obj !== null && !Array.isArray(obj)
+        ? (obj as Record<string, JsonValue>).outcome
+        : null;
+    if (outcome === "accepted") {
+      status.outcome = "accepted";
+      status.settled = true;
+    } else if (outcome === "disputed") {
+      status.outcome = "disputed";
+    }
+  }
+  return status;
+}
+
+/** Shorthand: did this escrow reach a settled step with outcome="accepted"? */
+export function isEscrowSettled(state: EngineState, root_id: string): boolean {
+  return escrowStatus(state, root_id).settled;
 }

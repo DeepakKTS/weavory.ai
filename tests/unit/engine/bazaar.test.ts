@@ -6,8 +6,14 @@ import { EngineState } from "../../../src/engine/state.js";
 import { attest, believe, forget, recall } from "../../../src/engine/ops.js";
 import {
   CAPABILITY_OFFERS_PREDICATE,
+  ESCROW_DELIVERED_PREDICATE,
+  ESCROW_PAYMENT_PREDICATE,
+  ESCROW_SETTLED_PREDICATE,
+  escrowStatus,
   findCapabilities,
   getReputation,
+  isEscrowSettled,
+  walkEscrowThread,
 } from "../../../src/engine/bazaar.js";
 
 describe("getReputation (W-0140)", () => {
@@ -135,6 +141,166 @@ describe("findCapabilities (W-0141)", () => {
     });
     const offers = findCapabilities(s, "summarize");
     expect(offers.map((o) => o.offer_id)).toEqual([second.id, first.id]);
+  });
+});
+
+describe("walkEscrowThread + escrowStatus (W-0142)", () => {
+  function fourStageEscrow() {
+    const s = new EngineState();
+    // 1. Alice offers.
+    const offer = believe(s, {
+      subject: "agent:alice",
+      predicate: CAPABILITY_OFFERS_PREDICATE,
+      object: { name: "summarize", price: 5, escrow_required: true },
+      signer_seed: "alice",
+    });
+    // 2. Bob pays.
+    const payment = believe(s, {
+      subject: "agent:bob",
+      predicate: ESCROW_PAYMENT_PREDICATE,
+      object: { offer_id: offer.id, amount: 5 },
+      signer_seed: "bob",
+      causes: [offer.id],
+    });
+    // 3. Alice delivers.
+    const delivered = believe(s, {
+      subject: "agent:alice",
+      predicate: ESCROW_DELIVERED_PREDICATE,
+      object: { payment_id: payment.id, result: "<summary>" },
+      signer_seed: "alice",
+      causes: [payment.id],
+    });
+    // 4. Bob settles.
+    const settled = believe(s, {
+      subject: "agent:bob",
+      predicate: ESCROW_SETTLED_PREDICATE,
+      object: { delivery_id: delivered.id, outcome: "accepted" },
+      signer_seed: "bob",
+      causes: [delivered.id],
+    });
+    return { s, offer, payment, delivered, settled };
+  }
+
+  it("returns an empty array when the root belief does not exist", () => {
+    const s = new EngineState();
+    expect(walkEscrowThread(s, "0".repeat(64))).toEqual([]);
+  });
+
+  it("returns just the root when no other beliefs cite it", () => {
+    const s = new EngineState();
+    const offer = believe(s, {
+      subject: "agent:alice",
+      predicate: CAPABILITY_OFFERS_PREDICATE,
+      object: { name: "x" },
+      signer_seed: "alice",
+    });
+    const thread = walkEscrowThread(s, offer.id);
+    expect(thread).toHaveLength(1);
+    expect(thread[0].stage).toBe("offer");
+    expect(thread[0].belief_id).toBe(offer.id);
+  });
+
+  it("walks the full four-stage escrow in order", () => {
+    const { s, offer, payment, delivered, settled } = fourStageEscrow();
+    const thread = walkEscrowThread(s, offer.id);
+    expect(thread.map((t) => t.stage)).toEqual(["offer", "payment", "delivered", "settled"]);
+    expect(thread.map((t) => t.belief_id)).toEqual([offer.id, payment.id, delivered.id, settled.id]);
+  });
+
+  it("escrowStatus flags the thread as settled when outcome=accepted", () => {
+    const { s, offer } = fourStageEscrow();
+    const status = escrowStatus(s, offer.id);
+    expect(status.has_offer).toBe(true);
+    expect(status.has_payment).toBe(true);
+    expect(status.has_delivered).toBe(true);
+    expect(status.has_settled).toBe(true);
+    expect(status.settled).toBe(true);
+    expect(status.outcome).toBe("accepted");
+    expect(isEscrowSettled(s, offer.id)).toBe(true);
+  });
+
+  it("escrowStatus records 'disputed' without flagging settled=true", () => {
+    const { s, offer, delivered } = fourStageEscrow();
+    // Override the settlement to a dispute by publishing a newer settled
+    // step with outcome=disputed. (The existing 'accepted' settled is
+    // still part of the chain, but a later disputed overrides it.)
+    believe(s, {
+      subject: "agent:bob",
+      predicate: ESCROW_SETTLED_PREDICATE,
+      object: { delivery_id: delivered.id, outcome: "disputed" },
+      signer_seed: "bob",
+      causes: [delivered.id],
+      recorded_at: new Date(Date.now() + 60_000).toISOString(),
+    });
+    const status = escrowStatus(s, offer.id);
+    expect(status.has_settled).toBe(true);
+    expect(status.outcome).toBe("disputed");
+    expect(status.settled).toBe(false);
+    expect(isEscrowSettled(s, offer.id)).toBe(false);
+  });
+
+  it("traverses a fan-out (multiple children of the offer)", () => {
+    const s = new EngineState();
+    const offer = believe(s, {
+      subject: "agent:alice",
+      predicate: CAPABILITY_OFFERS_PREDICATE,
+      object: { name: "summarize" },
+      signer_seed: "alice",
+    });
+    // Two bidders both pay on the same offer.
+    const pay1 = believe(s, {
+      subject: "agent:bob",
+      predicate: ESCROW_PAYMENT_PREDICATE,
+      object: { offer_id: offer.id, amount: 5 },
+      signer_seed: "bob",
+      causes: [offer.id],
+    });
+    const pay2 = believe(s, {
+      subject: "agent:carol",
+      predicate: ESCROW_PAYMENT_PREDICATE,
+      object: { offer_id: offer.id, amount: 7 },
+      signer_seed: "carol",
+      causes: [offer.id],
+    });
+    const thread = walkEscrowThread(s, offer.id);
+    expect(thread.map((t) => t.belief_id)).toContain(offer.id);
+    expect(thread.map((t) => t.belief_id)).toContain(pay1.id);
+    expect(thread.map((t) => t.belief_id)).toContain(pay2.id);
+    expect(thread).toHaveLength(3);
+  });
+
+  it("does not double-count diamond-shaped DAGs", () => {
+    // root → a → c, root → b → c (c has two parents).
+    const s = new EngineState();
+    const root = believe(s, {
+      subject: "s",
+      predicate: CAPABILITY_OFFERS_PREDICATE,
+      object: { name: "x" },
+      signer_seed: "alice",
+    });
+    const a = believe(s, {
+      subject: "s",
+      predicate: ESCROW_PAYMENT_PREDICATE,
+      object: { v: "a" },
+      signer_seed: "bob",
+      causes: [root.id],
+    });
+    const b = believe(s, {
+      subject: "s",
+      predicate: ESCROW_PAYMENT_PREDICATE,
+      object: { v: "b" },
+      signer_seed: "bob",
+      causes: [root.id],
+    });
+    believe(s, {
+      subject: "s",
+      predicate: ESCROW_DELIVERED_PREDICATE,
+      object: { via: "both" },
+      signer_seed: "alice",
+      causes: [a.id, b.id],
+    });
+    const thread = walkEscrowThread(s, root.id);
+    expect(thread).toHaveLength(4); // root + a + b + c (not 5)
   });
 });
 
