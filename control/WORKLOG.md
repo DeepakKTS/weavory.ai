@@ -335,3 +335,46 @@ Three small commits, each self-verifying.
 
 ### Next
 **Phase G.6 — The Throne** (W-0150..W-0160): compose all four arena features (Commons + Wall + Gauntlet + Bazaar) in one integrated demo + `gate_throne.sh`. Final Phase-G sub-phase.
+
+## 2026-04-21 · Phase G.6 · The Throne — SHIPPED · **Gate Throne PASS · Phase G complete**
+
+### W-0150 + W-0151 · throne_integration demo + gate_throne.sh
+- `examples/throne_integration.ts` (new, ~310 LOC): single MCP client against one shared EngineState with `adversarialMode: true`. Runs all four arena flows in sequence against the same state:
+  - **COMMONS**: bob subscribes (`market:` pattern); alice + mallet both post `market:BTC price` (alice 50000, mallet 10); operator attests alice=+0.9 / mallet=-0.9 on "price"; bob drains 3 queued beliefs; `merge_strategy: consensus` collapses to alice's 50000.
+  - **WALL**: default recall (under adversarial 0.6 floor) keeps alice, filters mallet; `scanForTamper` returns ok.
+  - **GAUNTLET**: `cloneState` produces a detached branch; alice posts BTC=60000 on main and BTC=30000 on branch; main = `[50000, 60000]`, branch = `[30000, 50000]`; `exportIncident` writes a new file.
+  - **BAZAAR**: alice offers `capability.offers summarize_paragraph`; operator attests on two topics so reputation clears the 0.6 gate; bob discovers, checks reputation, pays, alice delivers, bob settles accepted. `escrowStatus` reports `offer,payment,delivered,settled`, `isEscrowSettled=true`.
+  - **INTEGRATION**: final `scanForTamper` still ok (audit chain length 12); prints `✓ Gate Throne integration passed · commons=3 wall=true gauntlet=true bazaar=true`.
+- `scripts/verify/gate_throne.sh` (new, 7 checks): demo exit 0; each arena's scripted log lines; final chain-verify=ok; final integration summary with all four flags true.
+
+### W-0160 · Phase-G retrospective
+- `control/MASTER_PLAN.md`: Phase G rows marked complete; Phase G sub-phase table inserted.
+- `control/TEST_MATRIX.md`: totals bumped to 13 suites · 120/120 · 12 gates. Remaining planned entries enumerated as Phase-G backlog (trust decay, LanceDB, full SSE transport).
+- `control/STATUS.json`: `current_phase=G.6_complete`, `last_arena_gate_passed=throne`, `active_tasks=[]`.
+- `control/TASKS.json`: W-0150 / W-0151 / W-0160 → completed.
+- `ops/data/gates.json`: appended `{gate: "throne", ...}` for commit `e26c175`.
+
+### Tests & verification
+- Vitest: **120/120** green (unchanged — Throne is an end-to-end demo, not Vitest).
+- tsc --noEmit strict clean.
+- Full gate matrix re-run locally: `gate3`, `gate4`, `gate5`, `gate_commons`, `gate_wall`, `gate_gauntlet`, `gate_bazaar`, `gate_throne` all PASS.
+- Five-tool MCP surface unchanged. Phase-1 judge path (Gate 7) re-verified in CI on every push through Phase G.
+
+### Phase G summary (12 gates, 13 commits)
+
+| Sub-phase | Arena gate | Commits | What we added |
+|-----------|-----------|---------|---------------|
+| G.1 | — | `2d82c7b` | Atomic `runtime.json` writer; dashboard panel 10 live |
+| G.2 | Commons | `688b155` `a13abb9` `0da0465` | Subscribe match queue · consensus/LWW merge · conflict visibility · demo |
+| G.3 | Wall | `223ac46` | Adversarial mode · tamper detector · incident export · demo |
+| G.4 | Gauntlet | `a124e49` `1b96c61` `2bce443` | `cloneState` · `restoreEntries` · `replay` CLI · demo |
+| G.5 | Bazaar | `c6720f4` `33570e3` `e26c175` | Reputation · capability ads · causal-chain escrow · demo |
+| G.6 | Throne | this commit | Four-arena integration against one EngineState |
+
+### Public-API contract after Phase G
+
+- Five MCP tools, unchanged: `weavory.{believe, recall, subscribe, attest, forget}`.
+- Additive parameters: `recall.subscription_id` (G.2), `recall.include_conflicts` / `recall.merge_strategy` (G.2), `filters.reputation_of` (G.5).
+- CLI gained one new subcommand: `weavory replay` (G.4). `weavory start` — the Phase-1 judge path — is untouched.
+- Environment flags: `WEAVORY_RUNTIME_WRITER` (on/off), `WEAVORY_ADVERSARIAL=1`.
+- Five file artefacts the dashboard can track live: `runtime.json`, `tests.json`, `coverage.json`, `git.json`, `gates.json` + per-run `incidents/*.json`.

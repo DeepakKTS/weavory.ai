@@ -67,9 +67,13 @@ Legend:
 
 ---
 
-## Current totals (2026-04-21, post-Gate-2)
+## Current totals (2026-04-21, post-Phase-G)
 
-- **Implemented + Passing:** 16 matrix entries (T-C-001..T-C-006, T-S-003, T-S-004, T-T-001..T-T-003, T-M-001..T-M-003, T-I-001 engine-level, T-I-003)
-- **Implemented total tests (Vitest):** 45 / 45 passing — 17 belief + 8 sign + 8 chain + 5 engine-integration + 7 MCP-integration (see `ops/data/tests.json`)
-- **Gates passed:** 1, 2 (see `ops/data/gates.json`)
-- **Planned:** 9 matrix entries (remaining storage, subscribe SSE transport, trust decay, judge-gate E2E)
+- **Vitest suites:** 13 files, **120 / 120** passing (source of truth: `ops/data/tests.json`)
+  - 17 belief + 8 sign + 8 chain (core)
+  - 9 runtime_writer + 11 branch + 7 replay + 4 incident + 17 bazaar (engine)
+  - 5 engine integration + 17 commons + 3 wall + 7 MCP (integration)
+- **Gates passed:** 7 Phase-1 (1–7) + 5 arena (commons, wall, gauntlet, bazaar, throne) — **12 total** (see `ops/data/gates.json`)
+- **Runnable arena demos (end-to-end over MCP):** 5 — `commons_swarm`, `wall_incident`, `gauntlet_branch`, `bazaar_trade`, `throne_integration`
+- **Two-agent judge demo (Phase 1):** `two_agents_collaborate` · Gate 3 · Gate 7 in CI
+- **TEST_MATRIX entries still planned:** trust-decay on conflict (T-T-004), LanceDB persistence (T-S-001/002), full SSE subscribe transport (T-D-003 wire-level) — all queued in `control/BACKLOG.json`, unblocked but intentionally out of Phase-G scope.

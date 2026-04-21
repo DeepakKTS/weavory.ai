@@ -22,13 +22,24 @@ The unowned 2026 corner: **MCP-native + semantic subscribe + bi-temporal (valid-
 
 | Phase | Work | Exit gate |
 |-------|------|-----------|
-| A | Bootstrap: repo, control files, dashboard shell, collectors | **Gate 1** — repo boots, control files exist, dashboard loads |
-| B | Core protocol: belief schema, Ed25519, temporal, trust, BLAKE3 chain | schema tests green |
-| C | MCP tools wired (all five) | **Gate 2** |
-| D | Runnable two-agent demo + judge walkthrough | **Gate 3** |
-| E | Truthful dashboard wired to real data sources | **Gate 4** |
-| F | Hardening: tests, `as_of`, fresh-machine CI | **Gates 5, 6, 7** |
-| G | Optional expansions (only after Gate 7) | Arena extensions |
+| A | Bootstrap: repo, control files, dashboard shell, collectors | **Gate 1** ✅ |
+| B | Core protocol: belief schema, Ed25519, temporal, trust, BLAKE3 chain | schema tests green ✅ |
+| C | MCP tools wired (all five) | **Gate 2** ✅ |
+| D | Runnable two-agent demo + judge walkthrough | **Gate 3** ✅ |
+| E | Truthful dashboard wired to real data sources | **Gate 4** ✅ |
+| F | Hardening: tests, `as_of`, fresh-machine CI | **Gates 5, 6, 7** ✅ |
+| **G** | **Arena extensions (composed on top of Phase-1 core)** | **Gate Commons + Wall + Gauntlet + Bazaar + Throne** ✅ |
+
+### Phase G sub-phases (all complete)
+
+| Sub | Deliverable | Arena gate |
+|-----|-------------|------------|
+| G.1 | Live runtime collection → `ops/data/runtime.json` atomic writer | (infra) |
+| G.2 | Subscribe match queue + opt-in consensus/LWW merge + conflict visibility | **Gate Commons** ✅ |
+| G.3 | Adversarial mode + tamper alarm + incident export | **Gate Wall** ✅ |
+| G.4 | `cloneState` branches + `weavory replay` CLI + incident rehydrate | **Gate Gauntlet** ✅ |
+| G.5 | Reputation aggregate + capability ads + causal-chain escrow | **Gate Bazaar** ✅ |
+| G.6 | One EngineState drives all four arenas at once | **Gate Throne** ✅ |
 
 ## Stack
 

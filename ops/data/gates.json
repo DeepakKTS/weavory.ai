@@ -91,6 +91,14 @@
       "script": "scripts/verify/gate_bazaar.sh",
       "runner": "local/darwin-arm64/node-v23.7.0/pnpm-10.30.3",
       "notes": "5/5 checks green: bazaar_trade demo exit 0; bob discovered alice's summarize_paragraph offer via recall(filters.predicate='capability.offers'); reputation summary attached via recall(filters.reputation_of=alice.signer_id) with avg_trust=0.85 attestations=2; four-stage escrow thread walked in order offer,payment,delivered,settled; isEscrowSettled=true with outcome=accepted. Phase G.5 (The Bazaar) end-to-end verified — reputation + capability discovery + causal-chain escrow all live, all via the existing five-tool MCP API."
+    },
+    {
+      "gate": "throne",
+      "passed_at": "2026-04-21T23:22:00Z",
+      "commit": "e26c175491248e5e49fa49176c4f69621c572149",
+      "script": "scripts/verify/gate_throne.sh",
+      "runner": "local/darwin-arm64/node-v23.7.0/pnpm-10.30.3",
+      "notes": "7/7 checks green: throne_integration demo exit 0; COMMONS drain=3 + consensus BTC=$50000; WALL adversarial recall filters mallet while keeping alice, tamper scan clean; GAUNTLET main=[50000,60000] branch=[30000,50000] + incident exported; BAZAAR four-stage escrow settled accepted; final chain verify=ok after all four arenas; integration summary reports commons=3 wall=true gauntlet=true bazaar=true. Phase G.6 (The Throne) — Commons + Wall + Gauntlet + Bazaar compose against one EngineState without interference. Phase G complete."
     }
   ]
 }

@@ -483,6 +483,39 @@
       "depends_on": ["W-0142"],
       "files": ["examples/bazaar_trade.ts", "scripts/verify/gate_bazaar.sh"],
       "acceptance_criteria": "Demo: alice offers → bob discovers + checks reputation → bob pays → alice delivers → bob settles (accepted). walkEscrowThread returns exactly [offer,payment,delivered,settled]. gate_bazaar.sh asserts all five."
+    },
+    {
+      "id": "W-0150",
+      "title": "Four-arena integration demo (Phase G.6)",
+      "owner": "E",
+      "status": "completed",
+      "priority": "P0",
+      "phase": "G.6",
+      "depends_on": ["W-0113", "W-0123", "W-0132", "W-0143"],
+      "files": ["examples/throne_integration.ts"],
+      "acceptance_criteria": "One MCP client against one shared EngineState exercises Commons (subscribe + drain + consensus), Wall (adversarial filter + tamper scan), Gauntlet (cloneState branch + incident), Bazaar (four-stage escrow). Final chain must still verify ok."
+    },
+    {
+      "id": "W-0151",
+      "title": "gate_throne verify (Phase G.6)",
+      "owner": "G",
+      "status": "completed",
+      "priority": "P0",
+      "phase": "G.6",
+      "depends_on": ["W-0150"],
+      "files": ["scripts/verify/gate_throne.sh"],
+      "acceptance_criteria": "7-check verifier: demo exit 0; COMMONS drain + consensus; WALL adversarial + tamper ok; GAUNTLET divergence + incident; BAZAAR 4-stage + settled-accepted; final chain verify=ok; final summary commons=3 wall=true gauntlet=true bazaar=true."
+    },
+    {
+      "id": "W-0160",
+      "title": "Phase-G retrospective (Phase G.6)",
+      "owner": "F",
+      "status": "completed",
+      "priority": "P0",
+      "phase": "G.6",
+      "depends_on": ["W-0151"],
+      "files": ["control/MASTER_PLAN.md", "control/TEST_MATRIX.md", "control/WORKLOG.md", "control/STATUS.json"],
+      "acceptance_criteria": "MASTER_PLAN reflects Phase-G complete, TEST_MATRIX totals bumped (Vitest 127/127, 6 arena gates + 7 Phase-1 gates), WORKLOG final Phase-G entry, STATUS current_phase=G.6_complete."
     }
   ]
 }
