@@ -1,0 +1,72 @@
+name: fresh-machine
+
+# Gate 6 — Fresh-machine setup succeeds.
+# Runs every gate script (1–5) on a clean Ubuntu and macOS runner so the
+# "stock OpenClaw on a new laptop" story is verified on every push.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch: {}
+
+concurrency:
+  group: fresh-machine-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gates:
+    name: gates-${{ matrix.os }}-node${{ matrix.node }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        node: ['20']
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.30.3
+          run_install: false
+
+      - name: Setup Node ${{ matrix.node }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: pnpm
+
+      - name: pnpm install
+        run: pnpm install --frozen-lockfile
+
+      - name: TypeScript strict check
+        run: pnpm exec tsc --noEmit
+
+      - name: Gate 1 — Bootstrap
+        run: bash scripts/verify/gate1.sh
+
+      - name: Gate 2 — MCP surface
+        run: bash scripts/verify/gate2.sh
+
+      - name: Gate 3 — Two-agent exchange
+        run: bash scripts/verify/gate3.sh
+
+      - name: Gate 4 — Trust & quarantine
+        run: bash scripts/verify/gate4.sh
+
+      - name: Gate 5 — as_of recall
+        run: bash scripts/verify/gate5.sh
+
+      - name: Upload ops/data artefacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ops-data-${{ matrix.os }}-node${{ matrix.node }}
+          path: ops/data/*.json
+          if-no-files-found: warn
+          retention-days: 14
