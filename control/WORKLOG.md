@@ -74,3 +74,10 @@ Chronological engineering log. One entry per meaningful work unit. Never fabrica
 - **Test totals:** 45 / 45 green. Coverage of src/core, src/engine, src/mcp via integration.
 - **tsc --noEmit:** clean, strict, no `any` in `src/`.
 - **Gate 2:** PASS. Recorded in `ops/data/gates.json` with commit `020483b`. STATUS bumped `current_phase=D`, `last_gate_passed=2`, `next_gate=3`.
+
+### W-0030..W-0032 · Phase D runnable demo — Gate 3 PASS @ 3b29518
+- **examples/two_agents_collaborate.ts:** Alice + Bob as two independent MCP clients over InMemoryTransport, sharing one EngineState. Alice publishes a traffic observation; Bob attests Alice (trust 0.8 on "observation"); Bob recalls; Bob independently calls `verifyBelief` on the returned belief; Bob produces the scripted answer from `belief.object`. Scripted expectation: `"traffic in cambridge is congested (+14 min)"`. Script uses assertions and `process.exit(1)` on any mismatch.
+- **docs/README.md:** Judge runbook. Three-line install, five-tool reference, 60-second walkthrough, end-to-end reference script, guarantees + non-goals. No fabricated features claimed; everything mentioned is wired and tested.
+- **scripts/verify/gate3.sh:** Runs the demo; asserts on four literal log lines (demo exit 0 / alice publish / bob independent verify / scripted answer). Fails loudly on any mismatch.
+- **Result:** `bash scripts/verify/gate3.sh` → 4/4 green. Recorded in `ops/data/gates.json` with commit `3b29518`.
+- STATUS bumped `current_phase=E`, `last_gate_passed=3`, `next_gate=4`. TEST_MATRIX T-I-001 moved to Passing (engine-level) + E2E MCP walkthrough now real.
