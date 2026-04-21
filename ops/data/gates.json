@@ -75,6 +75,14 @@
       "script": "scripts/verify/gate_wall.sh",
       "runner": "local/darwin-arm64/node-v23.7.0/pnpm-10.30.3",
       "notes": "5/5 checks green: wall_incident demo exit 0; pre-tamper scan:ok, post-tamper scan:bad_index=1 reason=entry_hash; runtime.json.tamper_alarm surfaced; new incident file written under ops/data/incidents/; incident verify.ok=false bad_index=1. Phase G.3 (The Wall) adversarial drill end-to-end verified — adversarial mode, tamper detection, incident export all wired."
+    },
+    {
+      "gate": "gauntlet",
+      "passed_at": "2026-04-21T22:58:40Z",
+      "commit": "1b96c61",
+      "script": "scripts/verify/gate_gauntlet.sh",
+      "runner": "local/darwin-arm64/node-v23.7.0/pnpm-10.30.3",
+      "notes": "6/6 checks green: gauntlet_branch demo exit 0; main live = [100,110]; branch live = [100,90]; main as_of=T0 = [100] (rewind works); incident file written; weavory replay CLI against the incident surfaces both AAPL=100 and AAPL=110. Phase G.4 (The Gauntlet) end-to-end verified — in-memory branch snapshots + bi-temporal as_of rewind + replay CLI all live."
     }
   ]
 }

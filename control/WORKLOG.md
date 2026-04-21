@@ -263,3 +263,41 @@ W-0113 — `examples/commons_swarm.ts` three-agent demo + `scripts/verify/gate_c
 
 ### Next
 **Phase G.4 — The Gauntlet** (W-0130..W-0132): `weavory replay --as-of <T>` CLI command, in-memory branch snapshot via `--branch <name>`, demo + verify.
+
+## 2026-04-21 · Phase G.4 · The Gauntlet — SHIPPED · **Gate Gauntlet PASS**
+
+Shipped as three small commits so each step is individually verifiable:
+
+### W-0131 · cloneState + AuditStore.restoreEntries (commit `a124e49`)
+- `src/store/audit.ts`: `restoreEntries(entries: AuditEntry[])` bulk-replaces the chain with pre-built, schema-validated entries. Preserves original entry_hashes — essential for round-tripping incident exports (clean *and* tampered) faithfully.
+- `src/engine/branch.ts` (new): `cloneState(src)` returns a detached deep copy. beliefs Map / AuditStore / per-signer × topic trust / subscriptions (queues copied) / keyring (Uint8Array-copied) are all independent. `structuredClone` on `StoredBelief.object` so nested JSON never aliases. `adversarialMode` carries; `onOp` intentionally does NOT carry (branches don't pollute the source's runtime writer).
+- `tests/unit/engine/branch.test.ts` (new, 11 tests).
+
+### W-0130 · replay module + `weavory replay` CLI (commit `1b96c61`)
+- `src/engine/replay.ts` (new): `loadIncident(path)` verifies schema_version=1.0.0 and returns the parsed record. `rehydrateState(record)` builds a fresh EngineState from it (beliefs via StoredBeliefSchema, audit via restoreEntries, trust via setTrust, adversarialMode carried). `runReplay(state, record, opts)` runs a recall with `min_trust=-1` default (audit view) and returns `{summary, recall}`.
+- `src/cli.ts`: `weavory replay --from <incident.json> [flags]` subcommand with `--query`, `--as-of`, `--top-k`, `--min-trust`, `--include-conflicts`, `--merge-strategy`, `--json`, and an extended `--help`. `weavory start` (Phase-1 judge path) is unchanged.
+- `tests/unit/engine/replay.test.ts` (new, 7 tests).
+
+### W-0132 · demo + verify (commit this commit)
+- `examples/gauntlet_branch.ts` (new): MAIN state publishes AAPL=100 + GOOG=200, wally attests alice on "price", then snapshot via `cloneState`. MAIN publishes AAPL=110 (spike); BRANCH publishes AAPL=90 (dip). Assertions:
+  - MAIN live AAPL = `[100,110]`
+  - BRANCH live AAPL = `[100,90]` *(JS default sort is lexicographic, so the literal is `[100,90]` not `[90,100]`)*
+  - MAIN recall(as_of=T0) = `[100]` — rewind works
+  - Demo exports an incident and echoes `incident_path=<path>`.
+- `scripts/verify/gate_gauntlet.sh` (new, 6 checks): grep-validates the three value lines, asserts the incident file exists, then invokes `weavory replay --from <that incident> --query AAPL` and asserts both AAPL=100 and AAPL=110 surface.
+- Recorded in `ops/data/gates.json` as gate "gauntlet".
+
+### Tests & verification
+- `pnpm exec tsc --noEmit` strict clean on every intermediate commit.
+- Vitest: **103/103 green** (85 + 11 branch + 7 replay).
+- All prior gate scripts re-run PASS: `gate3`, `gate4`, `gate5`, `gate_commons`, `gate_wall`.
+- New: **Gate Gauntlet PASS (6/6)**.
+- Five-tool MCP API unchanged. Only CLI gained a new subcommand (`replay`), which is a local admin / forensic tool, not part of the stock-agent surface.
+
+### Control updates
+- `STATUS.json`: `current_phase=G.4_complete`, `last_arena_gate_passed=gauntlet`, `active_phase_g_sub='G.5 The Bazaar'`, `active_tasks=[W-0140]`.
+- `TASKS.json`: W-0130/W-0131/W-0132 → completed.
+- `ops/data/gates.json`: appended `{gate: "gauntlet", ...}`.
+
+### Next
+**Phase G.5 — The Bazaar** (W-0140..W-0143): reputation aggregate via `recall(filters.reputation_of)`, capability-ads convention, lightweight escrow via causally-linked beliefs, demo + `gate_bazaar.sh`.

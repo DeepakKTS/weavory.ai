@@ -406,6 +406,39 @@
       "depends_on": ["W-0122"],
       "files": ["examples/wall_incident.ts", "scripts/verify/gate_wall.sh"],
       "acceptance_criteria": "Demo: honest chain → attacker mutates entry → scanForTamper fires alarm → runtime.json.tamper_alarm surfaced → exportIncident writes a new file with verify.ok=false. gate_wall.sh asserts all 5."
+    },
+    {
+      "id": "W-0131",
+      "title": "cloneState + AuditStore.restoreEntries (Phase G.4)",
+      "owner": "A",
+      "status": "completed",
+      "priority": "P0",
+      "phase": "G.4",
+      "depends_on": ["W-0101"],
+      "files": ["src/engine/branch.ts", "src/store/audit.ts"],
+      "acceptance_criteria": "cloneState deep-copies beliefs/audit/trust/subscriptions/keyring; does not inherit onOp; carries adversarialMode. AuditStore.restoreEntries bulk-loads with Zod validation preserving entry_hashes (including tampered chains)."
+    },
+    {
+      "id": "W-0130",
+      "title": "Replay module + weavory replay CLI (Phase G.4)",
+      "owner": "C",
+      "status": "completed",
+      "priority": "P0",
+      "phase": "G.4",
+      "depends_on": ["W-0131", "W-0122"],
+      "files": ["src/engine/replay.ts", "src/cli.ts"],
+      "acceptance_criteria": "loadIncident + rehydrateState reconstruct state from ops/data/incidents/*.json including tampered chains. runReplay defaults min_trust=-1 (audit view). CLI flags: --from, --query, --as-of, --top-k, --min-trust, --include-conflicts, --merge-strategy, --json."
+    },
+    {
+      "id": "W-0132",
+      "title": "gauntlet_branch demo + gate_gauntlet verify (Phase G.4)",
+      "owner": "E",
+      "status": "completed",
+      "priority": "P0",
+      "phase": "G.4",
+      "depends_on": ["W-0130", "W-0131"],
+      "files": ["examples/gauntlet_branch.ts", "scripts/verify/gate_gauntlet.sh"],
+      "acceptance_criteria": "Demo: T0 state → clone → main + branch diverge → recall on each returns different AAPL values; recall(as_of=T0) on main sees T0 state only. gate_gauntlet.sh asserts all three value lines AND runs the replay CLI on the incident the demo exports."
     }
   ]
 }
