@@ -59,6 +59,14 @@
       "runner": "github-actions/ubuntu-latest/node22",
       "run_url": "https://github.com/DeepakKTS/weavory.ai/actions/runs/24746380567",
       "notes": "Stock Claude Opus 4.7 agent (adaptive thinking + effort:xhigh) completed the scripted task using only docs/README.md. Dot→underscore tool-name bridge working. Final text contained 'congested' and '14' as required. Job duration: 27s. Completion marker logged verbatim."
+    },
+    {
+      "gate": "commons",
+      "passed_at": "2026-04-21T21:54:00Z",
+      "commit": "a13abb9450e04b47815372eab755cdccbfe74de8",
+      "script": "scripts/verify/gate_commons.sh",
+      "runner": "local/darwin-arm64/node-v23.7.0/pnpm-10.30.3",
+      "notes": "5/5 checks green: commons_swarm demo exit 0; subscription drain delivered=3 dropped=0; include_conflicts surfaced 1 group with 3 variants; consensus winner.X=42 (alice+bob outvote mallet); lww winner.X=0 (latest recorded_at). Phase G.2 (The Commons) end-to-end verified."
     }
   ]
 }

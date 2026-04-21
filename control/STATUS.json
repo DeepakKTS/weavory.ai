@@ -1,15 +1,16 @@
 {
   "schema_version": "1.0.0",
   "project": "weavory.ai",
-  "updated_at": "2026-04-21T21:50:00Z",
-  "current_phase": "G.2_in_progress",
-  "current_milestone": "Phase G.2 W-0110 + W-0111 complete: queue drain + opt-in consensus merge",
+  "updated_at": "2026-04-21T21:54:30Z",
+  "current_phase": "G.2_complete",
+  "current_milestone": "Phase G.2 (The Commons) complete — subscribe/drain + consensus merge verified",
   "current_branch": "main",
   "current_remote": "https://github.com/DeepakKTS/weavory.ai (private)",
   "last_gate_passed": 7,
+  "last_arena_gate_passed": "commons",
   "next_gate": null,
-  "active_phase_g_sub": "G.2 The Commons",
-  "active_tasks": ["W-0113"],
+  "active_phase_g_sub": "G.3 The Wall",
+  "active_tasks": ["W-0120"],
   "blockers": [],
-  "notes": "Gates 1-7 still green. W-0111 shipped: src/engine/merge.ts introduces lww + consensus strategies (pure, trust-injected). recall gains optional merge_strategy + include_conflicts. Default behavior unchanged — merge only collapses when merge_strategy is explicitly set, so Gate 4 adversarial audit view still shows all variants. Vitest 78/78 green. Next: W-0113 commons_swarm demo + gate_commons.sh."
+  "notes": "Phase G.2 end-to-end verified. commons_swarm demo runs three agents + one subscriber against a shared weavory, drains 3 queued beliefs, detects 1 conflict group with 3 variants, consensus picks X=42 (alice+bob trust outweighs mallet), lww picks X=0 (latest recorded_at). gate_commons.sh 5/5 green. Vitest 78/78. All Phase-1 gates 3/4/5 re-run green. Next: G.3 The Wall — adversarial mode + tamper alarms (W-0120..W-0123)."
 }

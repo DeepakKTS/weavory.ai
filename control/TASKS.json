@@ -356,7 +356,7 @@
       "id": "W-0113",
       "title": "commons_swarm demo + gate_commons verify (Phase G.2)",
       "owner": "E",
-      "status": "pending",
+      "status": "completed",
       "priority": "P0",
       "phase": "G.2",
       "depends_on": ["W-0111"],

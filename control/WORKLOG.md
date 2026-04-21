@@ -200,3 +200,31 @@ G.2 — The Commons. Starts with W-0110 (subscription match queue + delivery-rec
 
 ### Next
 W-0113 — `examples/commons_swarm.ts` three-agent demo + `scripts/verify/gate_commons.sh`. Will exercise queue drain AND consensus merge in a single runnable example.
+
+## 2026-04-21 · Phase G.2 · W-0113 commons_swarm demo — SHIPPED · **Gate Commons PASS**
+
+### What shipped
+- `examples/commons_swarm.ts` (new, ~150 LOC): single-process demo exercising both G.2 features end-to-end over MCP.
+  - wally subscribes to `sensor:cambridge` (queue_cap=100) BEFORE any publishes — so all three publishes land in the queue.
+  - alice + bob both publish `reading={X:42}`; mallet publishes `{X:0}` 10ms later so `recorded_at` is strictly ordered.
+  - wally attests alice=+0.9, bob=+0.9, mallet=+0.1 on the "reading" topic.
+  - Drains subscription via `recall(subscription_id, min_trust:-1)` → delivered=3, dropped=0.
+  - Recall with `include_conflicts: true` surfaces 1 group with 3 variants (subject+predicate identical, three distinct object values).
+  - Recall with `merge_strategy: "consensus"` collapses to X=42 (alice 0.9 + bob 0.9 > mallet 0.1 clamped-but-positive).
+  - Recall with `merge_strategy: "lww"` picks X=0 (mallet, latest recorded_at) regardless of trust.
+  - Every assertion exits(1) on mismatch; exit 0 on success.
+- `scripts/verify/gate_commons.sh` (new): 5-step grep-based verifier over the demo's stdout.
+
+### Tests & verification
+- `bash scripts/verify/gate_commons.sh` → **Gate Commons: PASS** (5/5 green).
+- Recorded in `ops/data/gates.json` with commit `a13abb9`.
+- Phase-1 regression: `gate3.sh` / `gate4.sh` / `gate5.sh` all PASS.
+- Vitest: 78/78 unchanged (demo is runnable, not a Vitest suite).
+
+### Control updates
+- `STATUS.json`: `current_phase=G.2_complete`, `last_arena_gate_passed=commons`, `active_phase_g_sub='G.3 The Wall'`, `active_tasks=[W-0120]`.
+- `TASKS.json`: W-0113 → completed.
+- `ops/data/gates.json`: appended `{gate: "commons", passed_at, commit: a13abb9, script, notes}`.
+
+### Next
+**Phase G.3 — The Wall** (W-0120..W-0123): adversarial mode (tighter trust thresholds, signed-lineage-only recall), chain tamper alarm wired into `runtime.json.tamper_alarm`, incident export to `ops/data/incidents/<id>.json`, demo + verify.
