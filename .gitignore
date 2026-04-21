@@ -14,6 +14,8 @@ coverage/
 # Generated dashboard data (but keep the dashboard HTML itself)
 ops/data/*.json
 !ops/data/.gitkeep
+# gates.json is a committed audit trail of passed gates — not transient
+!ops/data/gates.json
 
 # Editor artefacts
 .DS_Store

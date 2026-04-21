@@ -105,3 +105,15 @@ Chronological engineering log. One entry per meaningful work unit. Never fabrica
   3. Runner Node bumped `20 → 22` (current LTS, post-deprecation).
   4. `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true` at workflow level silences the "Node 20 actions are deprecated" runner warning.
 - Next: push this commit; re-verify Gate 6 green on Node 22; Gate 7 job will show as "skipped" (not failed) until the secret is added.
+
+### Phase F · CI run on `510da98` — **Gates 6 & 7 BOTH PASS**
+- User rotated the leaked Anthropic key and added the new value as the `ANTHROPIC_API_KEY` repo secret on `DeepakKTS/weavory.ai`.
+- First attempted run (on `78bf49e`) hit a 400 from the Anthropic tool-use API: tool names `weavory.believe` failed the required `^[a-zA-Z0-9_-]{1,128}$` pattern. Fixed in `510da98` by adding a bidirectional dot↔underscore name bridge in `tests/judge/gate7_simulation.ts` (MCP keeps dotted names; Anthropic sees `weavory_believe` etc.) and a short note in the system prompt so Claude maps the runbook's dotted references to the underscored tool names.
+- **GitHub Actions run 24746380567** on `510da98`:
+  - `preflight-check-secrets` — 3s, green, output `has_anthropic_key=true`.
+  - `gates-ubuntu-latest-node22` — 22s, green. tsc strict + Gates 1-5 all pass on a clean runner.
+  - `gates-macos-latest-node22` — 37s, green. Same checks on macOS.
+  - `gate7-judge-simulation` — 27s, green. Stock Claude Opus 4.7 agent (adaptive thinking, `effort: xhigh`, README prompt-cached) completed the task using only `docs/README.md`. Completion marker `stock Claude agent produced the scripted answer using only docs/README.md` logged verbatim.
+- **All seven gates are now green.** Recorded in `ops/data/gates.json` with run URL, timings, and commit hashes.
+- Node 20 deprecation warnings still appear as annotations because the action-vendor bundles still target Node 20 — the `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true` env var correctly forces them onto the Node 24 runtime, so they remain functional warnings and not failures.
+- STATUS: `current_phase=F_complete`, `last_gate_passed=7`, `next_gate=null`. Phase G (arena extensions) is unblocked per ADR-007 but intentionally held until Phase-1 submission is locked.

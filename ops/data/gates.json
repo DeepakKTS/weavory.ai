@@ -1,0 +1,64 @@
+{
+  "schema_version": "1.0.0",
+  "generated_at": "2026-04-21T21:07:00Z",
+  "entries": [
+    {
+      "gate": 1,
+      "passed_at": "2026-04-21T20:05:00Z",
+      "commit": "ae65da1564ec816433bd3f81a20f6af97a94b8c0",
+      "script": "scripts/verify/gate1.sh",
+      "runner": "local/darwin-arm64/node-v23.7.0/pnpm-10.30.3",
+      "notes": "4/4 checks green: control files, dashboard, node project, git collector. (Commit later rewritten to 724aa02 via filter-branch during GitHub setup; same content.)"
+    },
+    {
+      "gate": 2,
+      "passed_at": "2026-04-21T20:33:00Z",
+      "commit": "020483bc0a0824b75271224ab8ecef354c252dbe",
+      "script": "scripts/verify/gate2.sh",
+      "runner": "local/darwin-arm64/node-v23.7.0/pnpm-10.30.3",
+      "notes": "45/45 Vitest tests green. MCP integration suite (InMemoryTransport Client ⇄ Server) exercises every tool. T-M-001 five-tool surface enforced."
+    },
+    {
+      "gate": 3,
+      "passed_at": "2026-04-21T20:43:00Z",
+      "commit": "3b29518a54bfb38f865da47185f3926db7bb4f35",
+      "script": "scripts/verify/gate3.sh",
+      "runner": "local/darwin-arm64/node-v23.7.0/pnpm-10.30.3",
+      "notes": "4/4 checks green: examples/two_agents_collaborate.ts exit 0; alice published a 64-hex belief id; bob independently verified alice's signature; scripted answer 'traffic in cambridge is congested (+14 min)' produced verbatim."
+    },
+    {
+      "gate": 4,
+      "passed_at": "2026-04-21T20:50:00Z",
+      "commit": "8e8a18eb0d53169d3d1c545b1b6a409b3eb9e4ac",
+      "script": "scripts/verify/gate4.sh",
+      "runner": "local/darwin-arm64/node-v23.7.0/pnpm-10.30.3",
+      "notes": "4/4 checks green: adversarial demo exit 0; default recall=1 (honest only); audit recall (min_trust=-1) = 2 (both); charlie's answer is the honest reading. Mallet's claim is filtered by the trust gate as specified."
+    },
+    {
+      "gate": 5,
+      "passed_at": "2026-04-21T20:52:00Z",
+      "commit": "8e8a18eb0d53169d3d1c545b1b6a409b3eb9e4ac",
+      "script": "scripts/verify/gate5.sh",
+      "runner": "local/darwin-arm64/node-v23.7.0/pnpm-10.30.3",
+      "notes": "3/3 checks green: gauntlet_rewind demo exit 0; live recall == 0 post-forget; as_of=pre-forget recall == 1. Bi-temporal state preserved."
+    },
+    {
+      "gate": 6,
+      "passed_at": "2026-04-21T21:05:00Z",
+      "commit": "510da98250ef1c6516a47499fab445cbbcab40c2",
+      "script": ".github/workflows/fresh-machine.yml (gates job)",
+      "runner": "github-actions/ubuntu-latest+macos-latest/node22/pnpm10.30.3",
+      "run_url": "https://github.com/DeepakKTS/weavory.ai/actions/runs/24746380567",
+      "notes": "Both matrix jobs green: gates-ubuntu-latest-node22 (22s), gates-macos-latest-node22 (37s). tsc strict + gates 1-5 all pass on fresh runners. ops/data/*.json uploaded as artefacts. Node 22 LTS; FORCE_JAVASCRIPT_ACTIONS_TO_NODE24 applied."
+    },
+    {
+      "gate": 7,
+      "passed_at": "2026-04-21T21:06:38Z",
+      "commit": "510da98250ef1c6516a47499fab445cbbcab40c2",
+      "script": "scripts/verify/gate7.sh (via .github/workflows/fresh-machine.yml gate7 job)",
+      "runner": "github-actions/ubuntu-latest/node22",
+      "run_url": "https://github.com/DeepakKTS/weavory.ai/actions/runs/24746380567",
+      "notes": "Stock Claude Opus 4.7 agent (adaptive thinking + effort:xhigh) completed the scripted task using only docs/README.md. Dot→underscore tool-name bridge working. Final text contained 'congested' and '14' as required. Job duration: 27s. Completion marker logged verbatim."
+    }
+  ]
+}
