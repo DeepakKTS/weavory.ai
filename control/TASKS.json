@@ -334,7 +334,7 @@
       "id": "W-0111",
       "title": "Consensus merge + conflict visibility (Phase G.2)",
       "owner": "D",
-      "status": "pending",
+      "status": "completed",
       "priority": "P0",
       "phase": "G.2",
       "depends_on": ["W-0110"],

@@ -115,6 +115,8 @@ export function createServer(
         include_quarantined: z.boolean().optional(),
         filters: SubscriptionFiltersSchema.optional(),
         subscription_id: z.string().regex(/^sub_[0-9a-f]+$/u).optional(),
+        include_conflicts: z.boolean().optional(),
+        merge_strategy: z.enum(["lww", "consensus"]).optional(),
       },
     },
     async (args) => {

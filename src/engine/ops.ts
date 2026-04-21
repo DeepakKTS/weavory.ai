@@ -18,6 +18,7 @@ import {
   type StoredBelief,
 } from "../core/schema.js";
 import type { EngineState, SubscriptionFilters } from "./state.js";
+import { mergeConflicts, type ConflictGroup, type MergeStrategy } from "./merge.js";
 
 // ---------- believe ----------
 
@@ -110,6 +111,17 @@ export type RecallInput = {
    * Returns `delivered_count` and `dropped_count` in addition to beliefs.
    */
   subscription_id?: string;
+  /**
+   * Phase G.2 — conflict visibility.
+   *   undefined / false → collapse conflicting beliefs to a single winner per
+   *     the chosen merge_strategy (default: "consensus"). Default behavior,
+   *     preserves Gate 3/4/5 semantics.
+   *   true → include conflicts[] in the output so the caller can render
+   *     disagreement. The main beliefs[] list still contains merged winners.
+   */
+  include_conflicts?: boolean;
+  /** Phase G.2 — merge strategy for conflicting beliefs. Default "consensus". */
+  merge_strategy?: MergeStrategy;
 };
 
 export type RecallOutput = {
@@ -120,6 +132,10 @@ export type RecallOutput = {
   delivered_count?: number;
   dropped_count?: number;
   subscription_id?: string;
+  /** Phase G.2 — present iff include_conflicts=true AND conflicts were found. */
+  conflicts?: ConflictGroup[];
+  /** Phase G.2 — the merge strategy actually applied this call. */
+  merge_strategy?: MergeStrategy;
 };
 
 const DEFAULT_MIN_TRUST = 0.3;
@@ -191,13 +207,54 @@ export function recall(state: EngineState, input: RecallInput): RecallOutput {
   }
 
   matches.sort((a, b) => b.score - a.score);
-  const top = matches.slice(0, top_k).map((m) => m.belief);
+
+  // Phase G.2 — conflict detection + optional merge.
+  //
+  // Default behavior (no merge_strategy set): return ALL matching beliefs
+  // including conflicting variants. This preserves Gate 4 (adversarial view)
+  // and every previously-green path. Callers who want a single merged answer
+  // opt in via `merge_strategy: "consensus"` or `"lww"`.
+  //
+  // `include_conflicts: true` ALWAYS surfaces conflicting groups in the
+  // output for introspection — orthogonal to merging. Skipped for as_of
+  // queries so historians see the raw record.
+  const trustLookup = (signer_id: string, topic: string): number =>
+    state.trustScore(signer_id, topic);
+
+  let effectiveMatches = matches;
+  let conflicts: ConflictGroup[] = [];
+  let appliedStrategy: MergeStrategy | undefined;
+
+  if (!asOf && (input.merge_strategy !== undefined || input.include_conflicts)) {
+    const rankedBeliefs = matches.map((m) => m.belief);
+    const strategy: MergeStrategy = input.merge_strategy ?? "consensus";
+    const merge = mergeConflicts(rankedBeliefs, trustLookup, strategy);
+    conflicts = merge.conflicts;
+
+    if (input.merge_strategy !== undefined) {
+      // Collapse to winners — preserving the original rank order.
+      const mergedSet = new Set(merge.merged.map((b) => b.id));
+      effectiveMatches = matches.filter((m) => mergedSet.has(m.belief.id));
+      appliedStrategy = strategy;
+    }
+    // If include_conflicts alone, leave effectiveMatches untouched (show all variants).
+  }
+
+  const top = effectiveMatches.slice(0, top_k).map((m) => m.belief);
   state.onOp?.("recall");
-  const out: RecallOutput = { beliefs: top, total_matched: matches.length, now };
+  const out: RecallOutput = {
+    beliefs: top,
+    total_matched: effectiveMatches.length,
+    now,
+  };
+  if (appliedStrategy !== undefined) out.merge_strategy = appliedStrategy;
   if (input.subscription_id !== undefined) {
     out.subscription_id = input.subscription_id;
     out.delivered_count = top.length;
     out.dropped_count = dropped_count;
+  }
+  if (input.include_conflicts && conflicts.length > 0) {
+    out.conflicts = conflicts;
   }
   return out;
 }

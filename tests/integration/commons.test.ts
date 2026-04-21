@@ -191,3 +191,155 @@ describe("Gate-3 regression (W-0110)", () => {
     expect(r.delivered_count).toBeUndefined();
   });
 });
+
+describe("consensus merge + conflict visibility (W-0111)", () => {
+  it("default recall (no merge_strategy) returns all conflicting variants", () => {
+    const s = newState();
+    const honest = believe(s, {
+      subject: "scene:default",
+      predicate: "obs",
+      object: { congested: true },
+      signer_seed: "alice",
+    });
+    const liar = believe(s, {
+      subject: "scene:default",
+      predicate: "obs",
+      object: { congested: false },
+      signer_seed: "mallet",
+    });
+    attest(s, { signer_id: honest.signer_id, topic: "obs", score: 0.9 });
+    attest(s, { signer_id: liar.signer_id, topic: "obs", score: 0.4 });
+
+    const r = recall(s, { query: "scene" });
+    // Default behavior preserved — both variants flow through, no merge strategy set.
+    expect(r.beliefs).toHaveLength(2);
+    expect(r.merge_strategy).toBeUndefined();
+    expect(r.conflicts).toBeUndefined();
+  });
+
+  it("include_conflicts=true surfaces groups without collapsing the list", () => {
+    const s = newState();
+    const honest = believe(s, {
+      subject: "scene:vis",
+      predicate: "obs",
+      object: { congested: true },
+      signer_seed: "alice",
+    });
+    const liar = believe(s, {
+      subject: "scene:vis",
+      predicate: "obs",
+      object: { congested: false },
+      signer_seed: "mallet",
+    });
+    attest(s, { signer_id: honest.signer_id, topic: "obs", score: 0.9 });
+    attest(s, { signer_id: liar.signer_id, topic: "obs", score: 0.4 });
+
+    const r = recall(s, { query: "scene", include_conflicts: true });
+    // Both variants still returned…
+    expect(r.beliefs).toHaveLength(2);
+    // …plus the conflict group is exposed for introspection.
+    expect(r.conflicts).toBeDefined();
+    expect(r.conflicts).toHaveLength(1);
+    expect(r.conflicts?.[0].variants).toHaveLength(2);
+  });
+
+  it("consensus strategy (opt-in) collapses conflicting beliefs to a trust-weighted winner", () => {
+    const s = newState();
+    const honest = believe(s, {
+      subject: "scene:x",
+      predicate: "obs",
+      object: { congested: true },
+      signer_seed: "alice",
+    });
+    const liar = believe(s, {
+      subject: "scene:x",
+      predicate: "obs",
+      object: { congested: false },
+      signer_seed: "mallet",
+    });
+    attest(s, { signer_id: honest.signer_id, topic: "obs", score: 0.9 });
+    attest(s, { signer_id: liar.signer_id, topic: "obs", score: 0.4 });
+
+    const r = recall(s, { query: "scene", merge_strategy: "consensus" });
+    expect(r.beliefs).toHaveLength(1);
+    expect(r.beliefs[0].id).toBe(honest.id);
+    // Default: no conflicts surfaced.
+    expect(r.conflicts).toBeUndefined();
+    expect(r.merge_strategy).toBe("consensus");
+  });
+
+  it("include_conflicts exposes variants when set to true", () => {
+    const s = newState();
+    const honest = believe(s, {
+      subject: "scene:y",
+      predicate: "obs",
+      object: { congested: true },
+      signer_seed: "alice",
+    });
+    const liar = believe(s, {
+      subject: "scene:y",
+      predicate: "obs",
+      object: { congested: false },
+      signer_seed: "mallet",
+    });
+    attest(s, { signer_id: honest.signer_id, topic: "obs", score: 0.9 });
+    attest(s, { signer_id: liar.signer_id, topic: "obs", score: 0.4 });
+
+    const r = recall(s, { query: "scene", include_conflicts: true });
+    expect(r.conflicts).toBeDefined();
+    expect(r.conflicts).toHaveLength(1);
+    expect(r.conflicts?.[0].variants).toHaveLength(2);
+    expect(r.conflicts?.[0].winner.id).toBe(honest.id);
+  });
+
+  it("lww merge strategy ignores trust and picks the latest", async () => {
+    const s = newState();
+    const first = believe(s, {
+      subject: "scene:z",
+      predicate: "obs",
+      object: { value: 1 },
+      signer_seed: "alice",
+    });
+    // Nudge the clock so the second belief has a strictly-later recorded_at.
+    await new Promise((r) => setTimeout(r, 10));
+    const second = believe(s, {
+      subject: "scene:z",
+      predicate: "obs",
+      object: { value: 2 },
+      signer_seed: "mallet",
+    });
+    // Both must pass the default min_trust=0.3 gate so BOTH reach the merge
+    // step. lww's job is to ignore the *relative* trust and pick the later one.
+    attest(s, { signer_id: first.signer_id, topic: "obs", score: 0.9 });
+    attest(s, { signer_id: second.signer_id, topic: "obs", score: 0.4 });
+
+    const r = recall(s, { query: "scene", merge_strategy: "lww" });
+    expect(r.beliefs).toHaveLength(1);
+    // LWW picks the later recorded_at (second) even though first has higher trust.
+    expect(r.beliefs[0].id).toBe(second.id);
+  });
+
+  it("as_of queries skip merge (historical fidelity preserved)", async () => {
+    const s = newState();
+    const a = believe(s, {
+      subject: "scene:hist",
+      predicate: "obs",
+      object: { v: "a" },
+      signer_seed: "alice",
+    });
+    await new Promise((r) => setTimeout(r, 10));
+    const b = believe(s, {
+      subject: "scene:hist",
+      predicate: "obs",
+      object: { v: "b" },
+      signer_seed: "bob",
+    });
+    attest(s, { signer_id: a.signer_id, topic: "obs", score: 0.9 });
+    attest(s, { signer_id: b.signer_id, topic: "obs", score: 0.9 });
+
+    const future = new Date().toISOString();
+    const rHist = recall(s, { query: "scene", as_of: future });
+    // as_of branch keeps all variants so historians can see disagreement.
+    expect(rHist.total_matched).toBe(2);
+  });
+});

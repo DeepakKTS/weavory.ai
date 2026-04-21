@@ -172,3 +172,31 @@ G.2 — The Commons. Starts with W-0110 (subscription match queue + delivery-rec
 ### Control updates
 - `STATUS.json`: `current_phase=G.2_in_progress`, `active_tasks=[W-0111]`.
 - `TASKS.json`: W-0110 → completed; W-0111 remains active next.
+
+## 2026-04-21 · Phase G.2 · W-0111 consensus merge + conflict visibility — SHIPPED
+
+### What shipped
+- `src/engine/merge.ts` (new, ~110 LOC): pure `mergeConflicts(beliefs, trustOf, strategy)` that groups by (subject, predicate), detects distinct object values, and picks a winner per strategy.
+  - `lww`: latest recorded_at wins (id tie-break).
+  - `consensus`: sum trust per object value; highest wins; ties → LWW across tied cohort. Negative trust clamps to 0 so bad actors can't flip their vote by going "less negative".
+- `src/engine/ops.ts`:
+  - `RecallInput` gains `include_conflicts?`, `merge_strategy?`.
+  - `RecallOutput` gains `conflicts?`, `merge_strategy?`.
+  - **Critical design point:** merge is opt-in. Default behavior (no `merge_strategy`) preserves the pre-W-0111 semantics — all variants flow through — so Gate 4 (adversarial audit view) stays green. `include_conflicts: true` surfaces groups without collapsing. `merge_strategy: "consensus" | "lww"` explicitly collapses to the winner.
+  - `as_of` queries skip merge entirely (historical fidelity).
+- `src/mcp/server.ts`: `weavory.recall` input schema gains `include_conflicts: boolean?` and `merge_strategy: enum("lww","consensus")?`.
+- `tests/unit/engine/merge.test.ts` (new, 7 tests): no-conflict pass-through, consensus-on-same-object (not a conflict), trust-weighted winner, LWW ignores trust, consensus equal-weight LWW tie-break, negative-trust clamp, multi-group independence.
+- `tests/integration/commons.test.ts` extended (4 new tests): default-returns-all-variants, include_conflicts exposes groups without collapse, consensus opt-in, lww opt-in (with trust above the min_trust gate so both reach merge), as_of skips merge.
+
+### Tests & verification
+- Vitest: **78/78 green**.
+- tsc --noEmit strict clean.
+- `bash scripts/verify/gate3.sh` / `gate4.sh` / `gate5.sh` all PASS — no regressions.
+- First attempt regressed Gate 4 (default consensus collapsed variants); fix: make merge opt-in via explicit `merge_strategy`. Committed after verification.
+
+### Control updates
+- `STATUS.json`: `current_milestone` bumped; `active_tasks=[W-0113]`.
+- `TASKS.json`: W-0111 → completed.
+
+### Next
+W-0113 — `examples/commons_swarm.ts` three-agent demo + `scripts/verify/gate_commons.sh`. Will exercise queue drain AND consensus merge in a single runnable example.
