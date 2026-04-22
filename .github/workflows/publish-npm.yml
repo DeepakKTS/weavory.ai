@@ -29,7 +29,15 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write   # enables npm provenance (signed publish)
+      # NOTE: `id-token: write` + `--provenance` requires a PUBLIC
+      # GitHub repo (npm policy: sigstore bundle verification rejects
+      # `"private"` source repos with 422 Unprocessable Entity). We
+      # keep the repo private by operator decision, so provenance is
+      # omitted. The publish still signs the tarball with the
+      # registry key — just without the extra build-attestation layer.
+      # To enable provenance later: make the repo public, re-add
+      # `id-token: write` above and `--provenance` on the publish
+      # command below.
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -57,6 +65,8 @@ jobs:
         run: pnpm build
 
       - name: Publish to npm (public scope)
-        run: pnpm publish --access public --no-git-checks --provenance
+        # --provenance removed: requires a public source repo; see
+        # permissions block above.
+        run: pnpm publish --access public --no-git-checks
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
