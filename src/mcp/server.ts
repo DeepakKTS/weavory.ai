@@ -230,9 +230,16 @@ function shortId(id: string): string {
   return id.length > 12 ? id.slice(0, 12) : id;
 }
 
-/** CLI entrypoint: wire stdio transport and keep the process alive. */
-export async function runStdio(): Promise<void> {
-  const { server } = createServer();
+/** CLI entrypoint: wire stdio transport and keep the process alive.
+ *
+ * Accepts a pre-built EngineState so the CLI can open + rehydrate a
+ * persistent store first, verify the audit chain, and only then hand the
+ * state to the MCP transport. Defaults to a fresh in-memory state when no
+ * argument is provided (preserves the original Phase-1 behavior for tests
+ * and any programmatic embedders).
+ */
+export async function runStdio(state?: EngineState): Promise<void> {
+  const { server } = createServer(state);
   const transport = new StdioServerTransport();
   await server.connect(transport);
 }

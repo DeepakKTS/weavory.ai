@@ -22,6 +22,7 @@ import {
 } from "../core/schema.js";
 import { AuditStore } from "../store/audit.js";
 import { generateKeyPair, signerIdOf, type KeyPair } from "../core/sign.js";
+import type { PersistentStore } from "../store/persist.js";
 
 /** Phase-G-visible op names — mirrored in runtime_writer.ts. */
 export type EngineOp =
@@ -104,6 +105,54 @@ export class EngineState {
   onOp: ((op: EngineOp) => void) | undefined = undefined;
 
   /**
+   * Optional persistence backend (Phase I.P0-3). When attached, every
+   * mutation that changes durable state (storeBelief, tombstone, appendAudit,
+   * setTrust) is mirrored to the store synchronously. When unset, state is
+   * pure in-memory and behavior matches Phase-1 exactly — every existing
+   * test and gate exercises that path.
+   *
+   * The store itself is resolved + attached by the CLI on startup based on
+   * WEAVORY_PERSIST/WEAVORY_STORE/WEAVORY_DATA_DIR. Attach via
+   * `attachPersist()` so a future refactor can reject double-attach or
+   * add invariant checks without touching call sites.
+   */
+  persist: PersistentStore | undefined = undefined;
+
+  attachPersist(store: PersistentStore): void {
+    this.persist = store;
+  }
+
+  /**
+   * Rehydrate in-memory state from persisted records. Intended to be called
+   * ONCE at startup, BEFORE `attachPersist`, so that replaying records does
+   * not redundantly append them to disk.
+   *
+   * Schema-level validation already happened on the load path. We rely on
+   * Map.set / AuditStore.restoreEntries here — no audit append, no persist
+   * write, no subscription fan-out (there are no subscribers at startup).
+   *
+   * Returns a ChainVerifyResult so the caller can decide what to do with a
+   * broken chain (the CLI exits non-zero; tests may tolerate).
+   */
+  restoreFromRecords(records: {
+    beliefs: StoredBelief[];
+    audit: AuditEntry[];
+    trust: { signer_id: string; topic: string; score: number }[];
+  }): ReturnType<AuditStore["verify"]> {
+    for (const b of records.beliefs) this.beliefs.set(b.id, b);
+    this.audit.restoreEntries(records.audit);
+    for (const t of records.trust) {
+      let vec = this.trust.get(t.signer_id);
+      if (!vec) {
+        vec = new Map();
+        this.trust.set(t.signer_id, vec);
+      }
+      vec.set(t.topic, t.score);
+    }
+    return this.audit.verify();
+  }
+
+  /**
    * Phase G.3 — Adversarial mode (`WEAVORY_ADVERSARIAL=1`). When true, the
    * default `min_trust` used by `recall` is raised from 0.3 → 0.6 so unknown
    * signers (default neutral trust = 0.5) are hostile-until-proven-otherwise.
@@ -149,12 +198,19 @@ export class EngineState {
       this.trust.set(signer_id, v);
     }
     v.set(topic, clamped);
+    this.persist?.writeTrust({
+      signer_id,
+      topic,
+      score: clamped,
+      recorded_at: new Date().toISOString(),
+    });
     return clamped;
   }
 
   storeBelief(b: StoredBelief): StoredBelief {
     const parsed = StoredBeliefSchema.parse(b);
     this.beliefs.set(parsed.id, parsed);
+    this.persist?.writeBelief(parsed);
     return parsed;
   }
 
@@ -171,6 +227,7 @@ export class EngineState {
       invalidated_by,
     };
     this.beliefs.set(id, updated);
+    this.persist?.writeBelief(updated);
     return updated;
   }
 
@@ -180,7 +237,9 @@ export class EngineState {
     operation: AuditEntry["operation"];
     recorded_at: string;
   }): AuditEntry {
-    return this.audit.append(entry);
+    const appended = this.audit.append(entry);
+    this.persist?.writeAudit(appended);
+    return appended;
   }
 
   /**

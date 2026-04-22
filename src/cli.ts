@@ -18,6 +18,13 @@
  */
 import { runStdio } from "./mcp/server.js";
 import { loadIncident, rehydrateState, runReplay, type ReplayOptions } from "./engine/replay.js";
+import { EngineState } from "./engine/state.js";
+import {
+  dataDirFromEnv,
+  kindFromEnv,
+  openPersistentStore,
+  persistEnabledFromEnv,
+} from "./store/persist.js";
 
 const HELP = `weavory — shared belief coordination substrate for AI agents
 
@@ -170,16 +177,81 @@ function runReplayCommand(argv: string[]): void {
   }
 }
 
+/**
+ * Build the EngineState the MCP server will operate on. When persistence is
+ * enabled via WEAVORY_PERSIST, we:
+ *   1. Open the configured store (JSONL by default, DuckDB opt-in).
+ *   2. Rehydrate beliefs + audit + trust from disk — bypassing the persist
+ *      hook so the replay doesn't re-write every record.
+ *   3. Verify the audit chain on the rehydrated state. If the chain is
+ *      broken, we exit non-zero with a clear message — a broken chain on
+ *      restart means the data dir has been tampered with or corrupted.
+ *   4. Attach the store for future writes only after verification passes.
+ *
+ * When WEAVORY_PERSIST is unset, we return an empty in-memory state —
+ * identical to the Phase-1 default, so every existing test and gate keeps
+ * working untouched.
+ */
+async function buildStateFromEnv(env: NodeJS.ProcessEnv = process.env): Promise<EngineState> {
+  const state = new EngineState();
+  if (!persistEnabledFromEnv(env)) return state;
+
+  const store = await openPersistentStore({
+    dataDir: dataDirFromEnv(env),
+    preferred: kindFromEnv(env),
+    logger: (m: string) => process.stderr.write(`[weavory] [persist] ${m}\n`),
+  });
+
+  process.stderr.write(
+    `[weavory] persistence enabled (kind=${store.kind} dir=${store.dataDir})\n`
+  );
+
+  const loaded = store.load();
+  if (loaded.diagnostics.warnings.length > 0) {
+    process.stderr.write(
+      `[weavory] persistence load produced ${loaded.diagnostics.warnings.length} warning(s); ` +
+        `beliefs_skipped=${loaded.diagnostics.beliefs_skipped} ` +
+        `audit_skipped=${loaded.diagnostics.audit_skipped} ` +
+        `trust_skipped=${loaded.diagnostics.trust_skipped}\n`
+    );
+  }
+
+  const verify = state.restoreFromRecords({
+    beliefs: loaded.beliefs,
+    audit: loaded.audit,
+    trust: loaded.trust,
+  });
+
+  if (!verify.ok) {
+    die(
+      `persistence audit chain is BROKEN on restart ` +
+        `(bad_index=${verify.bad_index ?? "?"} reason=${verify.reason ?? "unknown"}). ` +
+        `This is tamper detection at work — investigate before restarting.`,
+      3
+    );
+  }
+
+  process.stderr.write(
+    `[weavory] rehydrated beliefs=${loaded.beliefs.length} audit=${loaded.audit.length} ` +
+      `trust=${loaded.trust.length} verify=ok\n`
+  );
+
+  state.attachPersist(store);
+  return state;
+}
+
 const cmd = process.argv[2] ?? "start";
 
 try {
   if (cmd === "start") {
-    runStdio().catch((err) => {
-      process.stderr.write(
-        `[weavory] fatal: ${err instanceof Error ? err.message : String(err)}\n`
-      );
-      process.exit(1);
-    });
+    buildStateFromEnv()
+      .then((state) => runStdio(state))
+      .catch((err) => {
+        process.stderr.write(
+          `[weavory] fatal: ${err instanceof Error ? err.message : String(err)}\n`
+        );
+        process.exit(1);
+      });
   } else if (cmd === "replay") {
     runReplayCommand(process.argv.slice(3));
   } else if (cmd === "--help" || cmd === "-h" || cmd === "help") {
