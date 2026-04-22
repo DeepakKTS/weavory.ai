@@ -418,3 +418,117 @@ Empty-query recall and fan-out regressions would be caught by `tests/perf/throug
 - CLI gained one new subcommand: `weavory replay` (G.4). `weavory start` — the Phase-1 judge path — is untouched.
 - Environment flags: `WEAVORY_RUNTIME_WRITER` (on/off), `WEAVORY_ADVERSARIAL=1`.
 - Five file artefacts the dashboard can track live: `runtime.json`, `tests.json`, `coverage.json`, `git.json`, `gates.json` + per-run `incidents/*.json`.
+
+---
+
+## Phase I — Ship Readiness (hackathon-grade deployability)
+
+Brought the substrate from "working demo" to "something a Responsible-AI
+judge would believe you can run in production". Seven commits on
+`main`, all additive and feature-flagged where code was touched, so
+every existing test and gate still passes.
+
+### 2026-04-22 · P0-1 + P0-2 · `246b0a3`
+
+Doc / metadata honesty pass. `docs/README.md` previously claimed
+"LanceDB / DuckDB are embedded" — false. Replaced with a truthful note
+and a 6-row env-var reference. `package.json` `files[]` referenced a
+nonexistent `docs/QUICKSTART.md`; `scripts["collect:tests"]` and
+`scripts["collect:runtime"]` pointed at nonexistent files that made
+`pnpm collect:all` fail. Removed all three.
+
+### 2026-04-22 · P0-3.a · `6b6c277`
+
+`src/store/persist.ts` + `src/store/persist_jsonl.ts` + stub
+`src/store/persist_duckdb.ts` + 17 unit tests. PersistentStore interface
+with writeBelief / writeAudit / writeTrust / load / close, factory that
+resolves JSONL or DuckDB based on env. JSONL adapter is pure-Node,
+synchronously durable, corruption-tolerant (truncated final lines and
+schema-invalid lines are skipped with warnings; empty & meta-only files
+load silently).
+
+### 2026-04-22 · P0-3.b · `1ae6ef0`
+
+Hooked `this.persist?.writeX` into `storeBelief` / `tombstone` /
+`appendAudit` / `setTrust` (no-op when unset). Added
+`state.restoreFromRecords()` that bypasses the persist hook for
+startup rehydrate. CLI `buildStateFromEnv` reads
+`WEAVORY_PERSIST`/`WEAVORY_STORE`/`WEAVORY_DATA_DIR`, rehydrates,
+re-verifies audit chain, exits(3) if broken. Subprocess smoke test
+confirmed belief survives process restart.
+
+### 2026-04-22 · P0-3.5 · `16d20ae`
+
+`@duckdb/node-api@1.5.2-r.1` added as `optionalDependencies`. Full
+DuckDB adapter in `src/store/persist_duckdb.ts` with three-layer
+binary-matrix defense: (1) optional install, (2) dynamic `import()` in
+factory, (3) try/catch fallback to JSONL. 9 new unit tests gated on
+binary availability. Subprocess smoke test confirmed DuckDB mode
+round-trips a belief across restart via a real `weavory.duckdb` file.
+
+### 2026-04-22 · P0-4 · `2c4ed8e`
+
+`src/engine/policy.ts` — JSON-driven allow/deny for subject globs +
+predicate exacts + `max_object_bytes`. Wired into `ops.believe` BEFORE
+any crypto/store work. CLI loads from `WEAVORY_POLICY_FILE` at startup;
+malformed policy exits(4). 22 new unit tests covering all eval-order
+short-circuits, glob semantics, UTF-8 byte counting, loader edge cases
+(missing / bad-JSON / schema-violation / bad-version). MCP-level
+subprocess smoke test confirmed allow / predicate-deny / subject-allow /
+size-cap all behave as intended end-to-end.
+
+### 2026-04-22 · P0-5..P0-8 · `e1d048e`
+
+Five new docs + container infra. No code changes.
+- `docs/COMPLIANCE.md` — maps implemented features to SOC2 CC6.1/
+  CC7.2/CC8.1, ISO27001 A.12/A.18, GDPR Arts. 5/17, EU AI Act Art. 12,
+  NIST AI-RMF. Row-by-row with source-file pointers.
+- `docs/INSTALL.md` — three install paths (source, Claude Desktop,
+  Docker) with real commands and expected output.
+- `docs/DEPLOYMENT.md` — env-var table, persistence modes, data-dir
+  layout, restart recovery, single-writer invariant, honest scope list.
+- `docs/RUNBOOK.md` — operational scenarios: install failures, chain
+  broken on restart, policy denial debugging, incident export+replay,
+  key rotation, disk reclamation.
+- `docs/HACKATHON_PITCH.md` — 3-minute Responsible-AI script mapped to
+  the Infrastructure Agents track, with likely-question playbook.
+- `Dockerfile` (multi-stage, node:22-slim, non-root uid 10001, tini PID
+  1, healthcheck via runtime.json freshness).
+- `docker-compose.yml` (named volume, env defaults, stdin_open).
+- `.dockerignore` (excludes dev artifacts; ships only the four
+  operator-facing docs into the image).
+
+### 2026-04-22 · P0-9 · this commit
+
+`docs/SHIP_READINESS.md` — honest current-state snapshot of what ships,
+what's deliberately out of scope, what risks remain and how each is
+mitigated. Reproduction recipe for every claim.
+- `control/STATUS.json` updated to `phase_i_ship_readiness_complete`.
+- `control/RISKS.json` gained R-14..R-17 (DuckDB binary, SIGKILL
+  durability, disk-tamper, bad-policy-file) — all with mitigations
+  in place.
+
+### Phase I summary
+
+| Metric | Pre-Phase-I | Post-Phase-I |
+|--------|-------------|--------------|
+| Vitest tests | 127 | **178** |
+| Gate scripts green | 12 / 12 | **12 / 12** (unchanged — all still pass) |
+| Docs in `docs/` | 1 (README) | **7** (README + COMPLIANCE + INSTALL + DEPLOYMENT + RUNBOOK + HACKATHON_PITCH + SHIP_READINESS) |
+| Persistence backends | 0 (in-memory only) | **2** (JSONL default + DuckDB opt-in) |
+| Policy enforcement | none | JSON allow/deny + size-cap, env-gated |
+| Dockerfile | absent | multi-stage, non-root, healthcheck |
+| Env vars documented | 3 (partly, inline) | 6 (canonical table in DEPLOYMENT) |
+| Phase-1 judge path (Gate 7) | ✅ green | ✅ still green |
+
+### Public-API contract after Phase I
+
+- Five MCP tools — unchanged. Public API still locked per ADR-005.
+- Six environment variables documented: `WEAVORY_PERSIST`,
+  `WEAVORY_STORE`, `WEAVORY_DATA_DIR`, `WEAVORY_POLICY_FILE`,
+  `WEAVORY_ADVERSARIAL`, `WEAVORY_VERIFY_ON_WRITE`,
+  `WEAVORY_RUNTIME_WRITER`.
+- Three new CLI exit codes: 3 (audit chain broken on restart),
+  4 (policy load failed), 1 (generic fatal, unchanged).
+- Zero Phase-1 test or gate modified. Phase-1 semantics preserved by
+  making every new capability optional and default-off.

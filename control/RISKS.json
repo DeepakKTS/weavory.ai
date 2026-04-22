@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0.0",
-  "updated_at": "2026-04-21T00:00:00Z",
+  "updated_at": "2026-04-22T02:00:00Z",
   "risks": [
     {
       "id": "R-01",
@@ -100,6 +100,42 @@
       "mitigation": "Every sub-phase re-runs full Vitest suite and local gate scripts 1-5 before committing; CI re-runs fresh-machine workflow including Gate 7 on every push.",
       "owner": "G",
       "status": "open"
+    },
+    {
+      "id": "R-14",
+      "description": "DuckDB native binary fails on Gate 6 CI matrix arch (ABI mismatch, missing prebuilt)",
+      "severity": "medium",
+      "likelihood": "low",
+      "mitigation": "Three-layer defense in place: (1) @duckdb/node-api is optionalDependencies so pnpm install never fails on binary-resolve errors; (2) persist_duckdb.ts uses dynamic `await import()` inside the factory; (3) openPersistentStore catches any load failure and transparently falls back to JSONL with one stderr warning. Tested locally and encoded in unit tests (persist_duckdb.test.ts fallback assertion).",
+      "owner": "C",
+      "status": "mitigated"
+    },
+    {
+      "id": "R-15",
+      "description": "DuckDB fire-and-forget write queue loses last few ms of writes on SIGKILL",
+      "severity": "low",
+      "likelihood": "low",
+      "mitigation": "Documented in docs/DEPLOYMENT.md as the documented durability tradeoff for the DuckDB backend. Ordering is still strict via single-threaded write queue. JSONL backend (default) has no such risk — fs.appendFileSync is synchronously durable.",
+      "owner": "C",
+      "status": "accepted"
+    },
+    {
+      "id": "R-16",
+      "description": "Audit chain tampered directly on disk under WEAVORY_PERSIST=1",
+      "severity": "high",
+      "likelihood": "low",
+      "mitigation": "On every `weavory start`, the rehydrated audit chain is re-verified. Broken chain → exit code 3 with bad_index + reason. Documented response in docs/RUNBOOK.md section 'Chain-broken on restart'. This is a feature (tamper detection), not a bug.",
+      "owner": "C",
+      "status": "mitigated"
+    },
+    {
+      "id": "R-17",
+      "description": "Malformed WEAVORY_POLICY_FILE silently disables policy enforcement",
+      "severity": "medium",
+      "likelihood": "low",
+      "mitigation": "loadPolicy throws on any IO / JSON / schema error; CLI exits code 4 with operator-actionable message. Policy is never silently degraded to no-policy.",
+      "owner": "C",
+      "status": "mitigated"
     }
   ]
 }

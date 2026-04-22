@@ -516,6 +516,116 @@
       "depends_on": ["W-0151"],
       "files": ["control/MASTER_PLAN.md", "control/TEST_MATRIX.md", "control/WORKLOG.md", "control/STATUS.json"],
       "acceptance_criteria": "MASTER_PLAN reflects Phase-G complete, TEST_MATRIX totals bumped (Vitest 127/127, 6 arena gates + 7 Phase-1 gates), WORKLOG final Phase-G entry, STATUS current_phase=G.6_complete."
+    },
+    {
+      "id": "W-0200",
+      "title": "Phase I.P0-1+2: README persistence-claim fix + package.json broken refs",
+      "owner": "E",
+      "status": "completed",
+      "priority": "P0",
+      "phase": "I",
+      "depends_on": [],
+      "files": ["docs/README.md", "package.json"],
+      "acceptance_criteria": "README no longer claims 'LanceDB / DuckDB are embedded'; 6-row env-var table added. package.json files[] and scripts cleaned of broken refs. pnpm collect:all succeeds."
+    },
+    {
+      "id": "W-0201",
+      "title": "Phase I.P0-3.a: PersistentStore interface + JSONL adapter + unit tests",
+      "owner": "C",
+      "status": "completed",
+      "priority": "P0",
+      "phase": "I",
+      "depends_on": ["W-0200"],
+      "files": ["src/store/persist.ts", "src/store/persist_jsonl.ts", "src/store/persist_duckdb.ts", "tests/unit/store/persist_jsonl.test.ts"],
+      "acceptance_criteria": "17 unit tests cover happy path + corruption edge cases. PersistentStore interface defined with writeBelief/writeAudit/writeTrust/load/close."
+    },
+    {
+      "id": "W-0202",
+      "title": "Phase I.P0-3.b: wire persistence into EngineState + CLI startup",
+      "owner": "C",
+      "status": "completed",
+      "priority": "P0",
+      "phase": "I",
+      "depends_on": ["W-0201"],
+      "files": ["src/engine/state.ts", "src/mcp/server.ts", "src/cli.ts", "tests/integration/persistence.test.ts"],
+      "acceptance_criteria": "EngineState gains persist field + attachPersist + restoreFromRecords. CLI reads env flags, rehydrates, verifies chain, exits(3) on break. Subprocess smoke test round-trips a belief via JSONL."
+    },
+    {
+      "id": "W-0203",
+      "title": "Phase I.P0-3.5: DuckDB adapter with graceful binary fallback",
+      "owner": "C",
+      "status": "completed",
+      "priority": "P0",
+      "phase": "I",
+      "depends_on": ["W-0201"],
+      "files": ["src/store/persist_duckdb.ts", "tests/unit/store/persist_duckdb.test.ts", "package.json"],
+      "acceptance_criteria": "@duckdb/node-api added as optionalDependencies. Dynamic import + factory try/catch = 3-layer fallback. 9 capability-gated unit tests. Subprocess smoke test round-trips a belief via DuckDB."
+    },
+    {
+      "id": "W-0204",
+      "title": "Phase I.P0-4: pre-believe policy hook + tests",
+      "owner": "C",
+      "status": "completed",
+      "priority": "P0",
+      "phase": "I",
+      "depends_on": ["W-0202"],
+      "files": ["src/engine/policy.ts", "src/engine/state.ts", "src/engine/ops.ts", "src/cli.ts", "tests/unit/engine/policy.test.ts"],
+      "acceptance_criteria": "JSON policy file (subject/predicate allow+deny + max_object_bytes) evaluated before sign/store. WEAVORY_POLICY_FILE env flag. Malformed policy exits(4). 22 unit tests. Subprocess smoke tests all four denial paths."
+    },
+    {
+      "id": "W-0205",
+      "title": "Phase I.P0-5: docs/COMPLIANCE.md — SOC2/ISO/GDPR/EU-AI-Act/NIST mapping",
+      "owner": "E",
+      "status": "completed",
+      "priority": "P0",
+      "phase": "I",
+      "depends_on": [],
+      "files": ["docs/COMPLIANCE.md"],
+      "acceptance_criteria": "Row-by-row control mapping with source-file pointers. Explicit out-of-scope section. Reproducibility recipe per claim."
+    },
+    {
+      "id": "W-0206",
+      "title": "Phase I.P0-6: docs/INSTALL.md + docs/DEPLOYMENT.md + docs/RUNBOOK.md",
+      "owner": "E",
+      "status": "completed",
+      "priority": "P0",
+      "phase": "I",
+      "depends_on": ["W-0202", "W-0203", "W-0204"],
+      "files": ["docs/INSTALL.md", "docs/DEPLOYMENT.md", "docs/RUNBOOK.md"],
+      "acceptance_criteria": "Three install paths. Env var reference table. Operational scenarios: chain-broken restart, policy denial, backend switch, JSONL compaction, key rotation."
+    },
+    {
+      "id": "W-0207",
+      "title": "Phase I.P0-7: Dockerfile + docker-compose.yml + .dockerignore",
+      "owner": "F",
+      "status": "completed",
+      "priority": "P0",
+      "phase": "I",
+      "depends_on": ["W-0202"],
+      "files": ["Dockerfile", "docker-compose.yml", ".dockerignore"],
+      "acceptance_criteria": "Multi-stage build (node:22-slim). Non-root uid 10001. tini PID 1. Healthcheck via runtime.json freshness. Compose mounts named volume at /data. .dockerignore excludes dev artifacts."
+    },
+    {
+      "id": "W-0208",
+      "title": "Phase I.P0-8: docs/HACKATHON_PITCH.md",
+      "owner": "E",
+      "status": "completed",
+      "priority": "P0",
+      "phase": "I",
+      "depends_on": [],
+      "files": ["docs/HACKATHON_PITCH.md"],
+      "acceptance_criteria": "3-minute pitch script (problem / what it is / 3-beat demo / honest scope). Likely-question playbook. 40/40/20 scoring math."
+    },
+    {
+      "id": "W-0209",
+      "title": "Phase I.P0-9: docs/SHIP_READINESS.md + control file updates",
+      "owner": "E",
+      "status": "completed",
+      "priority": "P0",
+      "phase": "I",
+      "depends_on": ["W-0200", "W-0201", "W-0202", "W-0203", "W-0204", "W-0205", "W-0206", "W-0207", "W-0208"],
+      "files": ["docs/SHIP_READINESS.md", "control/STATUS.json", "control/RISKS.json", "control/WORKLOG.md", "control/TASKS.json"],
+      "acceptance_criteria": "Honest current-state snapshot. STATUS current_phase=phase_i_ship_readiness_complete. RISKS R-14..R-17 added with mitigations. WORKLOG Phase-I section. TASKS W-0200..W-0209 seeded as completed."
     }
   ]
 }
