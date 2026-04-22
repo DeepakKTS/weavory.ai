@@ -1,0 +1,1971 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>weavory.ai · overview &amp; steps</title>
+    <meta
+      name="description"
+      content="weavory.ai — shared belief coordination substrate for AI agent swarms. Phase G complete: what it is, how to test it, how the flow works, each arena explained."
+    />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap"
+    />
+
+    <style>
+      :root {
+        --bg: #0a1628;
+        --bg-2: #0d1a2e;
+        --bg-3: #0f223d;
+        --glass: rgba(255, 255, 255, 0.05);
+        --glass-2: rgba(255, 255, 255, 0.08);
+        --glass-strong: rgba(255, 255, 255, 0.11);
+        --border: rgba(255, 255, 255, 0.08);
+        --border-2: rgba(255, 255, 255, 0.14);
+        --border-strong: rgba(148, 163, 184, 0.22);
+
+        --blue: #3b82f6;
+        --blue-deep: #2563eb;
+        --blue-soft: rgba(59, 130, 246, 0.14);
+        --teal: #5eead4;
+        --teal-soft: rgba(94, 234, 212, 0.15);
+        --cyan: #22d3ee;
+        --cyan-soft: rgba(34, 211, 238, 0.15);
+        --ok: #34d399;
+        --ok-soft: rgba(52, 211, 153, 0.14);
+        --warn: #fbbf24;
+        --warn-soft: rgba(251, 191, 36, 0.14);
+        --bad: #f87171;
+
+        --text: #e6edf3;
+        --text-dim: #94a3b8;
+        --text-muted: #64748b;
+
+        --font-sans: "Geist", "Inter", ui-sans-serif, -apple-system,
+          BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica Neue, sans-serif;
+        --font-mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, Consolas,
+          monospace;
+
+        --r-card: 20px;
+        --r-chip: 12px;
+        --r-pill: 999px;
+
+        --shadow-card: 0 10px 40px rgba(0, 0, 0, 0.35),
+          inset 0 1px 0 rgba(255, 255, 255, 0.06);
+        --shadow-card-hi: 0 20px 60px rgba(0, 0, 0, 0.5),
+          inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        --shadow-glow-blue: 0 0 0 1px rgba(59, 130, 246, 0.15),
+          0 0 38px rgba(59, 130, 246, 0.12);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: var(--font-sans);
+        font-size: 15px;
+        line-height: 1.55;
+        letter-spacing: -0.005em;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+
+      /* Solid “ambient” lights (no gradients): three translucent round blobs
+         fixed to the viewport so the deep navy has depth without using any
+         gradient fills. */
+      body::before,
+      body::after {
+        content: "";
+        position: fixed;
+        pointer-events: none;
+        border-radius: 50%;
+        filter: blur(120px);
+        opacity: 0.18;
+        z-index: 0;
+      }
+      body::before {
+        width: 540px;
+        height: 540px;
+        background: var(--blue);
+        top: -180px;
+        left: -120px;
+      }
+      body::after {
+        width: 640px;
+        height: 640px;
+        background: var(--teal);
+        bottom: -260px;
+        right: -220px;
+      }
+      .ambient-cyan {
+        position: fixed;
+        width: 420px;
+        height: 420px;
+        border-radius: 50%;
+        background: var(--cyan);
+        opacity: 0.08;
+        filter: blur(120px);
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        pointer-events: none;
+        z-index: 0;
+      }
+
+      main,
+      header,
+      footer {
+        position: relative;
+        z-index: 1;
+      }
+
+      a {
+        color: var(--cyan);
+        text-decoration: none;
+        border-bottom: 1px solid rgba(34, 211, 238, 0.3);
+        transition: color 0.15s ease, border-color 0.15s ease;
+      }
+      a:hover {
+        color: var(--teal);
+        border-bottom-color: var(--teal);
+      }
+
+      code,
+      kbd,
+      samp,
+      pre {
+        font-family: var(--font-mono);
+        font-size: 13px;
+      }
+
+      h1,
+      h2,
+      h3,
+      h4 {
+        font-weight: 600;
+        letter-spacing: -0.02em;
+        color: var(--text);
+      }
+      h1 {
+        font-size: 48px;
+        line-height: 1.1;
+        margin: 0;
+      }
+      h2 {
+        font-size: 28px;
+        line-height: 1.2;
+        margin: 0 0 8px 0;
+      }
+      h3 {
+        font-size: 19px;
+        line-height: 1.35;
+        margin: 0 0 6px 0;
+      }
+      h4 {
+        font-size: 15px;
+        font-weight: 600;
+        margin: 0 0 4px 0;
+      }
+
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 24px;
+      }
+
+      /* ---------- sticky navigation ---------- */
+      nav.topnav {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background: rgba(10, 22, 40, 0.7);
+        backdrop-filter: blur(18px) saturate(1.2);
+        -webkit-backdrop-filter: blur(18px) saturate(1.2);
+        border-bottom: 1px solid var(--border);
+      }
+      nav.topnav .inner {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 24px;
+        max-width: 1200px;
+        margin: 0 auto;
+        gap: 18px;
+      }
+      nav.topnav .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+      }
+      nav.topnav .brand img {
+        width: 30px;
+        height: 22px;
+        object-fit: contain;
+        object-position: left;
+      }
+      nav.topnav ul {
+        list-style: none;
+        display: flex;
+        gap: 4px;
+        padding: 0;
+        margin: 0;
+        overflow-x: auto;
+      }
+      nav.topnav a {
+        color: var(--text-dim);
+        border: none;
+        padding: 8px 12px;
+        border-radius: var(--r-pill);
+        font-size: 13px;
+        font-weight: 500;
+        white-space: nowrap;
+      }
+      nav.topnav a:hover {
+        color: var(--text);
+        background: var(--glass);
+      }
+
+      /* ---------- hero ---------- */
+      header.hero {
+        padding: 64px 0 24px;
+      }
+      .hero-grid {
+        display: grid;
+        grid-template-columns: 1fr 180px;
+        gap: 40px;
+        align-items: center;
+      }
+      @media (max-width: 840px) {
+        .hero-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+      .hero-sub {
+        color: var(--text-dim);
+        font-size: 18px;
+        margin: 12px 0 20px 0;
+        max-width: 620px;
+      }
+      .hero-logo {
+        width: 100%;
+        height: auto;
+        max-height: 180px;
+        object-fit: contain;
+        object-position: center;
+        filter: drop-shadow(0 8px 24px rgba(34, 211, 238, 0.18));
+      }
+      .ribbon {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: var(--ok-soft);
+        color: var(--ok);
+        padding: 6px 14px;
+        border-radius: var(--r-pill);
+        font-size: 13px;
+        font-weight: 500;
+        border: 1px solid rgba(52, 211, 153, 0.3);
+      }
+      .ribbon .dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--ok);
+      }
+
+      /* ---------- glass cards ---------- */
+      .glass {
+        background: var(--glass);
+        border: 1px solid var(--border);
+        border-radius: var(--r-card);
+        backdrop-filter: blur(18px) saturate(1.2);
+        -webkit-backdrop-filter: blur(18px) saturate(1.2);
+        box-shadow: var(--shadow-card);
+      }
+
+      /* ---------- snapshot grid ---------- */
+      .stat-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+        gap: 14px;
+        margin: 36px 0 16px 0;
+      }
+      .stat {
+        padding: 16px 18px;
+      }
+      .stat .k {
+        color: var(--text-muted);
+        font-size: 11.5px;
+        font-family: var(--font-mono);
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+      .stat .v {
+        color: var(--text);
+        font-size: 18px;
+        font-weight: 600;
+        margin-top: 6px;
+        word-break: break-word;
+      }
+      .stat .v.mono {
+        font-family: var(--font-mono);
+        font-size: 14.5px;
+        letter-spacing: -0.01em;
+      }
+      .stat .sub {
+        color: var(--text-dim);
+        font-size: 12px;
+        margin-top: 4px;
+      }
+
+      /* ---------- sections ---------- */
+      section {
+        padding: 48px 0 24px;
+        scroll-margin-top: 80px;
+      }
+      section h2 {
+        display: flex;
+        align-items: baseline;
+        gap: 10px;
+      }
+      section h2 .idx {
+        color: var(--cyan);
+        font-family: var(--font-mono);
+        font-size: 14px;
+        font-weight: 500;
+        letter-spacing: 0.04em;
+        opacity: 0.8;
+      }
+      section .lede {
+        color: var(--text-dim);
+        font-size: 16px;
+        max-width: 780px;
+        margin: 0 0 24px 0;
+      }
+
+      /* ---------- tables ---------- */
+      .table-wrap {
+        border-radius: var(--r-card);
+        overflow: hidden;
+        border: 1px solid var(--border);
+        background: var(--glass);
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+      }
+      th,
+      td {
+        text-align: left;
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--border);
+        vertical-align: top;
+      }
+      th {
+        font-weight: 600;
+        color: var(--text-dim);
+        font-size: 11.5px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        background: rgba(255, 255, 255, 0.03);
+      }
+      tr:last-child td {
+        border-bottom: none;
+      }
+      tr:hover td {
+        background: rgba(255, 255, 255, 0.025);
+      }
+      td code,
+      th code {
+        background: rgba(34, 211, 238, 0.08);
+        border: 1px solid rgba(34, 211, 238, 0.18);
+        color: var(--cyan);
+        padding: 2px 7px;
+        border-radius: 6px;
+      }
+
+      /* ---------- steps (2a..2g) ---------- */
+      .steps {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
+      .step {
+        padding: 24px;
+        display: grid;
+        grid-template-columns: 44px 1fr;
+        gap: 20px;
+        align-items: start;
+      }
+      .step .num {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        background: var(--blue-soft);
+        border: 1px solid rgba(59, 130, 246, 0.25);
+        color: var(--blue);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: var(--font-mono);
+        font-weight: 600;
+        font-size: 14px;
+      }
+      .step h3 {
+        margin-bottom: 8px;
+      }
+      .step p {
+        color: var(--text-dim);
+        margin: 0 0 12px 0;
+      }
+      pre.shell {
+        background: #06101e;
+        border: 1px solid var(--border-2);
+        border-radius: 14px;
+        padding: 14px 16px;
+        overflow-x: auto;
+        color: #d2dae8;
+        margin: 0;
+      }
+      pre.shell .c {
+        color: var(--text-muted);
+      }
+      pre.shell .p {
+        color: var(--teal);
+      }
+      pre.shell .f {
+        color: var(--cyan);
+      }
+
+      /* ---------- tag / pill ---------- */
+      .pill {
+        display: inline-block;
+        padding: 2px 10px;
+        font-size: 11.5px;
+        font-family: var(--font-mono);
+        font-weight: 500;
+        border-radius: var(--r-pill);
+        letter-spacing: 0.02em;
+      }
+      .pill.ok {
+        background: var(--ok-soft);
+        color: var(--ok);
+        border: 1px solid rgba(52, 211, 153, 0.3);
+      }
+      .pill.blue {
+        background: var(--blue-soft);
+        color: var(--blue);
+        border: 1px solid rgba(59, 130, 246, 0.28);
+      }
+      .pill.cyan {
+        background: var(--cyan-soft);
+        color: var(--cyan);
+        border: 1px solid rgba(34, 211, 238, 0.3);
+      }
+      .pill.teal {
+        background: var(--teal-soft);
+        color: var(--teal);
+        border: 1px solid rgba(94, 234, 212, 0.3);
+      }
+      .pill.muted {
+        background: var(--glass);
+        color: var(--text-dim);
+        border: 1px solid var(--border);
+      }
+
+      /* ---------- diagrams ---------- */
+      .diagram {
+        padding: 28px;
+        overflow: auto;
+      }
+      .diagram-title {
+        font-size: 13px;
+        font-family: var(--font-mono);
+        color: var(--text-dim);
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        margin-bottom: 16px;
+      }
+      svg {
+        display: block;
+        max-width: 100%;
+      }
+      .diagram text {
+        font-family: var(--font-sans);
+        fill: var(--text);
+      }
+      .diagram text.mono {
+        font-family: var(--font-mono);
+      }
+
+      /* ---------- arena cards ---------- */
+      .arena-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 16px;
+      }
+      .arena-card {
+        padding: 22px;
+      }
+      .arena-card .head {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 12px;
+      }
+      .arena-card .icon {
+        width: 36px;
+        height: 36px;
+        display: grid;
+        place-items: center;
+        border-radius: 10px;
+        background: var(--glass-2);
+        border: 1px solid var(--border-2);
+      }
+      .arena-card h3 {
+        margin: 0;
+      }
+      .arena-card .proves {
+        color: var(--text);
+        font-weight: 500;
+        margin: 8px 0;
+      }
+      .arena-card .how {
+        color: var(--text-dim);
+        font-size: 14px;
+      }
+
+      /* ---------- gate scorecard ---------- */
+      .gate-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+        gap: 14px;
+      }
+      .gate-card {
+        padding: 18px 20px;
+      }
+      .gate-card .gate-no {
+        font-family: var(--font-mono);
+        color: var(--text-muted);
+        font-size: 11.5px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+      .gate-card h3 {
+        margin: 4px 0 6px 0;
+      }
+      .gate-card .meta {
+        color: var(--text-muted);
+        font-family: var(--font-mono);
+        font-size: 11.5px;
+        margin-top: 6px;
+      }
+      .gate-card .note {
+        color: var(--text-dim);
+        font-size: 13px;
+        margin-top: 10px;
+      }
+
+      /* ---------- list cards ---------- */
+      .list-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        gap: 14px;
+      }
+      .list-card {
+        padding: 18px 20px;
+      }
+      .list-card .k {
+        font-family: var(--font-mono);
+        color: var(--text-muted);
+        font-size: 11.5px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+      .list-card h3 {
+        margin: 4px 0 6px 0;
+      }
+      .list-card p {
+        color: var(--text-dim);
+        font-size: 13.5px;
+        margin: 0;
+      }
+
+      /* ---------- numbered actions (5 things) ---------- */
+      .actions {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 12px;
+      }
+      .action {
+        padding: 18px 22px;
+        display: grid;
+        grid-template-columns: 36px 1fr;
+        gap: 18px;
+        align-items: start;
+      }
+      .action .num {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: var(--glass-2);
+        border: 1px solid var(--border-2);
+        display: grid;
+        place-items: center;
+        color: var(--cyan);
+        font-family: var(--font-mono);
+        font-weight: 600;
+      }
+      .action h4 {
+        margin: 4px 0;
+      }
+      .action p,
+      .action code {
+        margin: 4px 0 0 0;
+      }
+      .action code.block {
+        display: inline-block;
+        background: #06101e;
+        border: 1px solid var(--border-2);
+        padding: 6px 10px;
+        border-radius: 8px;
+        color: var(--teal);
+        word-break: break-all;
+      }
+
+      /* ---------- footer ---------- */
+      footer {
+        padding: 48px 0 80px;
+        color: var(--text-muted);
+        font-size: 13px;
+      }
+      footer .row {
+        display: flex;
+        justify-content: space-between;
+        gap: 24px;
+        flex-wrap: wrap;
+        padding-top: 24px;
+        border-top: 1px solid var(--border);
+      }
+      footer a {
+        color: var(--text-dim);
+        border: none;
+      }
+      footer a:hover {
+        color: var(--cyan);
+      }
+
+      /* ---------- reveal on scroll polish ---------- */
+      .reveal {
+        opacity: 0;
+        transform: translateY(10px);
+        transition: opacity 0.5s ease, transform 0.5s ease;
+      }
+      .reveal.is-visible {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      /* ---------- divider ---------- */
+      .rule {
+        height: 1px;
+        background: var(--border-strong);
+        margin: 16px 0 0 0;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="ambient-cyan" aria-hidden="true"></div>
+
+    <!-- ===================== NAV ===================== -->
+    <nav class="topnav">
+      <div class="inner">
+        <div class="brand">
+          <img src="./assets/weavory-logo.png" alt="weavory.ai" />
+          <span>weavory.ai · overview</span>
+        </div>
+        <ul>
+          <li><a href="#what">What</a></li>
+          <li><a href="#test">Test</a></li>
+          <li><a href="#flow">Flow</a></li>
+          <li><a href="#tech">Tech</a></li>
+          <li><a href="#arenas">Arenas</a></li>
+          <li><a href="#mindmap">Mind map</a></li>
+          <li><a href="#timeline">Timeline</a></li>
+          <li><a href="#gates">Gates</a></li>
+          <li><a href="#next">Next</a></li>
+          <li><a href="#backlog">Backlog</a></li>
+        </ul>
+      </div>
+    </nav>
+
+    <!-- ===================== HERO ===================== -->
+    <header class="hero">
+      <div class="container">
+        <div class="hero-grid">
+          <div>
+            <div style="margin-bottom: 20px">
+              <span class="ribbon">
+                <span class="dot"></span>
+                Phase G complete · all 12 gates green
+              </span>
+            </div>
+            <h1>weavory.ai</h1>
+            <p class="hero-sub">
+              Shared belief coordination substrate for AI agent swarms.
+              MCP-native. Five tools. Every belief signed. Every arena
+              green. Built for NandaHack 2026 at MIT Media Lab.
+            </p>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap">
+              <span class="pill blue">MCP-native</span>
+              <span class="pill teal">Ed25519 signed</span>
+              <span class="pill cyan">BLAKE3 audit chain</span>
+              <span class="pill muted">bi-temporal recall</span>
+              <span class="pill muted">CRDT merge</span>
+            </div>
+          </div>
+          <img
+            src="./assets/weavory-logo.png"
+            alt="weavory.ai logo"
+            class="hero-logo"
+          />
+        </div>
+
+        <!-- ===== snapshot metrics ===== -->
+        <div class="stat-grid">
+          <div class="stat glass">
+            <div class="k">Repo</div>
+            <div class="v">
+              <a
+                href="https://github.com/DeepakKTS/weavory.ai"
+                target="_blank"
+                rel="noopener"
+                >DeepakKTS/weavory.ai</a
+              >
+            </div>
+            <div class="sub">Private · main branch</div>
+          </div>
+          <div class="stat glass">
+            <div class="k">Head</div>
+            <div class="v mono">43d23a7</div>
+            <div class="sub">Phase G + Throne · 2026-04-21</div>
+          </div>
+          <div class="stat glass">
+            <div class="k">Commits on main</div>
+            <div class="v">27</div>
+            <div class="sub">
+              All
+              <code
+                style="
+                  font-family: var(--font-mono);
+                  font-size: 12px;
+                  color: var(--text-dim);
+                "
+                >DeepakKTS · Northeastern</code
+              >
+            </div>
+          </div>
+          <div class="stat glass">
+            <div class="k">Vitest</div>
+            <div class="v">
+              120<span style="color: var(--text-muted); font-weight: 500"
+                >/120</span
+              >
+            </div>
+            <div class="sub">13 suites · strict TS</div>
+          </div>
+          <div class="stat glass">
+            <div class="k">Gates green</div>
+            <div class="v">12</div>
+            <div class="sub">
+              <span class="pill ok">Phase 1: 1–7</span>
+              <span class="pill blue">+ 5 arena</span>
+            </div>
+          </div>
+          <div class="stat glass">
+            <div class="k">MCP public API</div>
+            <div class="v">5 tools</div>
+            <div class="sub">Unchanged since Phase 1 · ADR-005 locked</div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="container">
+      <!-- ===================== §1 WHAT ===================== -->
+      <section id="what" class="reveal">
+        <h2><span class="idx">§1</span> What weavory is</h2>
+        <p class="lede">
+          weavory.ai is an <strong>MCP server</strong> that lets AI agents
+          share <em>signed beliefs</em> instead of calling each other
+          directly. Every agent writes a belief (a signed
+          <code
+            style="
+              font-family: var(--font-mono);
+              background: var(--glass);
+              border: 1px solid var(--border);
+              border-radius: 6px;
+              padding: 2px 6px;
+            "
+            >subject + predicate + object</code
+          >
+          statement) into a shared store. Any other agent can search those
+          beliefs, subscribe to patterns, attest to who they trust, or
+          tombstone stale ones. The server is the single source of
+          coordination truth; agents are just writers and readers.
+        </p>
+
+        <div class="diagram-title">Public API surface — five tools, locked</div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 26%">Tool</th>
+                <th>What it does</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>weavory.believe</code></td>
+                <td>Write a signed belief (Ed25519 + BLAKE3-chained audit).</td>
+              </tr>
+              <tr>
+                <td><code>weavory.recall</code></td>
+                <td>
+                  Search beliefs by query / signer / time / subscription queue.
+                  Supports <code>as_of</code>, merge strategies, conflict
+                  surfacing, reputation aggregation.
+                </td>
+              </tr>
+              <tr>
+                <td><code>weavory.subscribe</code></td>
+                <td>
+                  Open a pattern-based match queue; drain later via
+                  <code>recall(subscription_id)</code>.
+                </td>
+              </tr>
+              <tr>
+                <td><code>weavory.attest</code></td>
+                <td>Raise or lower trust for a (signer, topic) pair.</td>
+              </tr>
+              <tr>
+                <td><code>weavory.forget</code></td>
+                <td>
+                  Tombstone a belief (OR-set remove). Historical
+                  <code>as_of</code> queries still see it.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p
+          class="lede"
+          style="margin-top: 16px; font-size: 14px; color: var(--text-muted)"
+        >
+          Everything else — subscriptions, merge strategies, trust gates,
+          branches, escrow, reputation, incident replay — is
+          <strong>server-side behavior</strong> that rides on those five
+          primitives. Phase G added a lot of capability without adding a
+          single new tool.
+        </p>
+      </section>
+
+      <!-- ===================== §2 HOW TO TEST ===================== -->
+      <section id="test" class="reveal">
+        <h2><span class="idx">§2</span> How to test it — step by step</h2>
+        <p class="lede">
+          All commands run from
+          <code>/Users/deepakzedler/Documents/RAW/weavory/</code>. Each step is
+          short and verifiable.
+        </p>
+
+        <div class="steps">
+          <!-- 2a -->
+          <div class="step glass">
+            <div class="num">2a</div>
+            <div>
+              <h3>One-time setup</h3>
+              <p>Install dependencies. Should complete in ~2s after the first cached run.</p>
+              <pre class="shell"><span class="p">pnpm</span> install</pre>
+            </div>
+          </div>
+          <!-- 2b -->
+          <div class="step glass">
+            <div class="num">2b</div>
+            <div>
+              <h3>Unit + integration tests</h3>
+              <p>
+                Covers belief schema · Ed25519 signing · BLAKE3 audit chain ·
+                engine ops · MCP tool surface · runtime writer · merge
+                strategies · reputation · capability discovery · escrow walker ·
+                branch cloning · replay.
+              </p>
+              <pre class="shell"><span class="p">pnpm</span> test                  <span class="c"># Vitest — 120 tests, &lt;1s</span>
+<span class="p">pnpm</span> exec tsc --noEmit     <span class="c"># strict type-check, no output = no errors</span></pre>
+            </div>
+          </div>
+          <!-- 2c -->
+          <div class="step glass">
+            <div class="num">2c</div>
+            <div>
+              <h3>Run the 12 gates — each is a real, machine-verified check</h3>
+              <p style="margin-bottom: 6px">
+                Phase-1 gates (the judge-test infrastructure):
+              </p>
+              <pre class="shell"><span class="p">bash</span> scripts/verify/gate1.sh   <span class="c"># bootstrap + control files + dashboard</span>
+<span class="p">bash</span> scripts/verify/gate2.sh   <span class="c"># all five MCP tools wired</span>
+<span class="p">bash</span> scripts/verify/gate3.sh   <span class="c"># two agents exchange a belief + answer</span>
+<span class="p">bash</span> scripts/verify/gate4.sh   <span class="c"># adversarial trust gate filters bad claims</span>
+<span class="p">bash</span> scripts/verify/gate5.sh   <span class="c"># bi-temporal as_of recall</span>
+<span class="c"># Gate 6 = fresh-machine CI on GitHub Actions</span>
+<span class="c"># Gate 7 = README-only stock Claude agent (CI, needs ANTHROPIC_API_KEY secret)</span></pre>
+              <p style="margin: 14px 0 6px 0">Phase-G arena gates:</p>
+              <pre class="shell"><span class="p">bash</span> scripts/verify/gate_commons.sh    <span class="c"># queue drain + consensus merge</span>
+<span class="p">bash</span> scripts/verify/gate_wall.sh       <span class="c"># adversarial mode + tamper alarm + incident</span>
+<span class="p">bash</span> scripts/verify/gate_gauntlet.sh   <span class="c"># cloneState branches + replay CLI</span>
+<span class="p">bash</span> scripts/verify/gate_bazaar.sh     <span class="c"># reputation + capability ads + four-stage escrow</span>
+<span class="p">bash</span> scripts/verify/gate_throne.sh     <span class="c"># ALL four arenas at once on one state</span></pre>
+              <p style="margin-top: 10px">
+                Each script prints
+                <code
+                  style="
+                    font-family: var(--font-mono);
+                    color: var(--ok);
+                    background: var(--ok-soft);
+                    border: 1px solid rgba(52, 211, 153, 0.3);
+                    border-radius: 6px;
+                    padding: 1px 6px;
+                  "
+                  >Gate X: PASS</code
+                >
+                or exits non-zero with the failing line. No silent failures.
+              </p>
+            </div>
+          </div>
+          <!-- 2d -->
+          <div class="step glass">
+            <div class="num">2d</div>
+            <div>
+              <h3>Watch the live dashboard</h3>
+              <p>
+                12 panels, each labeled with the data file it reads.
+                <code>Not collected yet</code> wherever nothing's been
+                captured — no fabricated data.
+              </p>
+              <pre class="shell"><span class="p">pnpm</span> dashboard:serve
+<span class="c"># then open</span> http<span class="f">://localhost:4317/ops/weavory-dashboard.html</span></pre>
+            </div>
+          </div>
+          <!-- 2e -->
+          <div class="step glass">
+            <div class="num">2e</div>
+            <div>
+              <h3>Run a single end-to-end demo (see the flow live)</h3>
+              <p>
+                Exercises every arena in a single process and prints
+                section-by-section what it's doing. Final line confirms all
+                four arenas:
+              </p>
+              <pre class="shell"><span class="p">pnpm</span> exec tsx examples/throne_integration.ts
+
+<span class="c"># [throne] ✓ Gate Throne integration passed ·
+#   commons=3 wall=true gauntlet=true bazaar=true</span></pre>
+            </div>
+          </div>
+          <!-- 2f -->
+          <div class="step glass">
+            <div class="num">2f</div>
+            <div>
+              <h3>Try the forensic replay CLI</h3>
+              <p>
+                Reload any incident file — even a tampered chain — into a fresh
+                engine and query it.
+              </p>
+              <pre class="shell"><span class="c"># Pick any incident file produced by the demos:</span>
+<span class="p">ls</span> ops/data/incidents/
+
+<span class="c"># Rehydrate + query:</span>
+<span class="p">pnpm</span> exec tsx src/cli.ts replay \
+  --from ops/data/incidents/&lt;pick-one&gt;.json \
+  --query <span class="f">"BTC"</span> --top-k 5</pre>
+            </div>
+          </div>
+          <!-- 2g -->
+          <div class="step glass">
+            <div class="num">2g</div>
+            <div>
+              <h3>CI (hands-free confirmation)</h3>
+              <p>
+                Every push to <code>main</code> runs:
+                <code>preflight</code> → <code>gates-ubuntu</code> +
+                <code>gates-macos</code> (Gates 1-5) →
+                <code>gate7-judge-simulation</code> (real Claude Opus 4.7
+                agent uses only <code>docs/README.md</code>). All four jobs
+                must be green.
+              </p>
+              <p style="margin-top: 10px">
+                Latest:
+                <a
+                  href="https://github.com/DeepakKTS/weavory.ai/actions/runs/24751712621"
+                  target="_blank"
+                  rel="noopener"
+                  >run #24751712621</a
+                >
+                — all
+                <span class="pill ok">✓</span>.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================== §3 FLOW ===================== -->
+      <section id="flow" class="reveal">
+        <h2><span class="idx">§3</span> Flow inside the software</h2>
+        <p class="lede">
+          Three diagrams — the layered architecture, then the
+          <code>believe()</code> and <code>recall()</code> request
+          lifecycles.
+        </p>
+
+        <!-- ARCHITECTURE -->
+        <div class="glass diagram" style="margin-bottom: 20px">
+          <div class="diagram-title">Layered architecture</div>
+          <svg viewBox="0 0 1120 460" width="100%" aria-label="weavory architecture">
+            <!-- Agent -->
+            <rect x="260" y="10" width="600" height="62" rx="14" fill="rgba(34,211,238,0.08)" stroke="rgba(34,211,238,0.32)"/>
+            <text x="560" y="36" text-anchor="middle" fill="#22d3ee" font-weight="600" font-size="15">AI Agent  ·  Claude · OpenClaw · LangGraph · anything MCP</text>
+            <text x="560" y="56" text-anchor="middle" fill="#94a3b8" font-size="12" class="mono">writes signed beliefs · reads with filters · subscribes to patterns</text>
+            <!-- arrow -->
+            <line x1="560" y1="72" x2="560" y2="104" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arr)"/>
+            <text x="576" y="92" fill="#94a3b8" font-size="12" class="mono">MCP call</text>
+
+            <!-- MCP server -->
+            <rect x="180" y="104" width="760" height="74" rx="14" fill="rgba(59,130,246,0.10)" stroke="rgba(59,130,246,0.38)"/>
+            <text x="560" y="132" text-anchor="middle" fill="#3b82f6" font-weight="600" font-size="15">src/mcp/server.ts   ·   @modelcontextprotocol/sdk + Zod   ·   5 tools</text>
+            <text x="560" y="154" text-anchor="middle" fill="#94a3b8" font-size="12" class="mono">validate args · route to engine op · wrap response · stream back</text>
+            <line x1="560" y1="178" x2="560" y2="208" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arr)"/>
+
+            <!-- Engine ops -->
+            <rect x="180" y="208" width="760" height="80" rx="14" fill="rgba(94,234,212,0.09)" stroke="rgba(94,234,212,0.38)"/>
+            <text x="560" y="236" text-anchor="middle" fill="#5eead4" font-weight="600" font-size="15">src/engine/ops.ts   ·   believe · recall · subscribe · attest · forget</text>
+            <text x="560" y="258" text-anchor="middle" fill="#94a3b8" font-size="12" class="mono">sign · hash · store · append audit · enqueue matches · fire onOp</text>
+            <line x1="560" y1="288" x2="560" y2="318" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arr)"/>
+
+            <!-- Sidecar: RuntimeWriter -->
+            <rect x="940" y="208" width="160" height="80" rx="14" fill="rgba(251,191,36,0.08)" stroke="rgba(251,191,36,0.3)"/>
+            <text x="1020" y="236" text-anchor="middle" fill="#fbbf24" font-weight="600" font-size="13">RuntimeWriter</text>
+            <text x="1020" y="256" text-anchor="middle" fill="#94a3b8" font-size="11" class="mono">debounced snapshot</text>
+            <text x="1020" y="272" text-anchor="middle" fill="#94a3b8" font-size="11" class="mono">ops/data/runtime.json</text>
+            <path d="M 940 248 L 900 248" stroke="#94a3b8" stroke-dasharray="3 4" stroke-width="1.5" marker-end="url(#arr-dim)"/>
+
+            <!-- State / stores -->
+            <rect x="180" y="318" width="760" height="130" rx="14" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.12)"/>
+            <text x="560" y="346" text-anchor="middle" fill="#e6edf3" font-weight="600" font-size="15">src/engine/state.ts  (single EngineState per process)</text>
+            <!-- sub-blocks -->
+            <g font-family="Geist Mono, monospace" font-size="11" text-anchor="middle">
+              <rect x="198" y="362" width="142" height="72" rx="10" fill="rgba(59,130,246,0.08)" stroke="rgba(59,130,246,0.3)"/>
+              <text x="269" y="384" fill="#3b82f6" font-weight="600" font-size="12">beliefs</text>
+              <text x="269" y="400" fill="#94a3b8">Map&lt;id, StoredBelief&gt;</text>
+              <text x="269" y="414" fill="#94a3b8">content-addressed</text>
+              <text x="269" y="426" fill="#94a3b8">Ed25519-signed</text>
+
+              <rect x="350" y="362" width="142" height="72" rx="10" fill="rgba(94,234,212,0.08)" stroke="rgba(94,234,212,0.3)"/>
+              <text x="421" y="384" fill="#5eead4" font-weight="600" font-size="12">audit</text>
+              <text x="421" y="400" fill="#94a3b8">AuditStore</text>
+              <text x="421" y="414" fill="#94a3b8">BLAKE3 hash chain</text>
+              <text x="421" y="426" fill="#94a3b8">tamper-evident</text>
+
+              <rect x="502" y="362" width="142" height="72" rx="10" fill="rgba(34,211,238,0.08)" stroke="rgba(34,211,238,0.3)"/>
+              <text x="573" y="384" fill="#22d3ee" font-weight="600" font-size="12">trust</text>
+              <text x="573" y="400" fill="#94a3b8">signer × topic</text>
+              <text x="573" y="414" fill="#94a3b8">quarantine gate</text>
+              <text x="573" y="426" fill="#94a3b8">[-1, 1]</text>
+
+              <rect x="654" y="362" width="142" height="72" rx="10" fill="rgba(59,130,246,0.08)" stroke="rgba(59,130,246,0.3)"/>
+              <text x="725" y="384" fill="#3b82f6" font-weight="600" font-size="12">subscriptions</text>
+              <text x="725" y="400" fill="#94a3b8">pattern + filters</text>
+              <text x="725" y="414" fill="#94a3b8">bounded queue</text>
+              <text x="725" y="426" fill="#94a3b8">drain via recall</text>
+
+              <rect x="806" y="362" width="116" height="72" rx="10" fill="rgba(94,234,212,0.08)" stroke="rgba(94,234,212,0.3)"/>
+              <text x="864" y="384" fill="#5eead4" font-weight="600" font-size="12">keyring</text>
+              <text x="864" y="400" fill="#94a3b8">HKDF-SHA256</text>
+              <text x="864" y="414" fill="#94a3b8">Ed25519 keys</text>
+              <text x="864" y="426" fill="#94a3b8">seed → id</text>
+            </g>
+
+            <!-- arrow def -->
+            <defs>
+              <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="#94a3b8"/>
+              </marker>
+              <marker id="arr-dim" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="#64748b"/>
+              </marker>
+            </defs>
+          </svg>
+        </div>
+
+        <!-- BELIEVE FLOW -->
+        <div class="glass diagram" style="margin-bottom: 20px">
+          <div class="diagram-title">believe() lifecycle — 8 steps</div>
+          <svg viewBox="0 0 1180 280" width="100%" aria-label="believe lifecycle">
+            <defs>
+              <marker id="arr2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="#94a3b8"/>
+              </marker>
+            </defs>
+            <!-- row of circles -->
+            <g>
+              <!-- 1 -->
+              <circle cx="68" cy="80" r="38" fill="rgba(59,130,246,0.1)" stroke="rgba(59,130,246,0.42)" stroke-width="1.5"/>
+              <text x="68" y="72" text-anchor="middle" fill="#3b82f6" font-size="14" font-weight="600">1</text>
+              <text x="68" y="90" text-anchor="middle" fill="#3b82f6" font-size="10" class="mono">derive key</text>
+              <text x="68" y="152" text-anchor="middle" fill="#e6edf3" font-size="12" font-weight="600">HKDF seed</text>
+              <text x="68" y="168" text-anchor="middle" fill="#94a3b8" font-size="11">signer_seed →</text>
+              <text x="68" y="182" text-anchor="middle" fill="#94a3b8" font-size="11">Ed25519 keypair</text>
+
+              <!-- arrow -->
+              <line x1="110" y1="80" x2="154" y2="80" stroke="#94a3b8" stroke-width="1.3" marker-end="url(#arr2)"/>
+
+              <!-- 2 -->
+              <circle cx="196" cy="80" r="38" fill="rgba(59,130,246,0.1)" stroke="rgba(59,130,246,0.42)" stroke-width="1.5"/>
+              <text x="196" y="72" text-anchor="middle" fill="#3b82f6" font-size="14" font-weight="600">2</text>
+              <text x="196" y="90" text-anchor="middle" fill="#3b82f6" font-size="10" class="mono">payload</text>
+              <text x="196" y="152" text-anchor="middle" fill="#e6edf3" font-size="12" font-weight="600">Build belief</text>
+              <text x="196" y="168" text-anchor="middle" fill="#94a3b8" font-size="11">subject / predicate</text>
+              <text x="196" y="182" text-anchor="middle" fill="#94a3b8" font-size="11">object / recorded_at</text>
+
+              <line x1="238" y1="80" x2="282" y2="80" stroke="#94a3b8" stroke-width="1.3" marker-end="url(#arr2)"/>
+
+              <!-- 3 -->
+              <circle cx="324" cy="80" r="38" fill="rgba(94,234,212,0.1)" stroke="rgba(94,234,212,0.42)" stroke-width="1.5"/>
+              <text x="324" y="72" text-anchor="middle" fill="#5eead4" font-size="14" font-weight="600">3</text>
+              <text x="324" y="90" text-anchor="middle" fill="#5eead4" font-size="10" class="mono">hash</text>
+              <text x="324" y="152" text-anchor="middle" fill="#e6edf3" font-size="12" font-weight="600">id = BLAKE3</text>
+              <text x="324" y="168" text-anchor="middle" fill="#94a3b8" font-size="11">canonical JSON</text>
+              <text x="324" y="182" text-anchor="middle" fill="#94a3b8" font-size="11">→ content-address</text>
+
+              <line x1="366" y1="80" x2="410" y2="80" stroke="#94a3b8" stroke-width="1.3" marker-end="url(#arr2)"/>
+
+              <!-- 4 -->
+              <circle cx="452" cy="80" r="38" fill="rgba(94,234,212,0.1)" stroke="rgba(94,234,212,0.42)" stroke-width="1.5"/>
+              <text x="452" y="72" text-anchor="middle" fill="#5eead4" font-size="14" font-weight="600">4</text>
+              <text x="452" y="90" text-anchor="middle" fill="#5eead4" font-size="10" class="mono">sign</text>
+              <text x="452" y="152" text-anchor="middle" fill="#e6edf3" font-size="12" font-weight="600">Ed25519 sig</text>
+              <text x="452" y="168" text-anchor="middle" fill="#94a3b8" font-size="11">over canonical</text>
+              <text x="452" y="182" text-anchor="middle" fill="#94a3b8" font-size="11">bytes</text>
+
+              <line x1="494" y1="80" x2="538" y2="80" stroke="#94a3b8" stroke-width="1.3" marker-end="url(#arr2)"/>
+
+              <!-- 5 -->
+              <circle cx="580" cy="80" r="38" fill="rgba(34,211,238,0.1)" stroke="rgba(34,211,238,0.42)" stroke-width="1.5"/>
+              <text x="580" y="72" text-anchor="middle" fill="#22d3ee" font-size="14" font-weight="600">5</text>
+              <text x="580" y="90" text-anchor="middle" fill="#22d3ee" font-size="10" class="mono">store</text>
+              <text x="580" y="152" text-anchor="middle" fill="#e6edf3" font-size="12" font-weight="600">beliefs.set(id)</text>
+              <text x="580" y="168" text-anchor="middle" fill="#94a3b8" font-size="11">ingested_at set</text>
+              <text x="580" y="182" text-anchor="middle" fill="#94a3b8" font-size="11">quarantined: false</text>
+
+              <line x1="622" y1="80" x2="666" y2="80" stroke="#94a3b8" stroke-width="1.3" marker-end="url(#arr2)"/>
+
+              <!-- 6 -->
+              <circle cx="708" cy="80" r="38" fill="rgba(34,211,238,0.1)" stroke="rgba(34,211,238,0.42)" stroke-width="1.5"/>
+              <text x="708" y="72" text-anchor="middle" fill="#22d3ee" font-size="14" font-weight="600">6</text>
+              <text x="708" y="90" text-anchor="middle" fill="#22d3ee" font-size="10" class="mono">chain</text>
+              <text x="708" y="152" text-anchor="middle" fill="#e6edf3" font-size="12" font-weight="600">audit.append()</text>
+              <text x="708" y="168" text-anchor="middle" fill="#94a3b8" font-size="11">prev_hash link</text>
+              <text x="708" y="182" text-anchor="middle" fill="#94a3b8" font-size="11">tamper-evident</text>
+
+              <line x1="750" y1="80" x2="794" y2="80" stroke="#94a3b8" stroke-width="1.3" marker-end="url(#arr2)"/>
+
+              <!-- 7 -->
+              <circle cx="836" cy="80" r="38" fill="rgba(251,191,36,0.1)" stroke="rgba(251,191,36,0.42)" stroke-width="1.5"/>
+              <text x="836" y="72" text-anchor="middle" fill="#fbbf24" font-size="14" font-weight="600">7</text>
+              <text x="836" y="90" text-anchor="middle" fill="#fbbf24" font-size="10" class="mono">fan-out</text>
+              <text x="836" y="152" text-anchor="middle" fill="#e6edf3" font-size="12" font-weight="600">enqueueMatches</text>
+              <text x="836" y="168" text-anchor="middle" fill="#94a3b8" font-size="11">subscriptions get</text>
+              <text x="836" y="182" text-anchor="middle" fill="#94a3b8" font-size="11">matching beliefs</text>
+
+              <line x1="878" y1="80" x2="922" y2="80" stroke="#94a3b8" stroke-width="1.3" marker-end="url(#arr2)"/>
+
+              <!-- 8 -->
+              <circle cx="964" cy="80" r="38" fill="rgba(251,191,36,0.1)" stroke="rgba(251,191,36,0.42)" stroke-width="1.5"/>
+              <text x="964" y="72" text-anchor="middle" fill="#fbbf24" font-size="14" font-weight="600">8</text>
+              <text x="964" y="90" text-anchor="middle" fill="#fbbf24" font-size="10" class="mono">snapshot</text>
+              <text x="964" y="152" text-anchor="middle" fill="#e6edf3" font-size="12" font-weight="600">onOp("believe")</text>
+              <text x="964" y="168" text-anchor="middle" fill="#94a3b8" font-size="11">RuntimeWriter →</text>
+              <text x="964" y="182" text-anchor="middle" fill="#94a3b8" font-size="11">runtime.json</text>
+
+              <!-- done -->
+              <line x1="1002" y1="80" x2="1056" y2="80" stroke="#34d399" stroke-width="1.5" marker-end="url(#arr2)"/>
+              <circle cx="1098" cy="80" r="22" fill="rgba(52,211,153,0.14)" stroke="rgba(52,211,153,0.5)" stroke-width="1.5"/>
+              <text x="1098" y="86" text-anchor="middle" fill="#34d399" font-weight="700" font-size="14">✓</text>
+              <text x="1098" y="152" text-anchor="middle" fill="#e6edf3" font-size="12" font-weight="600">Response</text>
+              <text x="1098" y="168" text-anchor="middle" fill="#94a3b8" font-size="11">{ id, signer_id,</text>
+              <text x="1098" y="182" text-anchor="middle" fill="#94a3b8" font-size="11">entry_hash, … }</text>
+            </g>
+
+            <!-- bottom caption -->
+            <text x="590" y="240" text-anchor="middle" fill="#64748b" font-size="12" class="mono">Every step is synchronous · 8 stays under 500 µs on a laptop · runtime.json debounced at 50 ms</text>
+          </svg>
+        </div>
+
+        <!-- RECALL FLOW -->
+        <div class="glass diagram">
+          <div class="diagram-title">recall() lifecycle — the pipeline</div>
+          <svg viewBox="0 0 1180 260" width="100%" aria-label="recall lifecycle">
+            <defs>
+              <marker id="arr3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="#94a3b8"/>
+              </marker>
+            </defs>
+            <!-- input -->
+            <rect x="10" y="90" width="110" height="56" rx="12" fill="rgba(34,211,238,0.08)" stroke="rgba(34,211,238,0.35)"/>
+            <text x="65" y="116" text-anchor="middle" fill="#22d3ee" font-weight="600" font-size="13">RecallInput</text>
+            <text x="65" y="132" text-anchor="middle" fill="#94a3b8" font-size="11" class="mono">query, filters…</text>
+            <line x1="120" y1="118" x2="156" y2="118" stroke="#94a3b8" stroke-width="1.3" marker-end="url(#arr3)"/>
+
+            <!-- 1 as_of -->
+            <rect x="156" y="90" width="120" height="56" rx="12" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.12)"/>
+            <text x="216" y="112" text-anchor="middle" fill="#e6edf3" font-weight="600" font-size="12">as_of filter</text>
+            <text x="216" y="130" text-anchor="middle" fill="#94a3b8" font-size="11" class="mono">bi-temporal</text>
+            <line x1="276" y1="118" x2="312" y2="118" stroke="#94a3b8" stroke-width="1.3" marker-end="url(#arr3)"/>
+
+            <!-- 2 subject/predicate -->
+            <rect x="312" y="90" width="120" height="56" rx="12" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.12)"/>
+            <text x="372" y="112" text-anchor="middle" fill="#e6edf3" font-weight="600" font-size="12">subject / pred</text>
+            <text x="372" y="130" text-anchor="middle" fill="#94a3b8" font-size="11" class="mono">filters</text>
+            <line x1="432" y1="118" x2="468" y2="118" stroke="#94a3b8" stroke-width="1.3" marker-end="url(#arr3)"/>
+
+            <!-- 3 trust gate -->
+            <rect x="468" y="90" width="120" height="56" rx="12" fill="rgba(59,130,246,0.08)" stroke="rgba(59,130,246,0.35)"/>
+            <text x="528" y="112" text-anchor="middle" fill="#3b82f6" font-weight="600" font-size="12">trust gate</text>
+            <text x="528" y="130" text-anchor="middle" fill="#94a3b8" font-size="11" class="mono">min_trust</text>
+            <line x1="588" y1="118" x2="624" y2="118" stroke="#94a3b8" stroke-width="1.3" marker-end="url(#arr3)"/>
+
+            <!-- 4 subscription drain (optional) -->
+            <rect x="624" y="90" width="130" height="56" rx="12" fill="rgba(94,234,212,0.08)" stroke="rgba(94,234,212,0.35)" stroke-dasharray="4 4"/>
+            <text x="689" y="112" text-anchor="middle" fill="#5eead4" font-weight="600" font-size="12">queue drain</text>
+            <text x="689" y="130" text-anchor="middle" fill="#94a3b8" font-size="11" class="mono">if subscription_id</text>
+            <line x1="754" y1="118" x2="790" y2="118" stroke="#94a3b8" stroke-width="1.3" marker-end="url(#arr3)"/>
+
+            <!-- 5 merge -->
+            <rect x="790" y="90" width="130" height="56" rx="12" fill="rgba(94,234,212,0.08)" stroke="rgba(94,234,212,0.35)" stroke-dasharray="4 4"/>
+            <text x="855" y="112" text-anchor="middle" fill="#5eead4" font-weight="600" font-size="12">merge strategy</text>
+            <text x="855" y="130" text-anchor="middle" fill="#94a3b8" font-size="11" class="mono">lww · consensus</text>
+            <line x1="920" y1="118" x2="956" y2="118" stroke="#94a3b8" stroke-width="1.3" marker-end="url(#arr3)"/>
+
+            <!-- 6 reputation -->
+            <rect x="956" y="90" width="130" height="56" rx="12" fill="rgba(251,191,36,0.08)" stroke="rgba(251,191,36,0.35)" stroke-dasharray="4 4"/>
+            <text x="1021" y="112" text-anchor="middle" fill="#fbbf24" font-weight="600" font-size="12">reputation</text>
+            <text x="1021" y="130" text-anchor="middle" fill="#94a3b8" font-size="11" class="mono">if reputation_of</text>
+
+            <!-- output arrow -->
+            <line x1="1086" y1="118" x2="1118" y2="118" stroke="#34d399" stroke-width="1.5" marker-end="url(#arr3)"/>
+
+            <!-- caption -->
+            <text x="560" y="200" text-anchor="middle" fill="#64748b" font-size="12" class="mono">Dashed stages = opt-in · solid stages = always · beliefs ranked by confidence × trust</text>
+            <text x="560" y="224" text-anchor="middle" fill="#64748b" font-size="12" class="mono">Output = { beliefs, total_matched, conflicts?, reputation?, delivered_count? }</text>
+          </svg>
+        </div>
+      </section>
+
+      <!-- ===================== §4 TECH ===================== -->
+      <section id="tech" class="reveal">
+        <h2><span class="idx">§4</span> Key tech you're running on</h2>
+        <p class="lede">
+          Everything in the repo is boring-on-purpose: no daemons, no native
+          bindings, no bespoke binary formats. Exactly one
+          <code>pnpm install</code> from green-field to Gate 7.
+        </p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 22%">Layer</th>
+                <th style="width: 40%">Tech</th>
+                <th>Why</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>MCP server</td>
+                <td><code>@modelcontextprotocol/sdk</code> + Zod</td>
+                <td>Official protocol, schema-first.</td>
+              </tr>
+              <tr>
+                <td>Storage (today)</td>
+                <td>In-memory <code>Map</code>s + array audit chain</td>
+                <td>
+                  Gate-1 friendly, zero-daemon. LanceDB + DuckDB are
+                  planned backlog (B-0001/B-0002).
+                </td>
+              </tr>
+              <tr>
+                <td>Crypto</td>
+                <td><code>@noble/ed25519</code> + BLAKE3</td>
+                <td>Audited, pure JS, no native deps.</td>
+              </tr>
+              <tr>
+                <td>Signing</td>
+                <td>Ed25519 over canonical JSON</td>
+                <td>NANDA AgentFacts–compatible.</td>
+              </tr>
+              <tr>
+                <td>Audit</td>
+                <td>BLAKE3 hash chain (tamper-evident)</td>
+                <td>Any mutation breaks every subsequent hash.</td>
+              </tr>
+              <tr>
+                <td>Merge</td>
+                <td>OR-set tombstones + pluggable LWW / consensus</td>
+                <td>Deterministic; LLM-judge opt-in planned post-G.</td>
+              </tr>
+              <tr>
+                <td>Runtime</td>
+                <td>Node 20+ (22 LTS in CI), TypeScript strict</td>
+                <td>No <code>any</code> in <code>src/</code>.</td>
+              </tr>
+              <tr>
+                <td>Dashboard</td>
+                <td>Single HTML + tiny static Node server</td>
+                <td>Reads 7 JSON sources truthfully.</td>
+              </tr>
+              <tr>
+                <td>CI</td>
+                <td>GitHub Actions · Ubuntu + macOS · Node 22</td>
+                <td>Fresh-machine every push.</td>
+              </tr>
+              <tr>
+                <td>Gate-7 harness</td>
+                <td>
+                  Anthropic SDK · Claude Opus 4.7 · adaptive thinking +
+                  <code>effort: xhigh</code> · README prompt-cached ·
+                  dot/underscore tool-name bridge
+                </td>
+                <td>Real stock-agent simulation on every push.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ===================== §5 ARENAS ===================== -->
+      <section id="arenas" class="reveal">
+        <h2><span class="idx">§5</span> Each arena in two sentences</h2>
+        <p class="lede">
+          Phase G added five arena surfaces without adding a single MCP tool.
+          Everything below rides on the five primitives.
+        </p>
+        <div class="arena-grid">
+          <!-- commons -->
+          <div class="arena-card glass">
+            <div class="head">
+              <div class="icon">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none"><circle cx="7" cy="12" r="3" fill="#5eead4"/><circle cx="17" cy="12" r="3" fill="#5eead4" opacity="0.65"/><path d="M10 12h4" stroke="#5eead4" stroke-width="1.6"/></svg>
+              </div>
+              <h3>Commons</h3>
+              <span class="pill teal" style="margin-left:auto">Gate ✓</span>
+            </div>
+            <div class="proves">
+              Many agents can coordinate without direct RPCs.
+            </div>
+            <div class="how">
+              They publish beliefs; a subscriber's queue captures matches;
+              consensus merge picks the trust-weighted winner when signers
+              disagree.
+            </div>
+          </div>
+          <!-- wall -->
+          <div class="arena-card glass">
+            <div class="head">
+              <div class="icon">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none"><rect x="4" y="6" width="6" height="12" rx="1" fill="#3b82f6"/><rect x="14" y="6" width="6" height="12" rx="1" fill="#3b82f6" opacity="0.65"/><rect x="8" y="10" width="8" height="4" fill="#3b82f6"/></svg>
+              </div>
+              <h3>Wall</h3>
+              <span class="pill blue" style="margin-left:auto">Gate ✓</span>
+            </div>
+            <div class="proves">
+              Adversaries can't corrupt the shared truth.
+            </div>
+            <div class="how">
+              Adversarial mode raises the trust floor; low-trust signers are
+              filtered from default recall; any audit-chain mutation fires an
+              alarm into <code>runtime.json</code> and the incident is
+              exportable.
+            </div>
+          </div>
+          <!-- gauntlet -->
+          <div class="arena-card glass">
+            <div class="head">
+              <div class="icon">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none"><path d="M4 12h6M14 12h6" stroke="#22d3ee" stroke-width="1.6"/><circle cx="12" cy="12" r="2" fill="#22d3ee"/><path d="M12 4v4M12 16v4" stroke="#22d3ee" stroke-width="1.6"/></svg>
+              </div>
+              <h3>Gauntlet</h3>
+              <span class="pill cyan" style="margin-left:auto">Gate ✓</span>
+            </div>
+            <div class="proves">
+              You can explore "what if" strategies without breaking the main
+              timeline.
+            </div>
+            <div class="how">
+              <code>cloneState</code> makes a detached deep copy of the engine;
+              branch and main diverge; <code>as_of</code> recall rewinds time;
+              <code>weavory replay</code> rehydrates any incident from disk.
+            </div>
+          </div>
+          <!-- bazaar -->
+          <div class="arena-card glass">
+            <div class="head">
+              <div class="icon">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none"><path d="M4 10l2-4h12l2 4M4 10v9h16v-9M4 10h16" stroke="#5eead4" stroke-width="1.5"/><rect x="9" y="13" width="6" height="6" fill="#5eead4" opacity="0.55"/></svg>
+              </div>
+              <h3>Bazaar</h3>
+              <span class="pill teal" style="margin-left:auto">Gate ✓</span>
+            </div>
+            <div class="proves">
+              Agents can trade capabilities and settle with cryptographic
+              proof.
+            </div>
+            <div class="how">
+              A capability offer + payment + delivery + settlement are four
+              beliefs linked by <code>causes[]</code>;
+              <code>escrowStatus</code> walks the chain; trust-aware
+              reputation gates discovery.
+            </div>
+          </div>
+          <!-- throne -->
+          <div class="arena-card glass" style="grid-column: 1/-1">
+            <div class="head">
+              <div class="icon">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none"><path d="M4 18h16M4 18l-2-8 4 3 4-7 4 7 4-3-2 8" stroke="#fbbf24" stroke-width="1.5"/><circle cx="12" cy="5" r="1.2" fill="#fbbf24"/></svg>
+              </div>
+              <h3>Throne</h3>
+              <span class="pill ok" style="margin-left:auto">Integration · Gate ✓</span>
+            </div>
+            <div class="proves">
+              All four arenas coexist on one server.
+            </div>
+            <div class="how">
+              One <code>EngineState</code> with
+              <code>adversarialMode: true</code> ran Commons + Wall + Gauntlet
+              + Bazaar simultaneously — queue delivered 3, trust gate filtered
+              mallet, branch diverged from main, four-stage escrow settled
+              accepted — and the final <code>audit.verify()</code> was still
+              green.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================== §6 MIND MAP ===================== -->
+      <section id="mindmap" class="reveal">
+        <h2><span class="idx">§6</span> Mind map</h2>
+        <p class="lede">
+          The project in one glance: five MCP tools feed a state with
+          four sub-stores; four arenas ride on top; tooling surfaces it.
+        </p>
+        <div class="glass diagram">
+          <svg viewBox="0 0 1200 640" width="100%" aria-label="weavory mind map">
+            <defs>
+              <marker id="tipa" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="4" markerHeight="4" orient="auto">
+                <circle cx="5" cy="5" r="4" fill="#94a3b8"/>
+              </marker>
+            </defs>
+
+            <!-- center -->
+            <circle cx="600" cy="320" r="88" fill="rgba(34,211,238,0.1)" stroke="rgba(34,211,238,0.45)" stroke-width="1.5"/>
+            <text x="600" y="312" text-anchor="middle" fill="#22d3ee" font-weight="700" font-size="22">weavory.ai</text>
+            <text x="600" y="338" text-anchor="middle" fill="#94a3b8" font-size="12" class="mono">belief coordination</text>
+
+            <!-- Branch 1: MCP Tools (top-left) -->
+            <line x1="538" y1="260" x2="320" y2="120" stroke="#94a3b8" stroke-width="1.3" opacity="0.7"/>
+            <rect x="180" y="80" width="220" height="64" rx="14" fill="rgba(59,130,246,0.08)" stroke="rgba(59,130,246,0.35)"/>
+            <text x="290" y="112" text-anchor="middle" fill="#3b82f6" font-weight="600" font-size="16">MCP Tools</text>
+            <text x="290" y="130" text-anchor="middle" fill="#94a3b8" font-size="12" class="mono">5 primitives, locked</text>
+
+            <g class="mono" font-size="12">
+              <rect x="18" y="14" width="156" height="32" rx="10" fill="rgba(59,130,246,0.06)" stroke="rgba(59,130,246,0.2)"/>
+              <text x="96" y="34" text-anchor="middle" fill="#cbd5e1">weavory.believe</text>
+              <line x1="174" y1="30" x2="228" y2="66" stroke="#64748b" stroke-width="1.2" opacity="0.5"/>
+
+              <rect x="20" y="58" width="138" height="32" rx="10" fill="rgba(59,130,246,0.06)" stroke="rgba(59,130,246,0.2)"/>
+              <text x="89" y="78" text-anchor="middle" fill="#cbd5e1">weavory.recall</text>
+              <line x1="158" y1="74" x2="228" y2="96" stroke="#64748b" stroke-width="1.2" opacity="0.5"/>
+
+              <rect x="26" y="168" width="152" height="32" rx="10" fill="rgba(59,130,246,0.06)" stroke="rgba(59,130,246,0.2)"/>
+              <text x="102" y="188" text-anchor="middle" fill="#cbd5e1">weavory.subscribe</text>
+              <line x1="178" y1="184" x2="228" y2="136" stroke="#64748b" stroke-width="1.2" opacity="0.5"/>
+
+              <rect x="40" y="218" width="140" height="32" rx="10" fill="rgba(59,130,246,0.06)" stroke="rgba(59,130,246,0.2)"/>
+              <text x="110" y="238" text-anchor="middle" fill="#cbd5e1">weavory.attest</text>
+              <line x1="180" y1="234" x2="228" y2="140" stroke="#64748b" stroke-width="1.2" opacity="0.5"/>
+
+              <rect x="24" y="112" width="142" height="32" rx="10" fill="rgba(59,130,246,0.06)" stroke="rgba(59,130,246,0.2)"/>
+              <text x="95" y="132" text-anchor="middle" fill="#cbd5e1">weavory.forget</text>
+              <line x1="166" y1="128" x2="228" y2="118" stroke="#64748b" stroke-width="1.2" opacity="0.5"/>
+            </g>
+
+            <!-- Branch 2: Data Layer (bottom-left) -->
+            <line x1="538" y1="380" x2="300" y2="500" stroke="#94a3b8" stroke-width="1.3" opacity="0.7"/>
+            <rect x="160" y="480" width="240" height="60" rx="14" fill="rgba(94,234,212,0.08)" stroke="rgba(94,234,212,0.35)"/>
+            <text x="280" y="510" text-anchor="middle" fill="#5eead4" font-weight="600" font-size="16">Data Layer</text>
+            <text x="280" y="528" text-anchor="middle" fill="#94a3b8" font-size="12" class="mono">EngineState primitives</text>
+
+            <g class="mono" font-size="12">
+              <rect x="18" y="430" width="142" height="28" rx="9" fill="rgba(94,234,212,0.06)" stroke="rgba(94,234,212,0.2)"/>
+              <text x="89" y="448" text-anchor="middle" fill="#cbd5e1">beliefs · Map</text>
+              <line x1="160" y1="444" x2="190" y2="494" stroke="#64748b" stroke-width="1.2" opacity="0.5"/>
+
+              <rect x="20" y="468" width="138" height="28" rx="9" fill="rgba(94,234,212,0.06)" stroke="rgba(94,234,212,0.2)"/>
+              <text x="89" y="486" text-anchor="middle" fill="#cbd5e1">audit · chain</text>
+              <line x1="158" y1="482" x2="190" y2="506" stroke="#64748b" stroke-width="1.2" opacity="0.5"/>
+
+              <rect x="16" y="552" width="150" height="28" rx="9" fill="rgba(94,234,212,0.06)" stroke="rgba(94,234,212,0.2)"/>
+              <text x="91" y="570" text-anchor="middle" fill="#cbd5e1">trust · vectors</text>
+              <line x1="166" y1="568" x2="210" y2="540" stroke="#64748b" stroke-width="1.2" opacity="0.5"/>
+
+              <rect x="18" y="588" width="158" height="28" rx="9" fill="rgba(94,234,212,0.06)" stroke="rgba(94,234,212,0.2)"/>
+              <text x="97" y="606" text-anchor="middle" fill="#cbd5e1">subscriptions</text>
+              <line x1="176" y1="604" x2="220" y2="540" stroke="#64748b" stroke-width="1.2" opacity="0.5"/>
+            </g>
+
+            <!-- Branch 3: Arenas (top-right) -->
+            <line x1="662" y1="260" x2="880" y2="120" stroke="#94a3b8" stroke-width="1.3" opacity="0.7"/>
+            <rect x="800" y="80" width="220" height="64" rx="14" fill="rgba(34,211,238,0.08)" stroke="rgba(34,211,238,0.35)"/>
+            <text x="910" y="112" text-anchor="middle" fill="#22d3ee" font-weight="600" font-size="16">Arenas</text>
+            <text x="910" y="130" text-anchor="middle" fill="#94a3b8" font-size="12" class="mono">Phase G surfaces</text>
+
+            <g class="mono" font-size="12">
+              <rect x="1032" y="40" width="140" height="28" rx="9" fill="rgba(34,211,238,0.06)" stroke="rgba(34,211,238,0.2)"/>
+              <text x="1102" y="58" text-anchor="middle" fill="#cbd5e1">Commons</text>
+              <line x1="1032" y1="54" x2="1020" y2="92" stroke="#64748b" stroke-width="1.2" opacity="0.5"/>
+
+              <rect x="1040" y="82" width="130" height="28" rx="9" fill="rgba(34,211,238,0.06)" stroke="rgba(34,211,238,0.2)"/>
+              <text x="1105" y="100" text-anchor="middle" fill="#cbd5e1">Wall</text>
+              <line x1="1040" y1="96" x2="1020" y2="108" stroke="#64748b" stroke-width="1.2" opacity="0.5"/>
+
+              <rect x="1040" y="128" width="140" height="28" rx="9" fill="rgba(34,211,238,0.06)" stroke="rgba(34,211,238,0.2)"/>
+              <text x="1110" y="146" text-anchor="middle" fill="#cbd5e1">Gauntlet</text>
+              <line x1="1040" y1="142" x2="1020" y2="124" stroke="#64748b" stroke-width="1.2" opacity="0.5"/>
+
+              <rect x="1042" y="174" width="132" height="28" rx="9" fill="rgba(34,211,238,0.06)" stroke="rgba(34,211,238,0.2)"/>
+              <text x="1108" y="192" text-anchor="middle" fill="#cbd5e1">Bazaar</text>
+              <line x1="1042" y1="188" x2="1020" y2="140" stroke="#64748b" stroke-width="1.2" opacity="0.5"/>
+
+              <rect x="1042" y="220" width="132" height="28" rx="9" fill="rgba(52,211,153,0.08)" stroke="rgba(52,211,153,0.28)"/>
+              <text x="1108" y="238" text-anchor="middle" fill="#34d399">Throne ✓</text>
+              <line x1="1042" y1="234" x2="1020" y2="144" stroke="#64748b" stroke-width="1.2" opacity="0.5"/>
+            </g>
+
+            <!-- Branch 4: Tooling (bottom-right) -->
+            <line x1="662" y1="380" x2="900" y2="500" stroke="#94a3b8" stroke-width="1.3" opacity="0.7"/>
+            <rect x="800" y="480" width="240" height="60" rx="14" fill="rgba(251,191,36,0.08)" stroke="rgba(251,191,36,0.35)"/>
+            <text x="920" y="510" text-anchor="middle" fill="#fbbf24" font-weight="600" font-size="16">Tooling</text>
+            <text x="920" y="528" text-anchor="middle" fill="#94a3b8" font-size="12" class="mono">dev + ops surfaces</text>
+
+            <g class="mono" font-size="12">
+              <rect x="1040" y="420" width="150" height="28" rx="9" fill="rgba(251,191,36,0.06)" stroke="rgba(251,191,36,0.22)"/>
+              <text x="1115" y="438" text-anchor="middle" fill="#cbd5e1">dashboard html</text>
+              <line x1="1040" y1="434" x2="1040" y2="494" stroke="#64748b" stroke-width="1.2" opacity="0.5"/>
+
+              <rect x="1040" y="460" width="150" height="28" rx="9" fill="rgba(251,191,36,0.06)" stroke="rgba(251,191,36,0.22)"/>
+              <text x="1115" y="478" text-anchor="middle" fill="#cbd5e1">replay CLI</text>
+              <line x1="1040" y1="474" x2="1040" y2="500" stroke="#64748b" stroke-width="1.2" opacity="0.5"/>
+
+              <rect x="1040" y="552" width="150" height="28" rx="9" fill="rgba(251,191,36,0.06)" stroke="rgba(251,191,36,0.22)"/>
+              <text x="1115" y="570" text-anchor="middle" fill="#cbd5e1">gate scripts</text>
+              <line x1="1040" y1="568" x2="1040" y2="540" stroke="#64748b" stroke-width="1.2" opacity="0.5"/>
+
+              <rect x="1040" y="590" width="150" height="28" rx="9" fill="rgba(251,191,36,0.06)" stroke="rgba(251,191,36,0.22)"/>
+              <text x="1115" y="608" text-anchor="middle" fill="#cbd5e1">CI workflow</text>
+              <line x1="1040" y1="604" x2="1040" y2="540" stroke="#64748b" stroke-width="1.2" opacity="0.5"/>
+
+              <rect x="1046" y="510" width="140" height="28" rx="9" fill="rgba(251,191,36,0.06)" stroke="rgba(251,191,36,0.22)"/>
+              <text x="1115" y="528" text-anchor="middle" fill="#cbd5e1">incidents</text>
+              <line x1="1046" y1="524" x2="1040" y2="510" stroke="#64748b" stroke-width="1.2" opacity="0.5"/>
+            </g>
+          </svg>
+        </div>
+      </section>
+
+      <!-- ===================== §7 TIMELINE ===================== -->
+      <section id="timeline" class="reveal">
+        <h2><span class="idx">§7</span> Phase G timeline</h2>
+        <p class="lede">
+          Six sub-phases, eleven commits, zero Gate-7 regressions in CI.
+        </p>
+        <div class="glass diagram">
+          <svg viewBox="0 0 1180 240" width="100%" aria-label="Phase G timeline">
+            <!-- rail -->
+            <line x1="40" y1="120" x2="1140" y2="120" stroke="rgba(148,163,184,0.35)" stroke-width="2"/>
+
+            <!-- milestones -->
+            <g>
+              <!-- G.1 -->
+              <circle cx="120" cy="120" r="9" fill="#fbbf24" stroke="#0a1628" stroke-width="3"/>
+              <text x="120" y="96" text-anchor="middle" fill="#fbbf24" font-weight="600" font-size="13">G.1</text>
+              <text x="120" y="150" text-anchor="middle" fill="#e6edf3" font-size="12">Runtime</text>
+              <text x="120" y="168" text-anchor="middle" fill="#94a3b8" font-size="11">panel 10 live</text>
+              <text x="120" y="196" text-anchor="middle" fill="#64748b" font-size="11" class="mono">2d82c7b</text>
+
+              <!-- G.2 -->
+              <circle cx="290" cy="120" r="9" fill="#5eead4" stroke="#0a1628" stroke-width="3"/>
+              <text x="290" y="96" text-anchor="middle" fill="#5eead4" font-weight="600" font-size="13">G.2</text>
+              <text x="290" y="150" text-anchor="middle" fill="#e6edf3" font-size="12">Commons</text>
+              <text x="290" y="168" text-anchor="middle" fill="#94a3b8" font-size="11">queue + consensus</text>
+              <text x="290" y="196" text-anchor="middle" fill="#64748b" font-size="11" class="mono">0da0465</text>
+
+              <!-- G.3 -->
+              <circle cx="460" cy="120" r="9" fill="#3b82f6" stroke="#0a1628" stroke-width="3"/>
+              <text x="460" y="96" text-anchor="middle" fill="#3b82f6" font-weight="600" font-size="13">G.3</text>
+              <text x="460" y="150" text-anchor="middle" fill="#e6edf3" font-size="12">Wall</text>
+              <text x="460" y="168" text-anchor="middle" fill="#94a3b8" font-size="11">adversarial + tamper</text>
+              <text x="460" y="196" text-anchor="middle" fill="#64748b" font-size="11" class="mono">223ac46</text>
+
+              <!-- G.4 -->
+              <circle cx="630" cy="120" r="9" fill="#22d3ee" stroke="#0a1628" stroke-width="3"/>
+              <text x="630" y="96" text-anchor="middle" fill="#22d3ee" font-weight="600" font-size="13">G.4</text>
+              <text x="630" y="150" text-anchor="middle" fill="#e6edf3" font-size="12">Gauntlet</text>
+              <text x="630" y="168" text-anchor="middle" fill="#94a3b8" font-size="11">branches + replay</text>
+              <text x="630" y="196" text-anchor="middle" fill="#64748b" font-size="11" class="mono">2bce443</text>
+
+              <!-- G.5 -->
+              <circle cx="810" cy="120" r="9" fill="#5eead4" stroke="#0a1628" stroke-width="3"/>
+              <text x="810" y="96" text-anchor="middle" fill="#5eead4" font-weight="600" font-size="13">G.5</text>
+              <text x="810" y="150" text-anchor="middle" fill="#e6edf3" font-size="12">Bazaar</text>
+              <text x="810" y="168" text-anchor="middle" fill="#94a3b8" font-size="11">reputation + escrow</text>
+              <text x="810" y="196" text-anchor="middle" fill="#64748b" font-size="11" class="mono">e26c175</text>
+
+              <!-- G.6 -->
+              <circle cx="1020" cy="120" r="14" fill="#34d399" stroke="#0a1628" stroke-width="3"/>
+              <text x="1020" y="96" text-anchor="middle" fill="#34d399" font-weight="700" font-size="14">G.6 ✓</text>
+              <text x="1020" y="150" text-anchor="middle" fill="#e6edf3" font-size="12">Throne</text>
+              <text x="1020" y="168" text-anchor="middle" fill="#94a3b8" font-size="11">integration</text>
+              <text x="1020" y="196" text-anchor="middle" fill="#64748b" font-size="11" class="mono">43d23a7</text>
+            </g>
+          </svg>
+        </div>
+      </section>
+
+      <!-- ===================== §8 GATE SCORECARD ===================== -->
+      <section id="gates" class="reveal">
+        <h2><span class="idx">§8</span> Gate scorecard</h2>
+        <p class="lede">
+          12 gates green — 7 Phase-1 gates verified on every CI push, plus 5
+          arena gates locally verifiable via
+          <code>bash scripts/verify/gate_*.sh</code>.
+        </p>
+        <div class="gate-grid">
+          <div class="gate-card glass">
+            <div class="gate-no">Gate 1 · Bootstrap</div>
+            <h3>
+              <span class="pill ok">✓ PASS</span>
+            </h3>
+            <div class="note">
+              Control files, dashboard shell, collectors produce real data.
+            </div>
+            <div class="meta">scripts/verify/gate1.sh</div>
+          </div>
+          <div class="gate-card glass">
+            <div class="gate-no">Gate 2 · MCP surface</div>
+            <h3><span class="pill ok">✓ PASS</span></h3>
+            <div class="note">
+              All five tools callable via InMemoryTransport; Zod rejects
+              malformed args.
+            </div>
+            <div class="meta">scripts/verify/gate2.sh</div>
+          </div>
+          <div class="gate-card glass">
+            <div class="gate-no">Gate 3 · Two-agent exchange</div>
+            <h3><span class="pill ok">✓ PASS</span></h3>
+            <div class="note">
+              Alice writes, Bob recalls, Bob independently Ed25519-verifies,
+              scripted answer verbatim.
+            </div>
+            <div class="meta">scripts/verify/gate3.sh</div>
+          </div>
+          <div class="gate-card glass">
+            <div class="gate-no">Gate 4 · Trust &amp; quarantine</div>
+            <h3><span class="pill ok">✓ PASS</span></h3>
+            <div class="note">
+              Default recall filters low-trust signers; audit mode
+              (<code>min_trust=-1</code>) shows everything.
+            </div>
+            <div class="meta">scripts/verify/gate4.sh</div>
+          </div>
+          <div class="gate-card glass">
+            <div class="gate-no">Gate 5 · as_of recall</div>
+            <h3><span class="pill ok">✓ PASS</span></h3>
+            <div class="note">
+              Bi-temporal query rewinds to captured T0 even after tombstones.
+            </div>
+            <div class="meta">scripts/verify/gate5.sh</div>
+          </div>
+          <div class="gate-card glass">
+            <div class="gate-no">Gate 6 · Fresh-machine CI</div>
+            <h3><span class="pill ok">✓ PASS</span></h3>
+            <div class="note">
+              Ubuntu + macOS GitHub Actions runners, Node 22, every push.
+            </div>
+            <div class="meta">
+              .github/workflows/fresh-machine.yml
+            </div>
+          </div>
+          <div class="gate-card glass">
+            <div class="gate-no">Gate 7 · Stock-agent judge sim</div>
+            <h3><span class="pill ok">✓ PASS</span></h3>
+            <div class="note">
+              Claude Opus 4.7 + README-only + MCP tool bridge completes the
+              scripted task in CI every push.
+            </div>
+            <div class="meta">
+              tests/judge/gate7_simulation.ts
+            </div>
+          </div>
+          <div class="gate-card glass">
+            <div class="gate-no">Gate Commons · G.2</div>
+            <h3><span class="pill teal">✓ PASS</span></h3>
+            <div class="note">
+              Drain=3 · consensus BTC=$50000 · lww BTC=$0 · conflict group
+              visible when requested.
+            </div>
+            <div class="meta">scripts/verify/gate_commons.sh</div>
+          </div>
+          <div class="gate-card glass">
+            <div class="gate-no">Gate Wall · G.3</div>
+            <h3><span class="pill blue">✓ PASS</span></h3>
+            <div class="note">
+              Pre-tamper ok → attacker mutates → alarm fires → incident JSON
+              written with verify.ok=false.
+            </div>
+            <div class="meta">scripts/verify/gate_wall.sh</div>
+          </div>
+          <div class="gate-card glass">
+            <div class="gate-no">Gate Gauntlet · G.4</div>
+            <h3><span class="pill cyan">✓ PASS</span></h3>
+            <div class="note">
+              main = [100,110] · branch = [100,90] · as_of=T0 = [100] · replay
+              CLI rehydrates incident cleanly.
+            </div>
+            <div class="meta">scripts/verify/gate_gauntlet.sh</div>
+          </div>
+          <div class="gate-card glass">
+            <div class="gate-no">Gate Bazaar · G.5</div>
+            <h3><span class="pill teal">✓ PASS</span></h3>
+            <div class="note">
+              offer → payment → delivered → settled · outcome=accepted ·
+              avg_trust=0.85 · isEscrowSettled=true.
+            </div>
+            <div class="meta">scripts/verify/gate_bazaar.sh</div>
+          </div>
+          <div class="gate-card glass">
+            <div class="gate-no">Gate Throne · G.6</div>
+            <h3><span class="pill ok">✓ PASS</span></h3>
+            <div class="note">
+              All four arenas against one EngineState — commons=3, wall=true,
+              gauntlet=true, bazaar=true, audit clean.
+            </div>
+            <div class="meta">scripts/verify/gate_throne.sh</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================== §9 FIVE THINGS ===================== -->
+      <section id="next" class="reveal">
+        <h2><span class="idx">§9</span> Five things to look at right now</h2>
+        <p class="lede">Tight loop: run one, feel it.</p>
+        <div class="actions">
+          <div class="action glass">
+            <div class="num">1</div>
+            <div>
+              <h4>Live dashboard</h4>
+              <p>
+                Run
+                <code class="block">pnpm dashboard:serve</code>
+                then open
+                <a
+                  href="http://localhost:4317/ops/weavory-dashboard.html"
+                  target="_blank"
+                  rel="noopener"
+                  >http://localhost:4317/ops/weavory-dashboard.html</a
+                >. Start a demo in a second terminal and watch panels 6–12
+                update.
+              </p>
+            </div>
+          </div>
+          <div class="action glass">
+            <div class="num">2</div>
+            <div>
+              <h4>The Throne demo output</h4>
+              <p>
+                Tells the whole story in ~30 log lines:
+                <code class="block"
+                  >pnpm exec tsx examples/throne_integration.ts</code
+                >
+              </p>
+            </div>
+          </div>
+          <div class="action glass">
+            <div class="num">3</div>
+            <div>
+              <h4>The judge runbook</h4>
+              <p>
+                <code>docs/README.md</code> is what a stock Claude agent reads
+                in CI to pass Gate 7. It's the product description for humans
+                and agents alike.
+              </p>
+            </div>
+          </div>
+          <div class="action glass">
+            <div class="num">4</div>
+            <div>
+              <h4>Recent commits on GitHub</h4>
+              <p>
+                Each is small, self-contained, mapped to a task id:
+                <a
+                  href="https://github.com/DeepakKTS/weavory.ai/commits/main"
+                  target="_blank"
+                  rel="noopener"
+                  >github.com/DeepakKTS/weavory.ai/commits/main</a
+                >.
+              </p>
+            </div>
+          </div>
+          <div class="action glass">
+            <div class="num">5</div>
+            <div>
+              <h4>Gate Throne log, with your eyes</h4>
+              <p>
+                <code class="block"
+                  >bash scripts/verify/gate_throne.sh</code
+                ><br />7 green checks prove Commons, Wall, Gauntlet, Bazaar
+                compose against one EngineState without audit-chain corruption
+                — <em>the</em> technical claim of the Throne arena.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================== §10 BACKLOG ===================== -->
+      <section id="backlog" class="reveal">
+        <h2><span class="idx">§10</span> What's next (your call)</h2>
+        <p class="lede">
+          None of these are required for the NandaHack submission; all are
+          optional polish. Pick any and I'll build it with the same
+          small-commits + regression-per-gate discipline.
+        </p>
+        <div class="list-grid">
+          <div class="list-card glass">
+            <div class="k">B-0001 · B-0002</div>
+            <h3>LanceDB + DuckDB swap-in</h3>
+            <p>
+              Persist beliefs + run true bi-temporal SQL. Scale beyond
+              in-memory.
+            </p>
+          </div>
+          <div class="list-card glass">
+            <div class="k">B-0003</div>
+            <h3>Incident replay UI in the dashboard</h3>
+            <p>Visual stepper over the audit chain with diff highlighting.</p>
+          </div>
+          <div class="list-card glass">
+            <div class="k">B-0006</div>
+            <h3>libp2p gossipsub federation</h3>
+            <p>Multi-node weavory with bounded-staleness convergence.</p>
+          </div>
+          <div class="list-card glass">
+            <div class="k">B-0007</div>
+            <h3>Python + TS client SDKs</h3>
+            <p>Thin wrappers over the MCP tools; not new APIs.</p>
+          </div>
+          <div class="list-card glass">
+            <div class="k">B-0008</div>
+            <h3>Multi-tenant + OIDC + audit export</h3>
+            <p>
+              Enterprise-SKU scaffolding — namespaces, quotas, SSO, Parquet
+              export.
+            </p>
+          </div>
+          <div class="list-card glass">
+            <div class="k">B-0009</div>
+            <h3>Prometheus + OTel full wiring</h3>
+            <p>Production observability beyond the runtime.json dashboard.</p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="container">
+        <div class="row">
+          <div>
+            <div style="color: var(--text); font-weight: 600; font-size: 14px">
+              weavory.ai
+            </div>
+            <div style="margin-top: 2px">
+              Shared belief coordination substrate for AI agent swarms.
+            </div>
+          </div>
+          <div style="text-align: right">
+            <div>
+              <a
+                href="https://github.com/DeepakKTS/weavory.ai"
+                target="_blank"
+                rel="noopener"
+                >github.com/DeepakKTS/weavory.ai</a
+              >
+            </div>
+            <div style="margin-top: 2px; font-family: var(--font-mono); font-size: 12px">
+              HEAD 43d23a7 · Phase G complete · MIT License
+            </div>
+          </div>
+        </div>
+      </div>
+    </footer>
+
+    <script>
+      // Tiny reveal-on-scroll (no libs): each section fades in when in viewport.
+      (() => {
+        if (!("IntersectionObserver" in window)) {
+          document
+            .querySelectorAll(".reveal")
+            .forEach((el) => el.classList.add("is-visible"));
+          return;
+        }
+        const io = new IntersectionObserver(
+          (entries) => {
+            for (const e of entries) {
+              if (e.isIntersecting) {
+                e.target.classList.add("is-visible");
+                io.unobserve(e.target);
+              }
+            }
+          },
+          { threshold: 0.08 }
+        );
+        document
+          .querySelectorAll(".reveal")
+          .forEach((el) => io.observe(el));
+      })();
+    </script>
+  </body>
+</html>
