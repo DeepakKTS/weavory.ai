@@ -1,0 +1,51 @@
+# Build inputs we don't want in the image
+node_modules
+dist
+coverage
+
+# Repo metadata / ops data that the image shouldn't carry
+.git
+.github
+.idea
+.vscode
+.DS_Store
+
+# Local dev / transient
+.weavory-data
+*.log
+*.tsbuildinfo
+*.duckdb
+*.duckdb.wal
+keys
+*.pem
+.env
+.env.*
+
+# Dashboard runtime output — regenerated inside the container
+ops/data/runtime.json
+ops/data/incidents
+
+# Test output
+ops/data/tests.json
+ops/data/coverage.json
+
+# Docs that don't belong in the container (we include only the four
+# operator-facing docs via explicit COPY in Dockerfile)
+docs/*.md
+!docs/README.md
+!docs/DEPLOYMENT.md
+!docs/COMPLIANCE.md
+!docs/RUNBOOK.md
+
+# Keep the built-overview HTML out of the runtime image
+ops/weavory.ai-overview_steps.html
+ops/weavory-dashboard.html
+ops/assets
+
+# Examples are for local dev; not shipped in image
+examples
+tests
+scripts
+
+# Plans / internal narrative
+control

@@ -1,0 +1,55 @@
+# weavory.ai — reference Docker Compose
+#
+# One service, one persistent volume at /data. Defaults to JSONL
+# persistence with adversarial mode OFF (neutral for demos).
+#
+# For a Responsible-AI / governance profile, set
+# WEAVORY_ADVERSARIAL=1 and mount a policy.json at /policy.
+#
+# stdio is the MCP transport — there is no HTTP port to publish.
+# Attach an MCP client via `docker compose exec` or spawn the
+# container from the client using Docker's stdio.
+
+services:
+  weavory:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: weavory-ai:0.1.0
+    container_name: weavory
+    restart: unless-stopped
+
+    # stdio MCP needs STDIN; don't allocate a TTY (it breaks JSON-RPC framing)
+    stdin_open: true
+    tty: false
+
+    # ---------- runtime env (override per deployment) ----------
+    environment:
+      # Persistence
+      WEAVORY_PERSIST: "1"
+      WEAVORY_DATA_DIR: "/data"
+      WEAVORY_STORE: "jsonl"          # use "duckdb" if your image has the binary
+
+      # Security posture — flip these for the Responsible-AI profile
+      WEAVORY_ADVERSARIAL: "0"        # "1" raises default min_trust 0.3→0.6
+      # WEAVORY_POLICY_FILE: "/policy/default.json"
+
+      # Perf / defensive
+      WEAVORY_RUNTIME_WRITER: "on"
+      WEAVORY_VERIFY_ON_WRITE: "0"    # "1" forces Ed25519 re-verify on each write (~10x slower)
+
+    volumes:
+      - weavory-data:/data
+      # Uncomment to load a read-only policy file:
+      # - ./policy:/policy:ro
+
+    # Node's process manager answers SIGTERM gracefully via tini
+    stop_grace_period: 10s
+
+    # Logs go to stdout/stderr by default; no extra driver configured
+    # for the reference compose.
+
+volumes:
+  weavory-data:
+    # Named volume lives at /var/lib/docker/volumes/<project>_weavory-data
+    # on the host. Back it up / encrypt it as your threat model requires.
