@@ -5,10 +5,21 @@ name: publish-pages
 # `main`. The workflow never modifies the repo — it only copies
 # files into a `_site/` build tree and hands that tree to Pages.
 #
-# First-time setup (one UI click): repo → Settings → Pages →
-# Source: "GitHub Actions". Also ensure the repo is either public
-# OR the account has GitHub Pro (Pages from a private repo is
-# Pro-only).
+# First-time setup (two UI actions — both required):
+#
+#   1. Repo → Settings → Pages → Source: "GitHub Actions". Also
+#      ensure the repo is either public OR the account has GitHub Pro
+#      (Pages from a private repo is Pro-only).
+#
+#   2. Repo → Settings → Secrets and variables → Actions →
+#      Variables tab → New repository variable:
+#         Name:  PAGES_ENABLED
+#         Value: true
+#
+#      The deploy job is gated on this variable so the workflow
+#      stays GREEN on main pushes before Pages is enabled. Without
+#      it, the build job runs and uploads an artifact, but the
+#      deploy step is skipped (not failed).
 #
 # Site layout served by Pages:
 #   /                 → docs-site/index.html (landing page)
@@ -84,6 +95,12 @@ jobs:
   deploy:
     name: deploy to Pages
     needs: build
+    # Gated on the PAGES_ENABLED repository variable so the workflow
+    # stays GREEN on every main push before Pages is enabled in the
+    # repo settings. Once the operator has done the two UI steps above,
+    # set the variable and this job runs automatically on the next
+    # push. Until then, this job is "skipped" (not failed).
+    if: ${{ vars.PAGES_ENABLED == 'true' }}
     runs-on: ubuntu-latest
     permissions:
       pages: write
