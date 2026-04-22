@@ -17,10 +17,42 @@ import {
   type JsonValue,
   type StoredBelief,
 } from "../core/schema.js";
-import type { EngineState, SubscriptionFilters } from "./state.js";
+import { SubscriptionLimitError, type EngineState, type SubscriptionFilters } from "./state.js";
 import { mergeConflicts, type ConflictGroup, type MergeStrategy } from "./merge.js";
 import { getReputation, type ReputationSummary } from "./bazaar.js";
 import { evaluate as evaluatePolicy, PolicyDenialError } from "./policy.js";
+
+/**
+ * Default hard cap on a belief's `object` payload when NO policy file is
+ * loaded (Phase J.P1-4 · SEC-01). Protects against accidental or malicious
+ * disk-fill / memory-bloat when the operator hasn't defined a policy.
+ *
+ * If `WEAVORY_POLICY_FILE` IS loaded, the policy's `max_object_bytes`
+ * (default 1 MiB inside policy.ts; may be overridden up to 16 MiB) takes
+ * precedence — this constant is the fallback floor.
+ *
+ * Rationale: 1 MiB is ~16k JSON lines — enough for any realistic belief
+ * payload while still being small enough that an attacker can't use the
+ * tool to flood storage.
+ */
+export const DEFAULT_MAX_OBJECT_BYTES = 1 * 1024 * 1024;
+
+/** Thrown by `believe()` when an oversized `object` is submitted without an
+ *  active policy (otherwise policy owns the check). */
+export class OversizedPayloadError extends Error {
+  readonly observed_bytes: number;
+  readonly limit_bytes: number;
+  constructor(observed: number, limit: number) {
+    super(
+      `believe: object payload ${observed} bytes exceeds default ` +
+        `max ${limit} bytes. Set WEAVORY_POLICY_FILE with a larger ` +
+        `max_object_bytes to raise this cap.`
+    );
+    this.name = "OversizedPayloadError";
+    this.observed_bytes = observed;
+    this.limit_bytes = limit;
+  }
+}
 
 // ---------- believe ----------
 
@@ -55,6 +87,15 @@ export function believe(state: EngineState, input: BelieveInput): BelieveOutput 
     });
     if (!verdict.allowed) {
       throw new PolicyDenialError(verdict);
+    }
+  } else {
+    // Phase J.P1-4 · SEC-01 — default payload cap when NO policy is
+    // loaded. Fail-closed: the cap applies even to the defaults. If you
+    // need a larger ceiling, declare a policy file with an explicit
+    // `max_object_bytes`. See docs/SECURITY.md.
+    const objBytes = Buffer.byteLength(JSON.stringify(input.object), "utf8");
+    if (objBytes > DEFAULT_MAX_OBJECT_BYTES) {
+      throw new OversizedPayloadError(objBytes, DEFAULT_MAX_OBJECT_BYTES);
     }
   }
 
@@ -349,6 +390,12 @@ export type SubscribeOutput = {
 const DEFAULT_SUBSCRIPTION_QUEUE_CAP = 1000;
 
 export function subscribe(state: EngineState, input: SubscribeInput): SubscribeOutput {
+  // Phase J.P1-4 · SEC-02 — DoS cap on subscription registration. Fails
+  // closed with a structured error so MCP clients see a clear reason.
+  if (state.subscriptions.size >= state.subscriptionsCap) {
+    throw new SubscriptionLimitError(state.subscriptionsCap);
+  }
+
   const signer_id = input.signer_seed ? state.signerFromSeed(input.signer_seed).signer_id : null;
   const subscription_id = "sub_" + cryptoRandomId();
   const created_at = new Date().toISOString();

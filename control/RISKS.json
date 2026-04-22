@@ -136,6 +136,60 @@
       "mitigation": "loadPolicy throws on any IO / JSON / schema error; CLI exits code 4 with operator-actionable message. Policy is never silently degraded to no-policy.",
       "owner": "C",
       "status": "mitigated"
+    },
+    {
+      "id": "SEC-01",
+      "description": "believe() had no default payload size cap when WEAVORY_POLICY_FILE was unset → disk-fill / memory-bloat DoS",
+      "severity": "medium",
+      "likelihood": "low",
+      "mitigation": "Phase J.P1-4 shipped: DEFAULT_MAX_OBJECT_BYTES=1 MiB enforced in ops.believe when no policy is attached. Throws OversizedPayloadError with observed_bytes + limit_bytes. Policy file may raise the cap up to 16 MiB. Unit tests cover accept/reject/policy-override paths.",
+      "owner": "C",
+      "status": "fixed"
+    },
+    {
+      "id": "SEC-02",
+      "description": "No cap on total subscriptions per EngineState → a misbehaving agent could register unbounded subscriptions and exhaust memory",
+      "severity": "medium",
+      "likelihood": "low",
+      "mitigation": "Phase J.P1-4 shipped: EngineState.subscriptionsCap defaults to 10 000 (WEAVORY_MAX_SUBSCRIPTIONS env override). ops.subscribe throws SubscriptionLimitError when the cap is reached; size unchanged. parseSubscriptionsCap validates env input and falls back to the default with a warning on garbage values.",
+      "owner": "C",
+      "status": "fixed"
+    },
+    {
+      "id": "SEC-03",
+      "description": "loadIncident() parsed raw JSON with only a schema_version string check before handing to rehydrateState → malformed or truncated files surfaced as cryptic TypeErrors mid-rehydrate",
+      "severity": "low",
+      "likelihood": "low",
+      "mitigation": "Phase J.P1-4 shipped: Zod LoadIncidentShape validates outer record fields (incident_id, exported_at, audit{length,verify,entries}, beliefs{total,live,quarantined,tombstoned,records}) before rehydrate. Structured error messages for missing file, invalid JSON, wrong schema_version, and shape violation.",
+      "owner": "C",
+      "status": "fixed"
+    },
+    {
+      "id": "SEC-04",
+      "description": "WEAVORY_DATA_DIR and WEAVORY_POLICY_FILE paths are not symlink-hardened — an attacker with env + filesystem access could redirect I/O via symlinks",
+      "severity": "low",
+      "likelihood": "low",
+      "mitigation": "Operator-owned trust boundary: the process environment is the operator's responsibility. Weavory logs the resolved absolute path once at startup so operators can see exactly what the server will touch. Full hardening (path prefix allow-list, symlink refusal) deferred as a Phase-2 concern. Documented in docs/SECURITY.md.",
+      "owner": "C",
+      "status": "deferred"
+    },
+    {
+      "id": "SEC-05",
+      "description": "exportIncident dumps full belief `object` into JSON under ops/data/incidents/ — incident file is as sensitive as the source beliefs",
+      "severity": "low",
+      "likelihood": "low",
+      "mitigation": "Incidents directory is gitignored by default; filesystem permissions govern access. Recommended operator control is to set WEAVORY_POLICY_FILE with predicate_deny rules so sensitive predicates never enter the store. Redaction during export is Phase-2. Documented in docs/SECURITY.md.",
+      "owner": "C",
+      "status": "deferred"
+    },
+    {
+      "id": "SEC-06",
+      "description": "Stderr logs include absolute WEAVORY_DATA_DIR and WEAVORY_POLICY_FILE paths — may leak deployment topology",
+      "severity": "very-low",
+      "likelihood": "low",
+      "mitigation": "No code change. Seeds (signer_seed) are never logged. Operators can route stderr through their logging pipeline's redaction. Documented in docs/SECURITY.md.",
+      "owner": "C",
+      "status": "deferred"
     }
   ]
 }

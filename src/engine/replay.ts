@@ -19,10 +19,47 @@
  */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { z } from "zod";
 import { EngineState } from "./state.js";
 import { StoredBeliefSchema, type StoredBelief } from "../core/schema.js";
 import { recall, type RecallInput, type RecallOutput } from "./ops.js";
 import type { IncidentRecord } from "./incident.js";
+
+/**
+ * Lightweight Zod guard for the OUTER shape of an IncidentRecord as loaded
+ * from disk (Phase J.P1-4 · SEC-03). Interior `beliefs.records[]` and
+ * `audit.entries[]` are parsed deeply by their own schemas during
+ * rehydrate; here we only assert enough structure to short-circuit
+ * obviously-malformed files (missing required top-level fields, wrong
+ * types) with a clear error instead of a cryptic TypeError later.
+ */
+const LoadIncidentShape = z
+  .object({
+    schema_version: z.literal("1.0.0"),
+    incident_id: z.string().min(1),
+    exported_at: z.string().min(1),
+    reason: z.union([z.string(), z.null()]).optional(),
+    adversarial_mode: z.boolean().optional(),
+    audit: z
+      .object({
+        length: z.number().int().nonnegative(),
+        verify: z.unknown(),
+        entries: z.array(z.unknown()),
+      })
+      .passthrough(),
+    beliefs: z
+      .object({
+        total: z.number().int().nonnegative(),
+        live: z.number().int().nonnegative(),
+        quarantined: z.number().int().nonnegative(),
+        tombstoned: z.number().int().nonnegative(),
+        records: z.array(z.unknown()),
+      })
+      .passthrough(),
+    trust: z.array(z.unknown()).optional(),
+    subscriptions: z.array(z.unknown()).optional(),
+  })
+  .passthrough();
 
 export type LoadedIncident = {
   path: string;
@@ -31,16 +68,49 @@ export type LoadedIncident = {
 
 export function loadIncident(path: string): LoadedIncident {
   const abs = resolve(path);
-  const raw = readFileSync(abs, "utf8");
-  // Accept any shape that exportIncident produced. We don't Zod-validate the
-  // outer record here — a Zod schema for IncidentRecord would drag in
-  // Unknown / MessagePack types. Interior belief records *are* parsed.
-  const record = JSON.parse(raw) as IncidentRecord;
-  if (record.schema_version !== "1.0.0") {
+  let raw: string;
+  try {
+    raw = readFileSync(abs, "utf8");
+  } catch (err) {
     throw new Error(
-      `replay: unsupported incident schema_version ${String(record.schema_version)}`
+      `replay: cannot read incident file ${abs}: ` +
+        (err instanceof Error ? err.message : String(err))
     );
   }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (err) {
+    throw new Error(
+      `replay: ${abs} is not valid JSON: ` +
+        (err instanceof Error ? err.message : String(err))
+    );
+  }
+  // Preserve the explicit "unsupported schema_version" error message for
+  // callers that match on it. Running this check BEFORE the full Zod
+  // shape guard gives operators a targeted hint for the most common
+  // upgrade mismatch.
+  const anyRec = parsed as { schema_version?: unknown };
+  if (anyRec.schema_version !== "1.0.0") {
+    throw new Error(
+      `replay: unsupported incident schema_version ${String(anyRec.schema_version)}`
+    );
+  }
+  // Phase J.P1-4 · SEC-03 — validate outer shape before handing to
+  // rehydrateState. Interior belief/audit records are still validated
+  // deeply by their own schemas; this catches malformed or truncated
+  // files with a structured error.
+  const check = LoadIncidentShape.safeParse(parsed);
+  if (!check.success) {
+    const issues = check.error.issues
+      .slice(0, 6)
+      .map((i) => `${i.path.join(".") || "<root>"}:${i.message}`)
+      .join("; ");
+    throw new Error(
+      `replay: incident record ${abs} failed outer shape validation: ${issues}`
+    );
+  }
+  const record = check.data as unknown as IncidentRecord;
   return { path: abs, record };
 }
 

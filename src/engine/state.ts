@@ -35,6 +35,48 @@ export type EngineOp =
   | "startup"
   | "shutdown";
 
+/**
+ * Default subscription cap per EngineState (Phase J.P1-4 · SEC-02). A
+ * defensive ceiling against a misbehaving signer registering subscriptions
+ * in a hot loop. Override via `WEAVORY_MAX_SUBSCRIPTIONS=<int>`.
+ *
+ * Chosen at 10 000: well above any realistic agent pipeline (Phase-G demos
+ * use tens of subscriptions end-to-end) while bounded enough that each
+ * subscription's worst-case queue (1 000 beliefs by default) still fits in
+ * reasonable memory.
+ */
+export const DEFAULT_MAX_SUBSCRIPTIONS = 10_000;
+
+export function parseSubscriptionsCap(env: NodeJS.ProcessEnv): number {
+  const raw = (env.WEAVORY_MAX_SUBSCRIPTIONS ?? "").trim();
+  if (raw.length === 0) return DEFAULT_MAX_SUBSCRIPTIONS;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n < 1 || !Number.isInteger(n)) {
+    // Operator misconfiguration: fall back to default and log once.
+    // Avoid throwing here — EngineState is constructed in many places.
+    process.stderr.write(
+      `[weavory] WEAVORY_MAX_SUBSCRIPTIONS=${JSON.stringify(raw)} ` +
+        `is not a positive integer; using default ${DEFAULT_MAX_SUBSCRIPTIONS}.\n`
+    );
+    return DEFAULT_MAX_SUBSCRIPTIONS;
+  }
+  return n;
+}
+
+/** Thrown by `ops.subscribe` when `subscriptionsCap` is reached. */
+export class SubscriptionLimitError extends Error {
+  readonly cap: number;
+  constructor(cap: number) {
+    super(
+      `subscribe: subscription cap reached (${cap}). ` +
+        `Raise via WEAVORY_MAX_SUBSCRIPTIONS or call forget/unsubscribe flows ` +
+        `(not yet exposed as MCP tool) to free slots.`
+    );
+    this.name = "SubscriptionLimitError";
+    this.cap = cap;
+  }
+}
+
 export type Subscription = {
   id: string;
   pattern: string;
@@ -176,6 +218,17 @@ export class EngineState {
    * server-signed, so signed-lineage is enforced on every recall regardless.
    */
   adversarialMode = false;
+
+  /**
+   * Phase J.P1-4 · SEC-02 — maximum number of concurrent subscriptions
+   * this state will hold. A defensive DoS cap: one misbehaving agent
+   * registering subscriptions in a hot loop could otherwise exhaust memory
+   * (each subscription holds a bounded queue up to 100 000 beliefs). When
+   * the cap is reached, `ops.subscribe` throws `SubscriptionLimitError` and
+   * no new subscription is created. Default 10 000; operators can raise or
+   * lower via `WEAVORY_MAX_SUBSCRIPTIONS=<int>` in the environment.
+   */
+  readonly subscriptionsCap: number = parseSubscriptionsCap(process.env);
 
   /** Return a signer_id + keypair for a seed, caching in the keyring. */
   signerFromSeed(seed: string): { signer_id: string; keyPair: KeyPair } {
