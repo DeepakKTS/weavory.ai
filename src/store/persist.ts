@@ -60,7 +60,14 @@ export interface PersistentStore {
   writeAudit(entry: AuditEntry): void;
   writeTrust(t: PersistedTrust): void;
   load(): LoadResult;
-  close(): void;
+  /**
+   * Drain any in-flight writes and release the backend. Callers may `await`
+   * this to guarantee every earlier `writeX` has reached disk (JSONL: sync
+   * appends so this is a no-op resolve; DuckDB: settles the async write
+   * queue + closes conn/db). Always resolves — never rejects, even if the
+   * backend errors internally (errors surface via the logger).
+   */
+  close(): Promise<void>;
 }
 
 export type PersistOptions = {

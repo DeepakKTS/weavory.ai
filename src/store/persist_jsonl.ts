@@ -158,10 +158,11 @@ export function openJsonlStore(opts: { dataDir: string; logger: Logger }): Jsonl
       };
     },
 
-    close(): void {
+    async close(): Promise<void> {
       // JSONL store holds no file handles between calls — every appendFileSync
       // opens + writes + closes atomically. Nothing to release here; the
-      // method is present for interface parity with the DuckDB adapter.
+      // method is present for interface parity with the DuckDB adapter. The
+      // Promise resolves immediately so callers can uniformly `await close()`.
     },
   };
 

@@ -64,17 +64,9 @@ function makeAudit(belief_id: string, entry_hash: string, prev_hash: string): Au
   };
 }
 
-/**
- * Sleep briefly to let DuckDB's fire-and-forget write queue drain before we
- * close + reopen. We can't call store.load() after a write to verify — load()
- * returns the open-time snapshot by contract (see persist_duckdb.ts). The
- * end-to-end test re-opens the store, which picks up whatever has hit WAL.
- */
-async function drain(_ms = 50): Promise<void> {
-  // Yield enough ticks for the promise chain to drain; DuckDB writes tend to
-  // complete in <10ms but we add slack for CI.
-  await new Promise((r) => setTimeout(r, _ms));
-}
+// Note: time-based drain is no longer needed — store.close() now returns a
+// Promise that settles after the write chain drains and the connection
+// closes. Callers just `await store.close()`.
 
 // ---------- capability probe ----------
 
@@ -126,8 +118,7 @@ describe.runIf(process.env.CI !== "true" || true)(
       if (!duckdbAvailable) return;
       const store = await openFresh();
       expect(store.kind).toBe("duckdb");
-      store.close();
-      await drain(100);
+      await store.close();
     });
 
     it("round-trips a belief through write → close → reopen → load", async () => {
@@ -135,9 +126,7 @@ describe.runIf(process.env.CI !== "true" || true)(
       const s1 = await openFresh();
       s1.writeBelief(makeBelief("1".repeat(64)));
       s1.writeAudit(makeAudit("1".repeat(64), "e1".padEnd(64, "e"), ZERO_HASH));
-      await drain(100);
-      s1.close();
-      await drain(100);
+      await s1.close();
 
       const s2 = await openPersistentStore({ dataDir: tmpDir, preferred: "duckdb", logger });
       const loaded = s2.load();
@@ -145,8 +134,7 @@ describe.runIf(process.env.CI !== "true" || true)(
       expect(loaded.beliefs[0].id).toBe("1".repeat(64));
       expect(loaded.audit).toHaveLength(1);
       expect(loaded.audit[0].entry_hash).toBe("e1".padEnd(64, "e"));
-      s2.close();
-      await drain(100);
+      await s2.close();
     });
 
     it("uses last-write-wins for tombstones on the same belief id", async () => {
@@ -155,16 +143,13 @@ describe.runIf(process.env.CI !== "true" || true)(
       const id = "2".repeat(64);
       s1.writeBelief(makeBelief(id));
       s1.writeBelief(makeBelief(id, "p", true));
-      await drain(100);
-      s1.close();
-      await drain(100);
+      await s1.close();
 
       const s2 = await openPersistentStore({ dataDir: tmpDir, preferred: "duckdb", logger });
       const loaded = s2.load();
       expect(loaded.beliefs).toHaveLength(1);
       expect(loaded.beliefs[0].invalidated_at).not.toBeNull();
-      s2.close();
-      await drain(100);
+      await s2.close();
     });
 
     it("preserves audit order across writes via audit_seq", async () => {
@@ -173,9 +158,7 @@ describe.runIf(process.env.CI !== "true" || true)(
       s1.writeAudit(makeAudit("a".repeat(64), "e1".padEnd(64, "e"), ZERO_HASH));
       s1.writeAudit(makeAudit("b".repeat(64), "e2".padEnd(64, "e"), "e1".padEnd(64, "e")));
       s1.writeAudit(makeAudit("c".repeat(64), "e3".padEnd(64, "e"), "e2".padEnd(64, "e")));
-      await drain(100);
-      s1.close();
-      await drain(100);
+      await s1.close();
 
       const s2 = await openPersistentStore({ dataDir: tmpDir, preferred: "duckdb", logger });
       const loaded = s2.load();
@@ -184,8 +167,7 @@ describe.runIf(process.env.CI !== "true" || true)(
         "e2".padEnd(64, "e"),
         "e3".padEnd(64, "e"),
       ]);
-      s2.close();
-      await drain(100);
+      await s2.close();
     });
 
     it("last (signer, topic) trust row wins across writes", async () => {
@@ -203,28 +185,41 @@ describe.runIf(process.env.CI !== "true" || true)(
         score: 0.9,
         recorded_at: "2026-04-22T01:00:00Z",
       });
-      await drain(100);
-      s1.close();
-      await drain(100);
+      await s1.close();
 
       const s2 = await openPersistentStore({ dataDir: tmpDir, preferred: "duckdb", logger });
       const loaded = s2.load();
       expect(loaded.trust).toHaveLength(1);
       expect(loaded.trust[0].score).toBe(0.9);
-      s2.close();
-      await drain(100);
+      await s2.close();
     });
 
     it("schema creation is idempotent across re-opens", async () => {
       if (!duckdbAvailable) return;
       const s1 = await openFresh();
-      s1.close();
-      await drain(100);
+      await s1.close();
       // Opening again must not throw even though tables/sequence already exist.
       const s2 = await openPersistentStore({ dataDir: tmpDir, preferred: "duckdb", logger });
       expect(s2.kind).toBe("duckdb");
-      s2.close();
-      await drain(100);
+      await s2.close();
+    });
+
+    it("close() returns a Promise that settles after pending writes flush", async () => {
+      if (!duckdbAvailable) return;
+      const s1 = await openFresh();
+      // Fire several writes then immediately close — the returned Promise
+      // must settle only after every enqueued write has hit DuckDB. If the
+      // old void-returning close() were still in place, reopening here
+      // would race with in-flight writes on slow CI filesystems.
+      for (let i = 0; i < 5; i++) {
+        const id = String(i).repeat(64).slice(0, 64);
+        s1.writeBelief(makeBelief(id));
+      }
+      await s1.close();
+
+      const s2 = await openPersistentStore({ dataDir: tmpDir, preferred: "duckdb", logger });
+      expect(s2.load().beliefs).toHaveLength(5);
+      await s2.close();
     });
   }
 );
@@ -235,6 +230,7 @@ describe("persist factory — fallback behavior when duckdb genuinely missing", 
     expect(store.kind).toBe("jsonl");
     // No warning expected
     expect(captured.join("\n")).not.toMatch(/duckdb/);
+    await store.close();
   });
 
   it("requesting duckdb on a machine without the binding falls back gracefully", async () => {
@@ -250,6 +246,6 @@ describe("persist factory — fallback behavior when duckdb genuinely missing", 
     // suspenders check on the contract.
     const store = await openPersistentStore({ dataDir: tmpDir, preferred: "duckdb", logger });
     expect(["jsonl", "duckdb"]).toContain(store.kind);
-    store.close();
+    await store.close();
   });
 });

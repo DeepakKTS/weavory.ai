@@ -195,14 +195,19 @@ export async function openDuckdbStore(opts: {
       return initialLoad;
     },
 
-    close(): void {
-      // Drain the queue then close the connection + db. Fire-and-forget —
-      // the caller has no expectation of the close completing synchronously,
-      // but we preserve ordering so all queued writes finish first.
-      writeChain = writeChain.then(
+    async close(): Promise<void> {
+      // Drain the queue then close the connection + db. We capture the tail
+      // of the chain (writeChain already swallows its own errors via the
+      // enqueue wrapper, so this never rejects) and return a Promise that
+      // resolves when BOTH the queued writes and the closeAll have
+      // completed. Eliminates the earlier time-based `drain()` workaround
+      // that was flaky on slow CI filesystems.
+      const barrier = writeChain.then(
         () => closeAll(conn, db),
         () => closeAll(conn, db)
       );
+      writeChain = barrier;
+      await barrier;
     },
   };
 
