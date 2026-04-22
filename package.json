@@ -18,8 +18,7 @@
   },
   "files": [
     "dist",
-    "docs/README.md",
-    "docs/QUICKSTART.md"
+    "docs/README.md"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
@@ -29,9 +28,7 @@
     "test:watch": "vitest",
     "coverage": "vitest run --coverage --coverage.reporter=json --coverage.reporter=text",
     "collect:git": "tsx scripts/collect/git.ts",
-    "collect:tests": "tsx scripts/collect/tests.ts",
-    "collect:runtime": "tsx scripts/collect/runtime.ts",
-    "collect:all": "pnpm collect:git && pnpm collect:tests && pnpm collect:runtime",
+    "collect:all": "pnpm collect:git",
     "dashboard:serve": "tsx scripts/serve-dashboard.ts",
     "verify:gate1": "bash scripts/verify/gate1.sh",
     "verify:gate2": "bash scripts/verify/gate2.sh",

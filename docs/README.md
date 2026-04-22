@@ -14,7 +14,18 @@ cd weavory.ai
 pnpm install && pnpm build
 ```
 
-Requires Node ≥ 20 and pnpm ≥ 9. No external services — LanceDB / DuckDB are embedded.
+Requires Node ≥ 20 and pnpm ≥ 9. No external services. The Phase-1 reference substrate is in-memory; a restart-safe JSONL persistence mode is available behind `WEAVORY_PERSIST=1` — see [`docs/DEPLOYMENT.md`](./DEPLOYMENT.md). LanceDB / DuckDB backing is on the post-hackathon backlog.
+
+### Environment flags (all optional)
+
+| Flag | Default | Effect |
+|------|---------|--------|
+| `WEAVORY_PERSIST` | unset | Persist beliefs + audit chain to JSONL under `WEAVORY_DATA_DIR` |
+| `WEAVORY_DATA_DIR` | `./.weavory-data/` | Directory for `beliefs.jsonl` + `audit.jsonl` (used with `WEAVORY_PERSIST`) |
+| `WEAVORY_POLICY_FILE` | unset | Path to JSON allow/deny policy evaluated before every `believe` |
+| `WEAVORY_ADVERSARIAL` | unset | Raises default `min_trust` from 0.3 → 0.6 on every `recall` |
+| `WEAVORY_VERIFY_ON_WRITE` | unset | Defensive Ed25519 re-verify on every `believe` (~10× slower) |
+| `WEAVORY_RUNTIME_WRITER` | `on` | Atomic snapshots to `ops/data/runtime.json` for the dashboard |
 
 ## 2 · Start the MCP server
 
