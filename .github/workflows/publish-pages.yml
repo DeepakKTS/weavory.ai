@@ -1,0 +1,97 @@
+name: publish-pages
+
+# Assembles a small static site from the repo's existing HTML +
+# JSON artifacts and deploys it to GitHub Pages on every push to
+# `main`. The workflow never modifies the repo — it only copies
+# files into a `_site/` build tree and hands that tree to Pages.
+#
+# First-time setup (one UI click): repo → Settings → Pages →
+# Source: "GitHub Actions". Also ensure the repo is either public
+# OR the account has GitHub Pro (Pages from a private repo is
+# Pro-only).
+#
+# Site layout served by Pages:
+#   /                 → docs-site/index.html (landing page)
+#   /overview/        → ops/weavory.ai-overview_steps.html
+#   /dashboard/       → ops/weavory-dashboard.html
+#   /assets/          → ops/assets/ (logo, etc.)
+#   /data/            → ops/data/{git,gates,tests,bench,runtime}.json
+#                       (only non-gitignored artifacts that the
+#                       dashboard reads; incidents/ is excluded)
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch: {}
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: assemble static site
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build _site/ tree
+        run: |
+          set -euo pipefail
+          mkdir -p _site/overview _site/dashboard _site/assets _site/data
+
+          # Landing page
+          cp docs-site/index.html _site/index.html
+
+          # Overview page (visible at /overview/)
+          cp ops/weavory.ai-overview_steps.html _site/overview/index.html
+
+          # Dashboard (visible at /dashboard/)
+          cp ops/weavory-dashboard.html _site/dashboard/index.html
+
+          # Static assets
+          cp -R ops/assets/. _site/assets/
+
+          # JSON data the dashboard reads live. Incidents intentionally
+          # excluded (may contain sensitive object payloads — see
+          # docs/SECURITY.md § SEC-05).
+          for f in git.json gates.json tests.json bench.json runtime.json; do
+            if [[ -f "ops/data/$f" ]]; then
+              cp "ops/data/$f" "_site/data/$f"
+            fi
+          done
+
+          # Tiny 404 so missing paths are friendly
+          cat > _site/404.html <<'HTML'
+          <!doctype html><html><head><meta charset="utf-8"><title>Not found — weavory.ai</title></head>
+          <body style="font-family: system-ui; padding: 40px; background: #0a1628; color: #e6edf3;">
+          <h1>404 — not here</h1>
+          <p>Try <a style="color:#22d3ee" href="/">the landing page</a>,
+          <a style="color:#22d3ee" href="/overview/">the overview</a>, or
+          <a style="color:#22d3ee" href="/dashboard/">the dashboard</a>.</p>
+          </body></html>
+          HTML
+
+          # Print a small manifest for the CI log
+          find _site -type f | sort
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    name: deploy to Pages
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: deploy
+        uses: actions/deploy-pages@v4

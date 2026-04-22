@@ -4,6 +4,18 @@
   "description": "weavory.ai — Shared belief coordination substrate for AI agents. MCP-native, NANDA AgentFacts-compatible.",
   "type": "module",
   "license": "Apache-2.0",
+  "author": "DeepakKTS",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DeepakKTS/weavory.ai.git"
+  },
+  "homepage": "https://github.com/DeepakKTS/weavory.ai#readme",
+  "bugs": {
+    "url": "https://github.com/DeepakKTS/weavory.ai/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "engines": {
     "node": ">=20"
   },

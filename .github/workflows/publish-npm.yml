@@ -1,0 +1,62 @@
+name: publish-npm
+
+# Publishes @weavory/mcp to npmjs.org on every `v*` tag push.
+# Triggering a publish is a manual act: `git tag -a v0.1.0 -m "..."
+# && git push origin v0.1.0`. Pushing to `main` does NOT publish.
+#
+# Required secrets:
+#   NPM_TOKEN   — npm "Automation" access token with publish scope for
+#                 the @weavory org. Set once via `gh secret set NPM_TOKEN`.
+#
+# Why pnpm: matches the repo's dev environment (pnpm 10.30.3, Node 22 LTS)
+# and the existing fresh-machine workflow. `pnpm publish --no-git-checks`
+# is required because the publishing commit is a tag, not the tip of main,
+# and pnpm otherwise refuses to publish from a detached HEAD.
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch: {}
+
+concurrency:
+  group: publish-npm-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: publish @weavory/mcp to npm
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write   # enables npm provenance (signed publish)
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.30.3
+          run_install: false
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
+          cache: pnpm
+
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
+
+      - name: TypeScript strict check
+        run: pnpm exec tsc --noEmit
+
+      - name: Build dist/
+        run: pnpm build
+
+      - name: Publish to npm (public scope)
+        run: pnpm publish --access public --no-git-checks --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

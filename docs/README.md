@@ -6,7 +6,30 @@
 
 An MCP server that lets two AI agents share *signed beliefs* with trust-aware recall. Five tools, one object ("belief"), nothing else to learn.
 
-## 1 · Install (three lines, fresh machine)
+## 1 · Install (three supported paths — pick any)
+
+### Option A · npx (fastest, no clone, no build)
+
+```bash
+npx -y @weavory/mcp start
+```
+
+Available after the `v0.1.0` release tag publishes to npm (see
+[Phase K in plan](https://github.com/DeepakKTS/weavory.ai)). Produces
+an MCP server on stdio — point Claude Desktop, OpenClaw, Cursor, or
+any MCP-capable agent at it.
+
+### Option B · Docker (multi-arch: amd64, arm64)
+
+```bash
+docker run -v weavory-data:/data ghcr.io/deepakkts/weavory:0.1.0
+```
+
+Available after the `v0.1.0` release tag publishes to ghcr.io. Reads
+`WEAVORY_PERSIST`, `WEAVORY_DATA_DIR`, `WEAVORY_POLICY_FILE`,
+`WEAVORY_ADVERSARIAL` — see [`docs/DEPLOYMENT.md`](./DEPLOYMENT.md).
+
+### Option C · From source (canonical Gate-7 judge path)
 
 ```bash
 git clone https://github.com/DeepakKTS/weavory.ai.git
