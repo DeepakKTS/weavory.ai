@@ -1,4 +1,4 @@
-# weavory
+# weavory.ai
 
 **Shared belief coordination substrate for AI agents.**
 An MCP server with signed beliefs, trust-gated recall, hash-chained audit, and bi-temporal replay — in five tools.
