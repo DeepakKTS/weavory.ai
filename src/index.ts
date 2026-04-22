@@ -128,4 +128,4 @@ export type {
 export { AuditStore } from "./store/audit.js";
 
 /** Library version string (matches package.json). */
-export const VERSION = "0.1.1" as const;
+export const VERSION = "0.1.2" as const;
