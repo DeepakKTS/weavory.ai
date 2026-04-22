@@ -65,5 +65,8 @@
     "agent-facts",
     "bi-temporal",
     "crdt"
-  ]
+  ],
+  "optionalDependencies": {
+    "@duckdb/node-api": "1.5.2-r.1"
+  }
 }
