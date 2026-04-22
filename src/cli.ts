@@ -25,6 +25,7 @@ import {
   openPersistentStore,
   persistEnabledFromEnv,
 } from "./store/persist.js";
+import { loadPolicy, policyPathFromEnv } from "./engine/policy.js";
 
 const HELP = `weavory — shared belief coordination substrate for AI agents
 
@@ -194,6 +195,22 @@ function runReplayCommand(argv: string[]): void {
  */
 async function buildStateFromEnv(env: NodeJS.ProcessEnv = process.env): Promise<EngineState> {
   const state = new EngineState();
+
+  // Pre-believe policy (Phase I.P0-4) — loaded first so every mutation in
+  // the rehydrate path is also gated. (In practice rehydrate bypasses
+  // believe(), so this matters more for runtime correctness than safety —
+  // but it keeps the order predictable.)
+  const policyPath = policyPathFromEnv(env);
+  if (policyPath !== null) {
+    try {
+      const p = loadPolicy(policyPath);
+      state.attachPolicy(p);
+      process.stderr.write(`[weavory] policy loaded from ${policyPath}\n`);
+    } catch (err) {
+      die(`policy load failed: ${err instanceof Error ? err.message : String(err)}`, 4);
+    }
+  }
+
   if (!persistEnabledFromEnv(env)) return state;
 
   const store = await openPersistentStore({

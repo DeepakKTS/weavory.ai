@@ -20,6 +20,7 @@ import {
 import type { EngineState, SubscriptionFilters } from "./state.js";
 import { mergeConflicts, type ConflictGroup, type MergeStrategy } from "./merge.js";
 import { getReputation, type ReputationSummary } from "./bazaar.js";
+import { evaluate as evaluatePolicy, PolicyDenialError } from "./policy.js";
 
 // ---------- believe ----------
 
@@ -43,6 +44,20 @@ export type BelieveOutput = {
 };
 
 export function believe(state: EngineState, input: BelieveInput): BelieveOutput {
+  // Phase I.P0-4 — pre-believe policy gate. Runs BEFORE any crypto/store
+  // work so denied requests cost almost nothing. No-op when no policy is
+  // attached, which is the default in every test and every Phase-1 gate.
+  if (state.policy !== undefined) {
+    const verdict = evaluatePolicy(state.policy, {
+      subject: input.subject,
+      predicate: input.predicate,
+      object: input.object,
+    });
+    if (!verdict.allowed) {
+      throw new PolicyDenialError(verdict);
+    }
+  }
+
   // Validate causes[] refer to beliefs that already exist in the store so
   // the causal chain stays well-formed. Unknown IDs → throw before we sign
   // or persist anything. Demo-friendly (every example publishes the parent

@@ -23,6 +23,7 @@ import {
 import { AuditStore } from "../store/audit.js";
 import { generateKeyPair, signerIdOf, type KeyPair } from "../core/sign.js";
 import type { PersistentStore } from "../store/persist.js";
+import type { Policy } from "./policy.js";
 
 /** Phase-G-visible op names — mirrored in runtime_writer.ts. */
 export type EngineOp =
@@ -120,6 +121,20 @@ export class EngineState {
 
   attachPersist(store: PersistentStore): void {
     this.persist = store;
+  }
+
+  /**
+   * Optional pre-believe policy (Phase I.P0-4). When attached, every
+   * `believe()` call consults `evaluate(this.policy, {subject,predicate,
+   * object})` before signing. Rejected requests surface a PolicyDenialError
+   * to the MCP caller; allowed requests proceed as before. When unset (the
+   * default), no policy evaluation happens — Phase-1 semantics are
+   * preserved exactly.
+   */
+  policy: Policy | undefined = undefined;
+
+  attachPolicy(p: Policy): void {
+    this.policy = p;
   }
 
   /**
