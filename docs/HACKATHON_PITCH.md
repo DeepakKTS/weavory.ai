@@ -94,6 +94,9 @@ in one 60-second narrative.
 >
 > Compliance mapping: see `docs/COMPLIANCE.md` — SOC2 CC6.1/CC7.2/CC8.1,
 > ISO27001 A.12/A.18, GDPR Arts. 5/17, EU AI Act Art. 12, NIST AI-RMF.
+> One-page architecture model: `docs/ARCHITECTURE.md`. Enterprise
+> integration scenarios with the BFSI demo as the lead example:
+> `docs/REAL_WORLD_USAGE.md`.
 
 ---
 
