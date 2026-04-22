@@ -4,7 +4,7 @@ Three documented install paths. Pick the one that matches your context.
 
 | Path | Audience | Time | Prereqs |
 |------|---------|------|---------|
-| [1. Source (judge + dev)](#1-from-source) | Hackathon judges, developers | ~90 s | Node ≥ 20, pnpm ≥ 9, git |
+| [1. From source](#1-from-source) | Developers, contributors | ~90 s | Node ≥ 20, pnpm ≥ 9, git |
 | [2. Claude Desktop MCP client](#2-claude-desktop--other-mcp-client) | Local dev with an agent | ~2 min | Path 1 complete, Claude Desktop |
 | [3. Docker](#3-docker--compose) | Operators, container-native deployments | ~3 min | Docker ≥ 24 |
 
@@ -20,13 +20,13 @@ git clone https://github.com/DeepakKTS/weavory.ai.git
 cd weavory.ai
 pnpm install            # includes optional @duckdb/node-api (see §DuckDB note)
 pnpm build              # tsc → dist/
-pnpm exec tsx examples/two_agents_collaborate.ts     # sanity check (Gate 3)
+pnpm exec tsx examples/two_agents_collaborate.ts     # sanity check (two-agent exchange)
 ```
 
 Expected output from the sanity check ends with:
 
 ```
-[demo] ✓ Gate 3 demo complete — two-agent exchange via weavory round-tripped cleanly.
+[demo] ✓ two-agent exchange via weavory round-tripped cleanly.
 ```
 
 If you only see "pnpm install" errors, the usual cause is a stale pnpm
@@ -68,11 +68,11 @@ Restart Claude Desktop. In a new conversation, ask the agent to "list
 your tools" — you should see `weavory.believe`, `weavory.recall`,
 `weavory.subscribe`, `weavory.attest`, `weavory.forget`.
 
-### Cursor / OpenClaw / other stdio-MCP clients
+### Cursor / other stdio-MCP clients
 
 Point them at the same `node dist/cli.js start` command. Env vars
-propagate the same way. stdio is the only transport weavory ships —
-HTTP transport is on the post-hackathon backlog (B-0007).
+propagate the same way. stdio is the only transport weavory ships in
+v0.1.x — HTTP transport is on the roadmap.
 
 ---
 

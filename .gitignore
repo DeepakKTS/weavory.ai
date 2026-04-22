@@ -27,6 +27,16 @@ ops/data/incidents/
 .vscode/
 .idea/
 
-# Keys (we never commit signer keys)
+# Keys, credentials (never commit these under any name)
 *.pem
+*.p12
+*.pfx
+*.key
 keys/
+secret.json
+secrets.json
+credentials.json
+credentials.*
+*.secret
+*.credentials
+.npmrc

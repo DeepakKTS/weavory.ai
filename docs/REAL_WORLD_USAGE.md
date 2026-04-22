@@ -26,7 +26,9 @@ they'd call any other MCP tool.
 ```
 
 Agents don't need a weavory SDK. They only need to speak MCP — which
-Claude Desktop, OpenClaw, Cursor, and the official MCP SDKs all do.
+Claude Desktop, Cursor, the official MCP SDKs (Python, TypeScript,
+Go, Rust, Ruby, Java, C#), and any MCP-compatible agent framework
+all support out of the box.
 
 ---
 
@@ -101,9 +103,9 @@ immediately see and act on it. With weavory:
   at once.
 - Incident export captures the attempt for replay.
 
-This is the same architectural pattern the Wall arena and the BFSI
-demo both exercise — weavory gives you a **revocable, attributable**
-shared memory instead of a plain one.
+This is the same architectural pattern the BFSI demo exercises — weavory
+gives you a **revocable, attributable** shared memory instead of a plain
+one.
 
 ### Regulated audit — "what did our stack decide last quarter?"
 
@@ -207,8 +209,8 @@ the honest deferred list.
 
 ## Fast-path reading order for an integrator
 
-1. Run `pnpm exec tsx examples/two_agents_collaborate.ts` — Gate 3, the
-   judge path. 15 seconds.
+1. Run `pnpm exec tsx examples/two_agents_collaborate.ts` — the
+   canonical two-agent exchange example. 15 seconds.
 2. Run `pnpm exec tsx examples/bfsi_claims_triage.ts` — this page's
    primary scenario. 3 seconds.
 3. Skim [`docs/ARCHITECTURE.md`](./ARCHITECTURE.md) — one page.

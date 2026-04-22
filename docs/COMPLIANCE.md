@@ -114,7 +114,7 @@ Frameworks referenced:
   or filesystem level.
 
 All five are tracked in `control/BACKLOG.json` with honest status and
-are deliberately **out of scope** for the Phase-1 hackathon substrate.
+are deliberately **out of scope** for v0.1.x and tracked on the roadmap.
 
 ---
 

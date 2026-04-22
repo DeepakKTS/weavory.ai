@@ -31,7 +31,10 @@ Every flag is optional. Defaults preserve Phase-1 semantics.
 | `WEAVORY_VERIFY_ON_WRITE` | unset | `1` forces a defensive Ed25519 verify on every `believe()` after signing (~10× slower). Useful during protocol changes or adversarial audits. |
 | `WEAVORY_RUNTIME_WRITER` | `on` (outside tests) | `off` disables atomic snapshots to `ops/data/runtime.json`. Leave `on` in production so the dashboard reflects live state. |
 
-No other env vars are read by the server. `ANTHROPIC_API_KEY` is only used by Gate 7's judge-simulation script in CI, never by weavory itself.
+No other env vars are read by the server. `ANTHROPIC_API_KEY`, if
+present, is only used by the optional end-to-end integration test
+that spawns a stock MCP-client agent in CI — never by the weavory
+server itself.
 
 ---
 
@@ -232,8 +235,8 @@ non-zero exit on chain-failure is on the backlog (P1-5).
 - DuckDB: enforced by DuckDB's own exclusive lock. The second process
   fails at open time — correct behavior.
 
-Multi-process federation (`libp2p` gossip) is on the post-hackathon
-backlog (B-0006).
+Multi-process federation (`libp2p` gossip) is on the roadmap but
+explicitly out of scope for v0.1.x.
 
 ---
 

@@ -1,64 +1,48 @@
-# weavory.ai — judge runbook
+# weavory — quickstart
 
-> **For the NandaHack judge.** This page is what a stock OpenClaw-compatible agent reads to complete a two-agent belief-exchange task using weavory. It is deliberately short.
+> Short guide for an MCP-capable agent (Claude Desktop, Cursor, or
+> any official MCP SDK client) to start using weavory in about 60
+> seconds.
 
 ## What weavory is
 
-An MCP server that lets two AI agents share *signed beliefs* with trust-aware recall. Five tools, one object ("belief"), nothing else to learn.
+An MCP server that lets two or more AI agents share **signed beliefs**
+with trust-aware recall. Five tools, one object ("belief"), nothing
+else to learn.
 
-## 1 · Install (three supported paths — pick any)
+## 1 · Install
 
-### Option A · npx (fastest, no clone, no build)
+Pick any one:
 
 ```bash
+# Fastest — no clone, no build
 npx -y @weavory/mcp start
-```
 
-Available after the `v0.1.0` release tag publishes to npm (see
-[Phase K in plan](https://github.com/DeepakKTS/weavory.ai)). Produces
-an MCP server on stdio — point Claude Desktop, OpenClaw, Cursor, or
-any MCP-capable agent at it.
+# Container — multi-arch
+docker run -v weavory-data:/data ghcr.io/deepakkts/weavory:latest
 
-### Option B · Docker (multi-arch: amd64, arm64)
-
-```bash
-docker run -v weavory-data:/data ghcr.io/deepakkts/weavory:0.1.0
-```
-
-Available after the `v0.1.0` release tag publishes to ghcr.io. Reads
-`WEAVORY_PERSIST`, `WEAVORY_DATA_DIR`, `WEAVORY_POLICY_FILE`,
-`WEAVORY_ADVERSARIAL` — see [`docs/DEPLOYMENT.md`](./DEPLOYMENT.md).
-
-### Option C · From source (canonical Gate-7 judge path)
-
-```bash
+# From source
 git clone https://github.com/DeepakKTS/weavory.ai.git
-cd weavory.ai
-pnpm install && pnpm build
+cd weavory.ai && pnpm install && pnpm build
 ```
 
-Requires Node ≥ 20 and pnpm ≥ 9. No external services. The Phase-1 reference substrate is in-memory; a restart-safe JSONL persistence mode is available behind `WEAVORY_PERSIST=1` — see [`docs/DEPLOYMENT.md`](./DEPLOYMENT.md). LanceDB / DuckDB backing is on the post-hackathon backlog.
-
-### Environment flags (all optional)
-
-| Flag | Default | Effect |
-|------|---------|--------|
-| `WEAVORY_PERSIST` | unset | Persist beliefs + audit chain to JSONL under `WEAVORY_DATA_DIR` |
-| `WEAVORY_DATA_DIR` | `./.weavory-data/` | Directory for `beliefs.jsonl` + `audit.jsonl` (used with `WEAVORY_PERSIST`) |
-| `WEAVORY_POLICY_FILE` | unset | Path to JSON allow/deny policy evaluated before every `believe` |
-| `WEAVORY_ADVERSARIAL` | unset | Raises default `min_trust` from 0.3 → 0.6 on every `recall` |
-| `WEAVORY_VERIFY_ON_WRITE` | unset | Defensive Ed25519 re-verify on every `believe` (~10× slower) |
-| `WEAVORY_RUNTIME_WRITER` | `on` | Atomic snapshots to `ops/data/runtime.json` for the dashboard |
+Requires Node ≥ 20 (for local source). Full env-var reference:
+[`docs/DEPLOYMENT.md`](./DEPLOYMENT.md).
 
 ## 2 · Start the MCP server
 
 ```bash
-pnpm dev           # dev mode (tsx)  — prints nothing to stdout (stdout is MCP)
-# or
+# Option 1 (if installed from source)
+pnpm dev
+
+# Option 2 (built from source)
 node dist/cli.js start
+
+# Option 3 (from npm)
+npx -y @weavory/mcp start
 ```
 
-The server speaks MCP over stdio. Point any MCP-capable agent (Claude, OpenClaw, Cursor, LangGraph, …) at it.
+The server speaks MCP over stdio. Point any MCP-capable agent at it.
 
 ## 3 · The five tools
 
@@ -67,18 +51,22 @@ The server speaks MCP over stdio. Point any MCP-capable agent (Claude, OpenClaw,
 | `weavory.believe` | Write a signed belief | `subject`, `predicate`, `object`, optional `signer_seed`, `confidence`, `valid_from`, `valid_to`, `causes` |
 | `weavory.recall` | Retrieve beliefs | `query`, optional `top_k`, `as_of`, `min_trust`, `include_quarantined`, `filters` |
 | `weavory.subscribe` | Register a semantic subscription | `pattern`, optional `filters`, `signer_seed` |
-| `weavory.attest` | Raise/lower trust for (signer, topic) | `signer_id`, `topic`, `score` ∈ [-1,1], optional `attestor_seed` |
-| `weavory.forget` | OR-set tombstone a belief | `belief_id`, optional `reason`, `forgetter_seed` |
+| `weavory.attest` | Raise / lower trust for (signer, topic) | `signer_id`, `topic`, `score` ∈ [-1,1], optional `attestor_seed` |
+| `weavory.forget` | Tombstone a belief | `belief_id`, optional `reason`, `forgetter_seed` |
 
-**`signer_seed`** is how an agent claims a stable identity without doing crypto itself. Use `"alice"`, `"bob"`, or any short string; the server derives a deterministic Ed25519 key from it.
+**`signer_seed`** is how an agent claims a stable identity without
+doing crypto itself. Use `"alice"`, `"bob"`, or any short string; the
+server derives a deterministic Ed25519 key from it.
 
-## 4 · 60-second walkthrough (what the judge will ask a stock agent to do)
+## 4 · 60-second walkthrough
 
 ### Scenario
 
-> You are **Bob**. A second agent, **Alice**, may have already published a belief about Cambridge traffic. Find it, verify you agree, and report whether the city is congested.
+> You are **Bob**. A second agent, **Alice**, may have already
+> published a belief about Cambridge traffic. Find it, verify you
+> agree, and report whether the city is congested.
 
-### Steps an agent should take
+### Steps
 
 1. `weavory.recall` with `{ "query": "traffic cambridge", "top_k": 5 }`.
    - If `total_matched == 0`, Alice hasn't published yet — wait or ask her to publish.
@@ -99,18 +87,18 @@ The server speaks MCP over stdio. Point any MCP-capable agent (Claude, OpenClaw,
 4. Re-call `weavory.recall` — Alice's belief should now appear in Bob's default view.
 5. Answer using `belief.object.congested` and `eta_delta_min`.
 
-**Expected answer on Gate 3:**
+**Expected answer:**
 > *"Traffic in cambridge is congested (+14 min)."*
 
-### End-to-end reference script
+### End-to-end reference
 
-[`examples/two_agents_collaborate.ts`](../examples/two_agents_collaborate.ts) runs both Alice and Bob through the above in a single process. Run it:
+The shipped example [`examples/two_agents_collaborate.ts`](../examples/two_agents_collaborate.ts) runs both Alice and Bob through the above in one process:
 
 ```bash
 pnpm exec tsx examples/two_agents_collaborate.ts
 ```
 
-The script exits **0 on success** with output:
+Exits **0** with the demo output:
 
 ```
 [demo] alice + bob connected
@@ -119,32 +107,29 @@ The script exits **0 on success** with output:
 [demo] bob recalled 1 belief(s)
 [demo] bob independently verified alice's signature ✓
 [demo] bob's answer: traffic in cambridge is congested (+14 min)
-
-[demo] ✓ Gate 3 demo complete — two-agent exchange via weavory round-tripped cleanly.
 ```
 
-Gate 3 verification: `pnpm verify:gate3`.
-
-## 5 · What weavory guarantees
+## 5 · Guarantees
 
 - **Every belief is Ed25519-signed.** The `id` is `blake3(canonical_json(payload))` — content-addressed.
-- **Every write is audit-chained.** Tampering with any past write invalidates all later chain hashes (`src/core/chain.ts`, verified by `audit.verify()`).
+- **Every write is audit-chained.** Tampering with any past write invalidates all later chain hashes (verified by `audit.verify()`).
 - **Default recall is trust-gated.** Signers with topic trust < 0.3 are filtered unless you pass `min_trust: 0` or `include_quarantined: true`.
-- **Bi-temporal queries.** `recall({ as_of: "<ISO-8601>" })` returns the belief state as it was at that instant — useful for rollback, replay, arena strategy rewind.
+- **Bi-temporal queries.** `recall({ as_of: "<ISO-8601>" })` returns the belief state as it was at that instant.
 - **Public API is exactly five tools.** No surprise surface.
 
 ## 6 · What weavory is not
 
-- Not a vector database. LanceDB + DuckDB integration lands post-Gate-7 for scale; for the judge test, the in-memory reference store is enough.
-- Not federated. Multi-node gossip (libp2p) is feature-flagged (`WEAVORY_FEDERATION=1`, off by default, Phase G only).
+- Not a vector database. Current recall is substring-match; semantic vector search is on the roadmap.
+- Not federated. Multi-node gossip is not shipped; treat one process as the trust boundary.
 - Not a production agent runtime. It's the coordination substrate — agents are your code.
 
 ## 7 · If something goes wrong
 
-- `pnpm verify:gate1` — bootstraps pass? files present?
-- `pnpm verify:gate2` — MCP surface green? all five tools callable?
-- `pnpm verify:gate3` — two-agent exchange green?
-- Live control dashboard: `pnpm dashboard:serve` → http://localhost:4317/ops/weavory-dashboard.html
-  - Truthful only: each panel names its data source and shows "Not collected yet" when absent.
+See [`docs/RUNBOOK.md`](./RUNBOOK.md) for operational scenarios (restart, policy denial, incident replay, key rotation).
 
-Links: full decision log in [`control/DECISIONS.md`](../control/DECISIONS.md); per-task trace in [`control/WORKLOG.md`](../control/WORKLOG.md); architecture details in [`control/MASTER_PLAN.md`](../control/MASTER_PLAN.md).
+Live control dashboard (when running locally from source): `pnpm dashboard:serve` → <http://localhost:4317/ops/weavory-dashboard.html>. The dashboard reads only real files; missing data shows "Not collected yet".
+
+---
+
+**Full docs:**
+[`ARCHITECTURE.md`](./ARCHITECTURE.md) · [`REAL_WORLD_USAGE.md`](./REAL_WORLD_USAGE.md) · [`INSTALL.md`](./INSTALL.md) · [`DEPLOYMENT.md`](./DEPLOYMENT.md) · [`RUNBOOK.md`](./RUNBOOK.md) · [`COMPLIANCE.md`](./COMPLIANCE.md) · [`SECURITY.md`](./SECURITY.md)

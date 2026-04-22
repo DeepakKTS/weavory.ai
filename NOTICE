@@ -1,0 +1,25 @@
+weavory.ai
+Copyright 2026 DeepakKTS
+
+This product includes software developed by DeepakKTS
+(https://github.com/DeepakKTS/weavory.ai).
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+This software depends on the following third-party Apache 2.0 /
+MIT / BSD-licensed components (transitively installed via npm):
+
+  - @modelcontextprotocol/sdk  (MIT)
+  - @noble/ed25519             (MIT)
+  - @noble/hashes              (MIT)
+  - zod                        (MIT)
+  - hono                       (MIT)
+  - @anthropic-ai/sdk          (MIT)
+  - @duckdb/node-api           (MIT, optional)
+
+Their license texts are preserved under node_modules/*/LICENSE at
+install time; consult each package for redistribution terms.

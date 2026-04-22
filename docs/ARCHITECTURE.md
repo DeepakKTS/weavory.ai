@@ -1,8 +1,7 @@
 # weavory.ai — Architecture (one page)
 
 > **Goal.** Give a technical reader enough of the mental model in
-> 2–3 minutes to follow any feature, demo, or source file without
-> needing to read `control/MASTER_PLAN.md` first.
+> 2–3 minutes to follow any feature, demo, or source file.
 
 ## What weavory is
 
@@ -15,7 +14,7 @@ else.
 
 ```
 ┌────────────────────────────────────────────────────────────────┐
-│  Agents (Claude Desktop · OpenClaw · Cursor · LangGraph · etc) │
+│  Agents (Claude Desktop · Cursor · LangGraph · MCP SDK clients)  │
 └──────────────────────────────┬─────────────────────────────────┘
                                │ MCP (stdio, JSON-RPC)
                   ┌────────────┴────────────┐

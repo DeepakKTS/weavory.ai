@@ -141,12 +141,14 @@ substrate — tracked as backlog item B-0008.
 
 ## Reporting security issues
 
-This is a hackathon substrate, not a production SKU. For
-vulnerability reports or questions during the NandaHack 2026 window,
-open an issue with the `security` label on
-`github.com/DeepakKTS/weavory.ai` — the repo is private during the
-hackathon; collaborator access can be granted on request.
+This is an early-stage open-source substrate. For suspected
+vulnerabilities, **please do not open a public issue** — email the
+maintainer or open a GitHub security advisory at
+<https://github.com/DeepakKTS/weavory.ai/security/advisories/new>.
+
+For non-sensitive questions, open a regular issue with the `security`
+label at <https://github.com/DeepakKTS/weavory.ai/issues>.
 
 ---
 
-*Last reviewed 2026-04-22 against `main` post Phase J.P1-4.*
+*Last reviewed 2026-04-22.*

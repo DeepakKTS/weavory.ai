@@ -11,7 +11,7 @@ to real commands and real files.
 - [Inspecting what's in the data directory](#inspecting-whats-in-the-data-directory)
 - [Chain-broken on restart](#chain-broken-on-restart-exit-code-3)
 - [Policy denial debugging](#policy-denial-debugging)
-- [Incident export + replay](#incident-export--replay-wall-arena-workflow)
+- [Incident export + replay](#incident-export--replay-forensic-workflow)
 - [Recovering from a bad policy load](#recovering-from-a-bad-policy-load-exit-code-4)
 - [Reclaiming disk space](#reclaiming-disk-space-jsonl)
 - [Rotating signer keys](#rotating-signer-keys)
@@ -146,7 +146,7 @@ Investigation steps:
    clear the data dir and restart. If this is production, treat as a
    security incident per your organization's runbook.
 
-Gate Wall's demo exercises this end-to-end:
+The bundled adversarial drill demo exercises this end-to-end:
 `pnpm exec tsx examples/wall_incident.ts` writes a deliberate bad entry
 and shows the alarm + incident export.
 
@@ -178,7 +178,7 @@ Policy reloads require a server restart. Hot-reload is on backlog.
 
 ---
 
-## Incident export + replay (Wall arena workflow)
+## Incident export + replay (forensic workflow)
 
 ```bash
 # On a running server (programmatic — exportIncident is not exposed as an MCP tool)
@@ -237,9 +237,9 @@ Compaction for JSONL is **not yet automated**. Manual procedure:
 # 3. Swap the data dir atomically
 ```
 
-Until a compaction CLI ships (post-hackathon), the pragmatic answer is
-to switch to DuckDB for heavy churn — DuckDB reclaims space via
-`VACUUM` automatically.
+Until a compaction CLI ships, the pragmatic answer is to switch to
+DuckDB for heavy churn — DuckDB reclaims space via `VACUUM`
+automatically.
 
 ---
 

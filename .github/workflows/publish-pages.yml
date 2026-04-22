@@ -23,7 +23,6 @@ name: publish-pages
 #
 # Site layout served by Pages:
 #   /                 → docs-site/index.html (landing page)
-#   /overview/        → ops/weavory.ai-overview_steps.html
 #   /dashboard/       → ops/weavory-dashboard.html
 #   /assets/          → ops/assets/ (logo, etc.)
 #   /data/            → ops/data/{git,gates,tests,bench,runtime}.json
@@ -54,9 +53,6 @@ jobs:
 
           # Landing page
           cp docs-site/index.html _site/index.html
-
-          # Overview page (visible at /overview/)
-          cp ops/weavory.ai-overview_steps.html _site/overview/index.html
 
           # Dashboard (visible at /dashboard/)
           cp ops/weavory-dashboard.html _site/dashboard/index.html
