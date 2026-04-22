@@ -60,6 +60,26 @@ WEAVORY_PERSIST=1 WEAVORY_DATA_DIR=/tmp/w node dist/cli.js start
 # [recall finds the same belief]
 ```
 
+**Bonus beat — BFSI claims-triage drill (regulated-workflow scenario).**
+A four-agent motor-insurance claim pipeline (intake → fraud →
+underwriting → approver) processes a $42 000 claim under
+`WEAVORY_ADVERSARIAL=1`. A compromised/unknown signer attempts to inject
+a forged `approval` belief. Weavory's trust gate quarantines it. The
+approver finalizes the decision from the trusted chain only, with a
+provable `audit_trail` in the final belief. A compliance view
+(`min_trust=-1`) surfaces the forgery attempt for forensics, and an
+incident file is exported so the team can replay the drill off-process.
+
+```
+pnpm exec tsx examples/bfsi_claims_triage.ts
+bash scripts/verify/gate_bfsi.sh        # 5-check verifier
+```
+
+This is the memorable scenario for BFSI / healthcare / regulated-industry
+judges — every Responsible-AI primitive on the roster (signed beliefs,
+causal chain, quarantine, compliance audit view, incident replay) visible
+in one 60-second narrative.
+
 ### (2:30 – 3:00) · Honest scope + ask
 
 > **What ships today:** signed beliefs, hash-chain audit, trust gating,
