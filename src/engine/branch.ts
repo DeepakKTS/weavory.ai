@@ -74,6 +74,9 @@ export function cloneState(src: EngineState): EngineState {
   for (const [signer, tv] of src.trust) dst.trust.set(signer, cloneTrustVector(tv));
 
   for (const [sid, sub] of src.subscriptions) dst.subscriptions.set(sid, cloneSubscription(sub));
+  // Subscriptions were copied via direct Map.set above; rebuild the
+  // predicate-bucket index so fan-out in the branch stays O(1).
+  dst.reindexSubscriptions();
 
   for (const [sid, kp] of src.keyring) dst.keyring.set(sid, cloneKeyPair(kp));
 

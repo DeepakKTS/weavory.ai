@@ -1,0 +1,39 @@
+{
+  "schema_version": "1.0.0",
+  "generated_at": "2026-04-22T00:29:17.273Z",
+  "runner": "local/darwin-arm64/node-v23.7.0",
+  "results": [
+    {
+      "name": "believe",
+      "iterations": 1000,
+      "total_ms": 499.63,
+      "per_op_us": 500,
+      "ops_per_sec": 2001,
+      "note": "1000 signed beliefs with shared alice seed; includes Ed25519 sign + BLAKE3 id + store + audit append + subscription fan-out (no subscriptions)"
+    },
+    {
+      "name": "recall_empty_query",
+      "iterations": 200,
+      "total_ms": 8.89,
+      "per_op_us": 44,
+      "ops_per_sec": 22508,
+      "note": "200 empty-query recalls over 1000 stored beliefs; lazy blob skips JSON.stringify of each belief.object"
+    },
+    {
+      "name": "recall_with_query",
+      "iterations": 200,
+      "total_ms": 20.88,
+      "per_op_us": 104,
+      "ops_per_sec": 9577,
+      "note": "200 recall(\"even\") queries over 1000 stored beliefs; subject/predicate prefilter short-circuits before stringifying object"
+    },
+    {
+      "name": "believe_with_fanout",
+      "iterations": 1000,
+      "total_ms": 462.71,
+      "per_op_us": 463,
+      "ops_per_sec": 2161,
+      "note": "1000 beliefs with 10 predicate-filtered subscriptions + 1 unfiltered; indexed fan-out should keep overhead constant w.r.t. bucket miss"
+    }
+  ]
+}

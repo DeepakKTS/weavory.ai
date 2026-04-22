@@ -21,16 +21,11 @@
 import { writeFileSync, renameSync, mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { EngineState } from "./state.js";
+import type { EngineOp, EngineState } from "./state.js";
 
-export type EngineOp =
-  | "believe"
-  | "recall"
-  | "subscribe"
-  | "attest"
-  | "forget"
-  | "startup"
-  | "shutdown";
+// Re-export so downstream callers that used to import from runtime_writer
+// keep working without touching their import paths.
+export type { EngineOp } from "./state.js";
 
 export type TamperAlarm = {
   detected_at: string;
@@ -158,10 +153,14 @@ export class RuntimeWriter {
       }
     };
     process.on("beforeExit", onExit);
+    // Per-signal handler: do the flush, then re-raise so whichever Node
+    // default / user-registered handler takes over. `process.once` removes
+    // *our* handler automatically after it fires — so the re-raised signal
+    // hits either another registered handler or Node's default (terminate).
+    // We deliberately do NOT call `process.removeAllListeners(signal)` here:
+    // that would wipe listeners other code registered before ours.
     const onSignal = (signal: NodeJS.Signals): void => {
       onExit();
-      // Re-raise so the process terminates with the expected signal code.
-      process.removeAllListeners(signal);
       process.kill(process.pid, signal);
     };
     process.once("SIGINT", onSignal);

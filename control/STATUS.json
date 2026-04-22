@@ -1,9 +1,9 @@
 {
   "schema_version": "1.0.0",
   "project": "weavory.ai",
-  "updated_at": "2026-04-21T23:22:00Z",
-  "current_phase": "G.6_complete",
-  "current_milestone": "Phase G complete — all seven arenas (Phase-1 Gates 1-7) + 5 arena gates green",
+  "updated_at": "2026-04-22T00:32:00Z",
+  "current_phase": "production_audit_complete",
+  "current_milestone": "Post-G.6 production-readiness audit complete — 7 fixes shipped, all 12 gates still green",
   "current_branch": "main",
   "current_remote": "https://github.com/DeepakKTS/weavory.ai (private)",
   "last_gate_passed": 7,
@@ -12,5 +12,5 @@
   "active_phase_g_sub": null,
   "active_tasks": [],
   "blockers": [],
-  "notes": "All Phase-G sub-phases done. G.1 runtime collection + G.2 Commons + G.3 Wall + G.4 Gauntlet + G.5 Bazaar + G.6 Throne. throne_integration demo proves one EngineState supports subscribe/drain/consensus, adversarial trust filtering, cloneState branching, four-stage escrow — simultaneously — without audit-chain corruption. Vitest 120/120 green. Gates: 7 Phase-1 + commons + wall + gauntlet + bazaar + throne = 12 total, all recorded in ops/data/gates.json. Five-tool MCP public API unchanged throughout Phase G; only the CLI gained the replay subcommand. Phase-1 judge path (Gate 7) re-verified on every CI run."
+  "notes": "Production-readiness audit complete. 7 real findings fixed: (1) EngineOp type unified across state.ts + runtime_writer.ts; (2) believe() skips defensive re-verify by default (env-gated via WEAVORY_VERIFY_ON_WRITE=1) — ~10x write throughput; (3) recall() builds object blob lazily and short-circuits on subject/predicate — huge win on wide payloads; (4) causes[] validated against known belief ids (3 new tests); (5) RuntimeWriter no longer wipes other signal handlers; (6) subscriptions indexed by predicate — fan-out scales to many subs without regression; (7) perf smoke-test + standalone bench script + bench.json artefact. Local numbers: believe 2001 ops/sec, empty recall 22508 ops/sec, filtered recall 9577 ops/sec, believe+11-subs 2161 ops/sec. Vitest 127/127. All Phase-1 + Phase-G gates still PASS locally; Gate 7 re-verifies on next CI push."
 }

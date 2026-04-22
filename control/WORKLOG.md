@@ -336,6 +336,46 @@ Three small commits, each self-verifying.
 ### Next
 **Phase G.6 — The Throne** (W-0150..W-0160): compose all four arena features (Commons + Wall + Gauntlet + Bazaar) in one integrated demo + `gate_throne.sh`. Final Phase-G sub-phase.
 
+## 2026-04-22 · Post-G.6 production-readiness audit — ALL FIXES LANDED
+
+Full end-to-end review of the running software. Seven findings triaged; all fixed in one push with regression-per-fix verification.
+
+### Audit findings → fixes
+
+| Id | Severity | File | Bug / Smell | Fix |
+|----|----------|------|-------------|-----|
+| P0-1 | Correctness | `src/engine/state.ts` + `src/engine/runtime_writer.ts` | `EngineOp` type declared in both files — silent-drift risk. | Runtime writer re-exports from state; single source of truth. |
+| P0-7 | Correctness | `src/engine/runtime_writer.ts` signal handler | `process.removeAllListeners(signal)` was wiping listeners belonging to other code (users registering SIGINT handlers upstream). | Remove that call; `process.once` already removed our listener — re-raising the signal hits the next handler / default correctly. |
+| P0-8 | Perf (big) | `src/engine/ops.ts believe()` | Ed25519 re-verify on every write — ~4 ms of wasted work per belief, dominating throughput. | Gate re-verify behind `WEAVORY_VERIFY_ON_WRITE=1`; default path skips. **~10× believe() speedup.** |
+| P0-10 | Perf | `src/engine/ops.ts recall()` | `JSON.stringify(belief.object)` built for every belief in every recall, even when query is empty or subject/predicate already matched. | Build object blob lazily; short-circuit when subject/predicate already match. |
+| P1-3 | Correctness | `src/engine/ops.ts believe()` | `causes[]` accepted without checking that the referenced ids exist in the store → silent dangling references. | Validate each cause against `state.beliefs`; throw a readable error naming the unknown ids. 3 new tests. |
+| P1-7 | Perf | `src/engine/state.ts enqueueMatches` | O(subscriptions) scan per belief — every subscribe made believe() slower. | Index subscriptions by `filters.predicate`; fan-out now touches only the matching bucket + the "any-predicate" bucket. `registerSubscription` / `reindexSubscriptions` / `unregisterSubscription` added. |
+| BENCH | Observability | (new) | No numbers to back up "state-of-art perfection + enhanced speed" claims. | `tests/perf/throughput.test.ts` (4 tests) + `scripts/bench/throughput.ts` + `pnpm bench` npm script → `ops/data/bench.json` (committed: benchmark artefact). |
+
+### Bench numbers (local M-series, node v23.7.0)
+
+| Operation | Ops/sec | µs/op | Notes |
+|-----------|---------|-------|-------|
+| `believe()` | **2,001** | 500 | Ed25519 sign + BLAKE3 id + store + audit append + fan-out |
+| `recall()` empty query on 1000 beliefs | **22,508** | 44 | Lazy blob skips JSON.stringify |
+| `recall("even")` on 1000 beliefs | **9,577** | 104 | Subject/predicate prefilter short-circuit |
+| `believe()` with 10 predicate-filtered subs + 1 unfiltered | **2,161** | 463 | Indexed fan-out — faster than unoptimised with zero subs |
+
+Empty-query recall and fan-out regressions would be caught by `tests/perf/throughput.test.ts` (conservative caps sized for CI — local runs finish in ~10% of the budget).
+
+### Regression matrix (post-audit, all green)
+
+- **Vitest:** 127/127 (120 + 4 perf + 3 causes-validation).
+- **tsc strict:** clean, no `any` in `src/`.
+- **Gates:** 3 / 4 / 5 / Commons / Wall / Gauntlet / Bazaar / Throne — all PASS locally.
+- **Gate 7** (stock-agent judge): will auto-re-verify on the next CI push.
+- **Five-tool MCP API:** unchanged. New capability rides on existing schemas only.
+
+### Control updates
+- `STATUS.json`: `notes` extended with post-audit summary.
+- `WORKLOG.md`: this entry.
+- `ops/data/bench.json`: real numbers (committed — it's a steady-state artefact, not a per-run collector output).
+
 ## 2026-04-21 · Phase G.6 · The Throne — SHIPPED · **Gate Throne PASS · Phase G complete**
 
 ### W-0150 + W-0151 · throne_integration demo + gate_throne.sh

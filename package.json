@@ -40,6 +40,7 @@
     "verify:gate5": "bash scripts/verify/gate5.sh",
     "verify:gate6": "bash scripts/verify/gate6.sh",
     "verify:gate7": "bash scripts/verify/gate7.sh",
+    "bench": "tsx scripts/bench/throughput.ts",
     "lint": "tsc --noEmit"
   },
   "dependencies": {

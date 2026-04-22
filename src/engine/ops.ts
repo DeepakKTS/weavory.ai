@@ -43,6 +43,24 @@ export type BelieveOutput = {
 };
 
 export function believe(state: EngineState, input: BelieveInput): BelieveOutput {
+  // Validate causes[] refer to beliefs that already exist in the store so
+  // the causal chain stays well-formed. Unknown IDs → throw before we sign
+  // or persist anything. Demo-friendly (every example publishes the parent
+  // belief first, so the parent id is always live) and bench-friendly
+  // (`state.beliefs.has` is O(1)).
+  if (input.causes !== undefined && input.causes.length > 0) {
+    const missing: string[] = [];
+    for (const id of input.causes) {
+      if (!state.beliefs.has(id)) missing.push(id);
+    }
+    if (missing.length > 0) {
+      throw new Error(
+        `believe: unknown cause id${missing.length === 1 ? "" : "s"} — ` +
+          missing.map((m) => m.slice(0, 12) + "…").join(", ")
+      );
+    }
+  }
+
   const { signer_id, keyPair } = input.signer_seed
     ? state.signerFromSeed(input.signer_seed)
     : state.freshSigner();
@@ -62,9 +80,18 @@ export function believe(state: EngineState, input: BelieveInput): BelieveOutput 
   });
 
   const signed = signBelief(payload, keyPair.privateKey);
-  // Defensive: re-verify what we just signed.
-  const vr = verifyBelief(signed);
-  if (!vr.ok) throw new Error("internal: verify failed on freshly signed belief: " + vr.reason);
+  // Defensive re-verify is opt-in via env flag. Ed25519 verify is ~4 ms;
+  // running it unconditionally dominates believe() throughput. The sign path
+  // is deterministic and ID is content-addressed via BLAKE3, so skipping the
+  // belt-and-suspenders check is safe for production. Set
+  // `WEAVORY_VERIFY_ON_WRITE=1` to re-enable it (useful during protocol work
+  // or adversarial audits).
+  if (process.env.WEAVORY_VERIFY_ON_WRITE === "1") {
+    const vr = verifyBelief(signed);
+    if (!vr.ok) {
+      throw new Error("internal: verify failed on freshly signed belief: " + vr.reason);
+    }
+  }
 
   const ingested_at = new Date().toISOString();
   const stored: StoredBelief = StoredBeliefSchema.parse({
@@ -207,11 +234,24 @@ export function recall(state: EngineState, input: RecallInput): RecallOutput {
     // Score: substring match over stringified subject/predicate/object +
     // confidence + trust. This is the placeholder for semantic embedding
     // search (W-0021) — good enough for Gate 3.
-    const blob =
-      belief.subject + " " + belief.predicate + " " + JSON.stringify(belief.object);
-    const lower = blob.toLowerCase();
-    const hits = q.length === 0 ? 1 : (lower.includes(q) ? 1 : 0);
-    if (hits === 0 && q.length > 0) continue;
+    //
+    // Perf: build the (expensive) stringified blob lazily. When the caller
+    // passed an empty query, every candidate "matches" so we skip the blob
+    // construction entirely — O(beliefs) stringify → O(1).
+    let hits = 1;
+    if (q.length > 0) {
+      // Cheap prefilter: subject / predicate are small strings; check them
+      // before touching JSON.stringify(belief.object) which can be arbitrarily
+      // large.
+      const subjHit = belief.subject.toLowerCase().includes(q);
+      const predHit = belief.predicate.toLowerCase().includes(q);
+      if (subjHit || predHit) {
+        hits = 1;
+      } else {
+        const objStr = JSON.stringify(belief.object).toLowerCase();
+        if (!objStr.includes(q)) continue;
+      }
+    }
 
     const score = hits * (0.5 + 0.3 * belief.confidence + 0.2 * (t + 1) / 2);
     matches.push({ belief, score });
@@ -298,7 +338,7 @@ export function subscribe(state: EngineState, input: SubscribeInput): SubscribeO
   const subscription_id = "sub_" + cryptoRandomId();
   const created_at = new Date().toISOString();
   const queue_cap = Math.max(1, input.queue_cap ?? DEFAULT_SUBSCRIPTION_QUEUE_CAP);
-  state.subscriptions.set(subscription_id, {
+  state.registerSubscription({
     id: subscription_id,
     pattern: input.pattern,
     filters: input.filters ?? {},

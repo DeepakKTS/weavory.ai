@@ -86,6 +86,16 @@ export class EngineState {
   readonly keyring = new Map<string /*signer_id*/, KeyPair>();
 
   /**
+   * Performance index: subscriptions bucketed by their `filters.predicate`.
+   * On every `believe`, we look up the bucket for the belief's predicate
+   * (O(1)) plus the "any-predicate" bucket (O(K) where K = subs without a
+   * predicate filter) — avoiding a linear scan across all subscriptions.
+   * Kept in sync by `registerSubscription` / `unregisterSubscription`.
+   */
+  readonly #subsByPredicate = new Map<string /*predicate*/, Set<string /*sub_id*/>>();
+  readonly #subsAnyPredicate = new Set<string /*sub_id*/>();
+
+  /**
    * Optional post-op hook — called after each engine op mutates state.
    * Used by `RuntimeWriter` (Phase G.1) to snapshot live metrics to
    * `ops/data/runtime.json`. Never throws; the writer is responsible for
@@ -174,14 +184,72 @@ export class EngineState {
   }
 
   /**
+   * Register a subscription AND keep the predicate-bucket index in sync.
+   * Exposed for ops.subscribe(); direct `subscriptions.set` is still allowed
+   * for rehydrate / clone paths, which call `reindexSubscriptions` once at
+   * the end to rebuild the index.
+   */
+  registerSubscription(sub: Subscription): void {
+    this.subscriptions.set(sub.id, sub);
+    this.#indexAddSubscription(sub);
+  }
+
+  /** Remove a subscription and deindex. (Not exposed via MCP; internal.) */
+  unregisterSubscription(id: string): boolean {
+    const sub = this.subscriptions.get(id);
+    if (!sub) return false;
+    this.subscriptions.delete(id);
+    this.#indexRemoveSubscription(sub);
+    return true;
+  }
+
+  /**
+   * Rebuild the predicate bucket index from `this.subscriptions`. Called by
+   * `cloneState` / `replay` after they populate subscriptions directly.
+   */
+  reindexSubscriptions(): void {
+    this.#subsByPredicate.clear();
+    this.#subsAnyPredicate.clear();
+    for (const sub of this.subscriptions.values()) this.#indexAddSubscription(sub);
+  }
+
+  #indexAddSubscription(sub: Subscription): void {
+    const p = sub.filters.predicate;
+    if (p === undefined) {
+      this.#subsAnyPredicate.add(sub.id);
+    } else {
+      let bucket = this.#subsByPredicate.get(p);
+      if (!bucket) {
+        bucket = new Set();
+        this.#subsByPredicate.set(p, bucket);
+      }
+      bucket.add(sub.id);
+    }
+  }
+
+  #indexRemoveSubscription(sub: Subscription): void {
+    const p = sub.filters.predicate;
+    if (p === undefined) {
+      this.#subsAnyPredicate.delete(sub.id);
+    } else {
+      const bucket = this.#subsByPredicate.get(p);
+      bucket?.delete(sub.id);
+      if (bucket && bucket.size === 0) this.#subsByPredicate.delete(p);
+    }
+  }
+
+  /**
    * Push a newly-stored belief into every matching subscription's queue.
    * Called from `believe` after storeBelief. Match logic mirrors recall's
    * pattern/filter semantics so subscribers see the same beliefs recall would.
    * Queue is bounded; oldest entries drop when full (dropped_count increments).
+   *
+   * Uses `#subsByPredicate` + `#subsAnyPredicate` so the hot path is
+   * `O(matching-bucket + any-pred-bucket)` instead of `O(all-subs)`.
    */
   enqueueMatches(belief: StoredBelief): void {
-    for (const sub of this.subscriptions.values()) {
-      if (!subscriptionMatches(sub, belief)) continue;
+    const fanout = (sub: Subscription): void => {
+      if (!subscriptionMatches(sub, belief)) return;
       sub.queue.push(belief);
       sub.matches_since_created += 1;
       if (sub.queue.length > sub.queue_cap) {
@@ -189,6 +257,18 @@ export class EngineState {
         sub.queue.splice(0, overflow);
         sub.dropped_count += overflow;
       }
+    };
+
+    const bucket = this.#subsByPredicate.get(belief.predicate);
+    if (bucket) {
+      for (const id of bucket) {
+        const sub = this.subscriptions.get(id);
+        if (sub) fanout(sub);
+      }
+    }
+    for (const id of this.#subsAnyPredicate) {
+      const sub = this.subscriptions.get(id);
+      if (sub) fanout(sub);
     }
   }
 

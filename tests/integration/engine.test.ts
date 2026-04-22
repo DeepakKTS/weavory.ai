@@ -127,6 +127,51 @@ describe("forget + as_of bi-temporal recall (T-S-004, T-I-003)", () => {
   });
 });
 
+describe("believe() validates causes[]", () => {
+  it("throws when causes[] contains an unknown belief id", () => {
+    const s = new EngineState();
+    expect(() =>
+      believe(s, {
+        subject: "scene:x",
+        predicate: "p",
+        object: 1,
+        signer_seed: "alice",
+        causes: ["0".repeat(64)],
+      })
+    ).toThrow(/unknown cause id/);
+  });
+
+  it("accepts causes[] that point at existing beliefs (happy path)", () => {
+    const s = new EngineState();
+    const parent = believe(s, { subject: "p", predicate: "p", object: 1, signer_seed: "alice" });
+    expect(() =>
+      believe(s, {
+        subject: "c",
+        predicate: "p",
+        object: 2,
+        signer_seed: "alice",
+        causes: [parent.id],
+      })
+    ).not.toThrow();
+  });
+
+  it("accepts missing causes[] (undefined and empty array)", () => {
+    const s = new EngineState();
+    expect(() =>
+      believe(s, { subject: "x", predicate: "p", object: 1, signer_seed: "alice" })
+    ).not.toThrow();
+    expect(() =>
+      believe(s, {
+        subject: "y",
+        predicate: "p",
+        object: 2,
+        signer_seed: "alice",
+        causes: [],
+      })
+    ).not.toThrow();
+  });
+});
+
 describe("audit chain grows append-only across operations", () => {
   it("believe, attest, forget each append an entry; chain verifies", () => {
     const s = new EngineState();
