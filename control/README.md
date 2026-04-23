@@ -19,6 +19,7 @@ User-facing documentation lives in [`../docs/`](../docs/).
 | `WORKLOG.md` | Chronological engineering log. |
 | `TEST_MATRIX.md` | Test-case inventory. Duplicates what `pnpm test` already reports; retained as a decision-trace artifact. |
 | `JUDGE_GATES.md` | Acceptance-criteria document from early development. |
+| `PITCH_SCRIPT.md` | Cue sheet for the 3-minute screen-recorded demo (SAY / TYPE / SHOW lanes). Internal narration tool, not product copy. |
 
 ## Why are these public?
 
