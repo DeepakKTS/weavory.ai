@@ -8,7 +8,7 @@
  * Covers happy paths, boundary hits, and error taxonomy (the exact custom
  * error classes so callers can `instanceof` without regex-matching).
  */
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -16,11 +16,20 @@ import { EngineState, SubscriptionLimitError, parseSubscriptionsCap } from "../.
 import {
   DEFAULT_MAX_OBJECT_BYTES,
   OversizedPayloadError,
+  attest,
   believe,
+  forget,
   subscribe,
 } from "../../../src/engine/ops.js";
 import { compile } from "../../../src/engine/policy.js";
 import { loadIncident } from "../../../src/engine/replay.js";
+import {
+  DEFAULT_RATE_LIMIT_PER_SIGNER_ADVERSARIAL,
+  DEFAULT_RATE_LIMIT_PER_SIGNER_NORMAL,
+  RateLimitError,
+  RateLimiter,
+  parseRateLimitPerSigner,
+} from "../../../src/engine/rate_limit.js";
 
 // ---------------- SEC-01 ----------------
 
@@ -150,6 +159,216 @@ describe("SEC-02 — subscription count cap", () => {
     Object.defineProperty(s, "subscriptionsCap", { value: 100, configurable: true });
     for (let i = 0; i < 10; i++) subscribe(s, { pattern: `p-${i}` });
     expect(s.subscriptions.size).toBe(10);
+  });
+});
+
+// ---------------- SEC-07 ----------------
+
+/** Helper: build an EngineState with a specific rate-limit-per-sec override. */
+function stateWithRateLimit(limitPerSec: number): EngineState {
+  const s = new EngineState();
+  Object.defineProperty(s, "rateLimiter", {
+    value: new RateLimiter(limitPerSec),
+    configurable: true,
+  });
+  return s;
+}
+
+describe("SEC-07 — per-signer rate limiter", () => {
+  describe("parseRateLimitPerSigner", () => {
+    it("returns the normal default when no env overrides are set", () => {
+      expect(parseRateLimitPerSigner({})).toBe(DEFAULT_RATE_LIMIT_PER_SIGNER_NORMAL);
+      expect(parseRateLimitPerSigner({ WEAVORY_RATE_LIMIT_PER_SIGNER: "" })).toBe(
+        DEFAULT_RATE_LIMIT_PER_SIGNER_NORMAL
+      );
+    });
+
+    it("returns the adversarial default when WEAVORY_ADVERSARIAL=1", () => {
+      expect(parseRateLimitPerSigner({ WEAVORY_ADVERSARIAL: "1" })).toBe(
+        DEFAULT_RATE_LIMIT_PER_SIGNER_ADVERSARIAL
+      );
+    });
+
+    it("honours an explicit positive integer", () => {
+      expect(parseRateLimitPerSigner({ WEAVORY_RATE_LIMIT_PER_SIGNER: "5" })).toBe(5);
+    });
+
+    it("honours an explicit 0 (disabled) — overrides adversarial default", () => {
+      expect(
+        parseRateLimitPerSigner({ WEAVORY_RATE_LIMIT_PER_SIGNER: "0", WEAVORY_ADVERSARIAL: "1" })
+      ).toBe(0);
+    });
+
+    it("falls back to default on malformed input (non-integer, negative, NaN)", () => {
+      expect(parseRateLimitPerSigner({ WEAVORY_RATE_LIMIT_PER_SIGNER: "abc" })).toBe(
+        DEFAULT_RATE_LIMIT_PER_SIGNER_NORMAL
+      );
+      expect(parseRateLimitPerSigner({ WEAVORY_RATE_LIMIT_PER_SIGNER: "-3" })).toBe(
+        DEFAULT_RATE_LIMIT_PER_SIGNER_NORMAL
+      );
+      expect(parseRateLimitPerSigner({ WEAVORY_RATE_LIMIT_PER_SIGNER: "1.5" })).toBe(
+        DEFAULT_RATE_LIMIT_PER_SIGNER_NORMAL
+      );
+    });
+  });
+
+  describe("enforcement on believe()", () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it("allows up to limitPerSec writes in a single window, then throws", () => {
+      const s = stateWithRateLimit(3);
+      for (let i = 0; i < 3; i++) {
+        believe(s, {
+          subject: `scene:${i}`,
+          predicate: "observation",
+          object: { i },
+          signer_seed: "alice",
+        });
+      }
+      expect(() =>
+        believe(s, {
+          subject: "scene:over",
+          predicate: "observation",
+          object: { over: true },
+          signer_seed: "alice",
+        })
+      ).toThrow(RateLimitError);
+      // Rejected write left no trace.
+      expect(s.beliefs.size).toBe(3);
+    });
+
+    it("re-admits after the 1-second window rolls over", () => {
+      const s = stateWithRateLimit(2);
+      believe(s, { subject: "a", predicate: "p", object: 1, signer_seed: "alice" });
+      believe(s, { subject: "b", predicate: "p", object: 2, signer_seed: "alice" });
+      expect(() =>
+        believe(s, { subject: "c", predicate: "p", object: 3, signer_seed: "alice" })
+      ).toThrow(RateLimitError);
+
+      // Advance past the 1-second window.
+      vi.advanceTimersByTime(1001);
+
+      believe(s, { subject: "d", predicate: "p", object: 4, signer_seed: "alice" });
+      expect(s.beliefs.size).toBe(3);
+    });
+
+    it("per-signer isolation — alice rate-limited, bob proceeds", () => {
+      const s = stateWithRateLimit(2);
+      believe(s, { subject: "a1", predicate: "p", object: 1, signer_seed: "alice" });
+      believe(s, { subject: "a2", predicate: "p", object: 2, signer_seed: "alice" });
+      expect(() =>
+        believe(s, { subject: "a3", predicate: "p", object: 3, signer_seed: "alice" })
+      ).toThrow(RateLimitError);
+      // bob has his own bucket.
+      believe(s, { subject: "b1", predicate: "p", object: 1, signer_seed: "bob" });
+      believe(s, { subject: "b2", predicate: "p", object: 2, signer_seed: "bob" });
+      expect(s.beliefs.size).toBe(4);
+    });
+
+    it("disabled (limitPerSec=0) lets unlimited writes through", () => {
+      const s = stateWithRateLimit(0);
+      for (let i = 0; i < 500; i++) {
+        believe(s, {
+          subject: `scene:${i}`,
+          predicate: "p",
+          object: { i },
+          signer_seed: "alice",
+        });
+      }
+      expect(s.beliefs.size).toBe(500);
+    });
+
+    it("RateLimitError carries signer_id, limit, and window_remaining_ms", () => {
+      const s = stateWithRateLimit(1);
+      believe(s, { subject: "a", predicate: "p", object: 1, signer_seed: "alice" });
+      try {
+        believe(s, { subject: "b", predicate: "p", object: 2, signer_seed: "alice" });
+        expect.fail("expected throw");
+      } catch (err) {
+        expect(err).toBeInstanceOf(RateLimitError);
+        if (err instanceof RateLimitError) {
+          expect(err.signer_id).toMatch(/^[0-9a-f]{64}$/);
+          expect(err.limit_per_sec).toBe(1);
+          expect(err.window_remaining_ms).toBeGreaterThan(0);
+          expect(err.window_remaining_ms).toBeLessThanOrEqual(1000);
+        }
+      }
+    });
+  });
+
+  describe("enforcement on attest() and forget()", () => {
+    it("attest() rate-limits the attestor", () => {
+      const s = stateWithRateLimit(2);
+      attest(s, {
+        signer_id: "0".repeat(64),
+        topic: "news",
+        score: 0.5,
+        attestor_seed: "judge",
+      });
+      attest(s, {
+        signer_id: "0".repeat(64),
+        topic: "news",
+        score: 0.6,
+        attestor_seed: "judge",
+      });
+      expect(() =>
+        attest(s, {
+          signer_id: "0".repeat(64),
+          topic: "news",
+          score: 0.7,
+          attestor_seed: "judge",
+        })
+      ).toThrow(RateLimitError);
+    });
+
+    it("forget() rate-limits the forgetter", () => {
+      const s = stateWithRateLimit(1);
+      // Two beliefs to potentially forget.
+      const b1 = believe(s, {
+        subject: "a",
+        predicate: "p",
+        object: 1,
+        signer_seed: "writer-1",
+      });
+      const b2 = believe(s, {
+        subject: "b",
+        predicate: "p",
+        object: 2,
+        signer_seed: "writer-2",
+      });
+      // First forget from "eraser" — consumes the one slot for that signer.
+      forget(s, { belief_id: b1.id, forgetter_seed: "eraser" });
+      expect(() =>
+        forget(s, { belief_id: b2.id, forgetter_seed: "eraser" })
+      ).toThrow(RateLimitError);
+    });
+  });
+
+  describe("RateLimiter direct API", () => {
+    it("constructor rejects negative or non-integer limits", () => {
+      expect(() => new RateLimiter(-1)).toThrow();
+      expect(() => new RateLimiter(1.5)).toThrow();
+      // Zero is allowed (disabled).
+      expect(() => new RateLimiter(0)).not.toThrow();
+    });
+
+    it("countFor and size report bucket state accurately", () => {
+      const rl = new RateLimiter(10);
+      const a = "a".repeat(64);
+      const b = "b".repeat(64);
+      expect(rl.size()).toBe(0);
+      rl.check(a);
+      rl.check(a);
+      rl.check(b);
+      expect(rl.countFor(a)).toBe(2);
+      expect(rl.countFor(b)).toBe(1);
+      expect(rl.size()).toBe(2);
+    });
   });
 });
 

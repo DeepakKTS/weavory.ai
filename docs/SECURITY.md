@@ -21,6 +21,7 @@
 | 8 | **SEC-01 · Default payload cap** | `believe()` enforces a 1 MiB default `max_object_bytes` when **no** policy is loaded. Rejects with `OversizedPayloadError`. Policy, if present, can raise the cap up to 16 MiB. Fail-closed. |
 | 9 | **SEC-02 · Subscription DoS cap** | `subscribe()` caps `state.subscriptions.size` at `subscriptionsCap` (default 10 000). Override via `WEAVORY_MAX_SUBSCRIPTIONS`. Garbage values → warn-and-default. |
 | 10 | **SEC-03 · Malformed incident rejected at load** | `loadIncident()` parses JSON, enforces `schema_version == "1.0.0"`, then Zod-validates the outer record shape before `rehydrateState`. Interior belief / audit records are still parsed deeply by their own schemas. |
+| 10a | **SEC-07 · Per-signer rate limit** | Write operations (`believe`, `subscribe`, `attest`, `forget`) enforce a fixed-window-per-second cap keyed on `signer_id`. Default 100 req/sec (normal) · 10 req/sec (`WEAVORY_ADVERSARIAL=1`). Override via `WEAVORY_RATE_LIMIT_PER_SIGNER=<int>`; `0` disables. Rejects with `RateLimitError` before any crypto or store work. Per-signer buckets — one misbehaving agent cannot throttle others. |
 | 11 | Audit chain tamper on disk | `weavory start` with `WEAVORY_PERSIST=1` re-verifies the rehydrated chain. A break exits with code 3 + `bad_index` + reason. |
 | 12 | Runtime tamper alarm | `scanForTamper()` writes `runtime.json.tamper_alarm` so dashboards + on-call see chain breaks as they happen. |
 | 13 | Incident export is atomic | `exportIncident` writes to `tmp` then renames, so half-written files never land under `ops/data/incidents/`. |
@@ -36,7 +37,7 @@
 |---|---------|------------|----------------|
 | M-1 | Persistent data dir corruption | JSONL parser skips invalid / truncated lines with structured warnings. DuckDB uses WAL recovery on re-open. | If an attacker has write access to the data dir AND to the audit chain, they can silently truncate — but the hash chain + startup verify will still trip. |
 | M-2 | Policy file misconfiguration | Malformed JSON / schema-invalid / wrong version → CLI exits 4 with actionable message. Never silently degrades to "no policy". | Operator must actually set `WEAVORY_POLICY_FILE` — absence of the env var yields permissive defaults (with the SEC-01 hard payload cap still in place). |
-| M-3 | Oversized object (DoS) | Default 1 MiB cap (SEC-01) + policy override. | Many small-but-valid writes can still fill disk under `WEAVORY_PERSIST=1`. No rate limit yet (see Deferred). |
+| M-3 | Oversized object (DoS) | Default 1 MiB cap (SEC-01) + policy override + per-signer rate limit (SEC-07, default 100/sec → 10/sec under `WEAVORY_ADVERSARIAL=1`). | Under an explicit `WEAVORY_RATE_LIMIT_PER_SIGNER=0` override, small-but-valid writes can still fill disk under `WEAVORY_PERSIST=1`. Rate-limiter buckets are not evicted within a single process; size is bounded by distinct signers seen. |
 | M-4 | Subscription flood (DoS) | Default 10 000 cap (SEC-02) + env override. | Caller who holds a subscription can keep its queue growing up to `queue_cap` (1 000 default). Acceptable at cap × cap = bounded memory. |
 | M-5 | Forged approval via unknown signer | Adversarial mode raises trust floor; unknown signer sits at neutral 0.5 < 0.6 floor → quarantined. See `examples/bfsi_claims_triage.ts`. | Operator must set `WEAVORY_ADVERSARIAL=1`. Default mode has the lower 0.3 floor — still filters obviously-untrusted, but demo scenarios should explicitly enable adversarial. |
 | M-6 | Stale subscription queues | Per-subscription `queue_cap` (default 1 000) bounds memory; oldest beliefs drop when the queue overflows. | Dropped beliefs are counted (`dropped_count`) but not resurrected. This is a design choice, not a gap. |
@@ -110,15 +111,34 @@ deployment allows it.
 
 ---
 
-## Rate limits (explicitly deferred)
+## Rate limits (SEC-07 — shipped)
 
-Per-signer request rate limiting was on the backlog as P1-4 candidate
-but is **not shipped** in this release. The SEC-01 and SEC-02 caps
-cover the biggest DoS surfaces (payload size + subscription count);
-additional limits on write frequency per signer are a Phase-2 concern.
+Per-signer write-rate limiting is enforced on all four write tools
+(`believe`, `subscribe`, `attest`, `forget`). Keyed on the derived
+`signer_id` so the same `signer_seed` shares one bucket across calls;
+fresh signers get their own bucket.
 
-Environment flag reserved for when we ship:
-`WEAVORY_RATE_LIMIT_PER_SEC` (currently unread).
+- **Normal mode:** 100 req/sec per signer — well above any realistic
+  agent pipeline (the BFSI demo writes ~6 beliefs in ~20 s).
+- **Adversarial mode** (`WEAVORY_ADVERSARIAL=1`): 10 req/sec — tight
+  enough that a scripted flood is visibly rejected.
+- **Override:** `WEAVORY_RATE_LIMIT_PER_SIGNER=<int>` (req/sec).
+  `0` disables the limiter entirely.
+- **Error:** `RateLimitError` thrown before any crypto or store work;
+  MCP callers see `isError: true` with the 12-char signer prefix, the
+  configured limit, and milliseconds until the current window resets.
+- **Isolation:** per-signer buckets — one misbehaving agent cannot
+  throttle its peers.
+
+Rejected requests leave no state mutation — no audit entry, no
+subscription row, no stored belief. Read operations (`recall`) are
+exempt; CPU-bound read flooding is a different surface, bounded by
+the belief set and `top_k`.
+
+**Not yet shipped on this surface:** bucket eviction / TTL (bucket map
+size grows to distinct signers seen; acceptable for a single-process
+server with a bounded agent set) and global-per-process write rate (per-
+signer only today).
 
 ---
 

@@ -12,9 +12,25 @@
 import { describe, it, expect } from "vitest";
 import { performance } from "node:perf_hooks";
 import { EngineState } from "../../src/engine/state.js";
+import { RateLimiter } from "../../src/engine/rate_limit.js";
 import { believe, recall, subscribe } from "../../src/engine/ops.js";
 
 const WARMUP = 10;
+
+/**
+ * Throughput tests measure raw engine performance. Disable the SEC-07
+ * per-signer rate limiter (default 100 req/sec) which would otherwise
+ * dominate bulk-write tests that share one signer across thousands of ops.
+ * The limiter is tested separately in tests/unit/engine/security.test.ts.
+ */
+function makeUnrateLimitedState(): EngineState {
+  const s = new EngineState();
+  Object.defineProperty(s, "rateLimiter", {
+    value: new RateLimiter(0),
+    configurable: true,
+  });
+  return s;
+}
 
 function seed(state: EngineState, n: number, seedName = "bench-writer"): void {
   for (let i = 0; i < n; i++) {
@@ -29,7 +45,7 @@ function seed(state: EngineState, n: number, seedName = "bench-writer"): void {
 
 describe("perf — believe() throughput", () => {
   it("writes 1000 beliefs with a shared signer under the budget", () => {
-    const s = new EngineState();
+    const s = makeUnrateLimitedState();
     seed(s, WARMUP); // warm up the keyring + audit chain
 
     const t0 = performance.now();
@@ -46,7 +62,7 @@ describe("perf — believe() throughput", () => {
 
 describe("perf — recall() query with lazy blob", () => {
   it("empty-query recall is O(beliefs) without blob construction", () => {
-    const s = new EngineState();
+    const s = makeUnrateLimitedState();
     seed(s, 1000);
 
     // Raise trust so the default gate doesn't filter the bench signer.
@@ -66,7 +82,7 @@ describe("perf — recall() query with lazy blob", () => {
   });
 
   it("non-empty query prefilters subject/predicate before touching object blob", () => {
-    const s = new EngineState();
+    const s = makeUnrateLimitedState();
     seed(s, 1000);
     const signerId = [...s.beliefs.values()][0].signer_id;
     s.setTrust(signerId, "even", 0.9);
@@ -86,7 +102,7 @@ describe("perf — recall() query with lazy blob", () => {
 
 describe("perf — subscription fan-out (indexed by predicate)", () => {
   it("10 predicate-specific subs + 1000 beliefs: fan-out hits only the matching bucket", () => {
-    const s = new EngineState();
+    const s = makeUnrateLimitedState();
 
     // 10 subscriptions all on predicate "even". A naive implementation would
     // check every subscription against every belief (10 × 1000 = 10K match

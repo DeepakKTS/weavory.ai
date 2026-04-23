@@ -24,6 +24,7 @@ import { AuditStore } from "../store/audit.js";
 import { generateKeyPair, signerIdOf, type KeyPair } from "../core/sign.js";
 import type { PersistentStore } from "../store/persist.js";
 import type { Policy } from "./policy.js";
+import { RateLimiter, parseRateLimitPerSigner } from "./rate_limit.js";
 
 /** Phase-G-visible op names — mirrored in runtime_writer.ts. */
 export type EngineOp =
@@ -229,6 +230,15 @@ export class EngineState {
    * lower via `WEAVORY_MAX_SUBSCRIPTIONS=<int>` in the environment.
    */
   readonly subscriptionsCap: number = parseSubscriptionsCap(process.env);
+
+  /**
+   * Phase K · SEC-07 — per-signer rate limiter applied to write operations
+   * (believe, subscribe, attest, forget). Keyed on `signer_id` (the derived
+   * Ed25519 public key), so the same `signer_seed` shares one bucket across
+   * calls. Defaults: 100 req/sec (normal), 10 req/sec (WEAVORY_ADVERSARIAL=1).
+   * Set `WEAVORY_RATE_LIMIT_PER_SIGNER=0` to disable. See rate_limit.ts.
+   */
+  readonly rateLimiter: RateLimiter = new RateLimiter(parseRateLimitPerSigner(process.env));
 
   /** Return a signer_id + keypair for a seed, caching in the keyring. */
   signerFromSeed(seed: string): { signer_id: string; keyPair: KeyPair } {

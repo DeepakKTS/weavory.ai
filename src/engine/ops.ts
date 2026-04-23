@@ -121,6 +121,10 @@ export function believe(state: EngineState, input: BelieveInput): BelieveOutput 
     ? state.signerFromSeed(input.signer_seed)
     : state.freshSigner();
 
+  // SEC-07 — per-signer rate limit. Runs after derivation so the bucket
+  // keys on the stable `signer_id`, before any crypto/store work.
+  state.rateLimiter.check(signer_id);
+
   const recorded_at = new Date().toISOString();
 
   const payload = buildBelief({
@@ -397,6 +401,9 @@ export function subscribe(state: EngineState, input: SubscribeInput): SubscribeO
   }
 
   const signer_id = input.signer_seed ? state.signerFromSeed(input.signer_seed).signer_id : null;
+  // SEC-07 — rate-limit seeded subscribers. Anonymous subscriptions are
+  // already bounded by SEC-02's global cap; no per-signer bucket to key on.
+  if (signer_id !== null) state.rateLimiter.check(signer_id);
   const subscription_id = "sub_" + cryptoRandomId();
   const created_at = new Date().toISOString();
   const queue_cap = Math.max(1, input.queue_cap ?? DEFAULT_SUBSCRIPTION_QUEUE_CAP);
@@ -438,6 +445,8 @@ export function attest(state: EngineState, input: AttestInput): AttestOutput {
   const { signer_id: attestor_id } = input.attestor_seed
     ? state.signerFromSeed(input.attestor_seed)
     : state.freshSigner();
+  // SEC-07 — rate-limit by attestor identity.
+  state.rateLimiter.check(attestor_id);
   const applied = state.setTrust(input.signer_id, input.topic, input.score);
   const recorded_at = new Date().toISOString();
   // Attestations are recorded in the audit chain with belief_id = target signer_id for traceability.
@@ -478,6 +487,8 @@ export function forget(state: EngineState, input: ForgetInput): ForgetOutput {
   const { signer_id } = input.forgetter_seed
     ? state.signerFromSeed(input.forgetter_seed)
     : state.freshSigner();
+  // SEC-07 — rate-limit by forgetter identity.
+  state.rateLimiter.check(signer_id);
 
   // Tombstone belief id derived from reason + id + time so forgets form their own identity.
   const tombstone_id = input.belief_id; // reuse the id; marks the belief as tombstoned
