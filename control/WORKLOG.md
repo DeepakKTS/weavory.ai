@@ -657,3 +657,14 @@ Deepens the flagship BFSI demo end-to-end from 6 steps to 9, exercising the exac
 Verification: `pnpm lint` clean; `pnpm test` 239/239 in 3.09 s; `bash scripts/verify/gate_bfsi.sh` → 7/7 groups pass; `bash scripts/rehearsal.sh` → 7/7 gates green in 7 s; the demo exits 0 and prints the expanded closing summary (honest chain · attacker · regulator · collusion · provable · replayable).
 
 No MCP surface change. ADR-005 five-tool lock untouched. Tag: v0.1.18.
+
+### N.5 · 60-second elevator pitch variant (content-only, ships with next patch)
+
+Appends a Responsible-AI-framed short pitch to `control/PITCH_SCRIPT.md` after the existing 3-minute script. Opens with the regulatory problem (banking / insurance / healthcare paper-trail gap), not the architecture. Target runtime 58–62 s.
+
+- **Five-row SAY / SHOW lane table** covering: 0:00–0:10 problem-first hook; 0:10–0:25 product one-sentence + "works with any MCP-native agent including the stock one"; 0:25–0:40 live dashboard belief-feed moment; 0:40–0:55 quarantine LED + regulator scrubber flip to **HISTORICAL RAW VIEW** (amber banner); 0:55–1:00 Apache-2.0 + `npx` close + BFSI/healthcare unlock.
+- **Pre-flight checklist** points to `pnpm demo:capture` + `pnpm dashboard:serve` (or the Pages `/demo/` URL once v0.1.18 deploys) so the recording targets a known-good fixture.
+- **Guardrails inherit from the 3-min script** plus two N-specific rules: do NOT read NandaHack track names out loud (stay in plain-English regulatory framing per `control/NANDAHACK_TRACK.md`); do NOT claim the stock-agent transcript as a live prop (it's a submission artifact, referenced from the description — see N.4.5).
+- **Reshoot triggers** call out the three failure modes that would invalidate a take: quarantine LED fails to flash red within 2 s of the forged-approval row; HISTORICAL RAW VIEW banner fails to flip; `/api/state` returns 401 (token mismatch).
+
+No code changes; no version bump; no tests affected. Ships alongside the next patch commit.

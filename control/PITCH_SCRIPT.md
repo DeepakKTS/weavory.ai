@@ -179,3 +179,67 @@ final audit chain length=<N> · verify=ok ✓
 
 …stop the take. Something broke. Run `pnpm test && bash scripts/rehearsal.sh`
 first and confirm green before recording again.
+
+---
+
+# 60-second elevator variant (v0.1.18+)
+
+A Responsible-AI-framed short pitch that opens with the regulatory
+problem, not the architecture. Record AFTER v0.1.18 ships so the
+dashboard SHOW cues hit live panels. Target runtime 58–62 s.
+
+## Timing + lanes
+
+| Sec        | SAY (voiceover)                                                                                                                                                                                                                                                     | SHOW (screen)                                                                                                          |
+|------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------|
+| 0:00–0:10  | *"Agents in banking, insurance, healthcare can't be trusted without a paper trail. When an agent denies a claim, nothing signed that. When it changes its mind, nothing records the history. When compliance asks what it knew on Tuesday — nothing answers."*     | Static card: three one-line statements fading in; "weavory.ai" logo bottom-right.                                      |
+| 0:10–0:25  | *"Weavory is Responsible-AI memory for agent swarms. Every belief Ed25519-signed, trust-gated by attestation, and replayable at any past instant. Five MCP tools. Works with any MCP-native agent — including the stock one your team will hand us."*              | Zoom to dashboard `/demo/` REPLAY mode. Belief feed populating; counters ticking.                                      |
+| 0:25–0:40  | *"Watch a motor-insurance claim triage. Intake, fraud, underwriting sign and cite each other. Then an unknown signer injects a forged approval."*                                                                                                                    | Belief feed scrolls to the forged row; **quarantine LED flashes red**; session-quarantine counter goes 0 → 1.          |
+| 0:40–0:55  | *"Trust gate quarantines it. Compliance tombstones it. And the regulator — right here — rewinds time to show exactly what was known before the cleanup."*                                                                                                           | Drag the **bi-temporal scrubber** left. Banner flips to amber **"HISTORICAL RAW VIEW @ HH:MM:SS · 5 beliefs visible"**. Feed repopulates with the attacker belief in-frame. |
+| 0:55–1:00  | *"Apache-2.0. `npx -y @weavory/mcp start`. Unlocks BFSI and healthcare. Repo in the description."*                                                                                                                                                                  | Card: npm install command (mono font), repo URL, Apache-2.0 badge.                                                     |
+
+## Pre-flight (60-sec variant)
+
+1. Run `pnpm demo:capture` — regenerates `ops/data/demo-fixtures.json`
+   with the 13-event BFSI-plus-ring sequence; confirm the file is fresh.
+2. Open `http://127.0.0.1:4317/demo/` via `pnpm dashboard:serve`, OR
+   <https://deepakkts.github.io/weavory.ai/demo/> once the `v0.1.18`
+   Pages deploy finishes. REPLAY mode should populate within 3 s of
+   load.
+3. Verify the scrubber's HISTORICAL RAW VIEW banner appears when dragged
+   off 100%. If it doesn't, the fixture's timeline is too short —
+   re-capture after a short local BFSI run first.
+
+## Guardrails (60-sec variant inherits all 3-min guardrails, plus)
+
+- **Do NOT** read NandaHack track names out loud ("Responsible AI
+  track") — public framing uses plain English ("regulated industries",
+  "compliance-grade", "auditable"). Track names stay in
+  `control/NANDAHACK_TRACK.md` (internal).
+- **Do NOT** promise Cloud specifics (pricing, SSO, SOC2,
+  multi-tenancy). The one-liner "Unlocks BFSI and healthcare" is the
+  entire commercial teaser.
+- **Do NOT** claim the stock-agent transcript as a live prop while
+  recording — the transcript is pre-captured and lives at
+  `docs/evidence/stock-agent-session-v0.1.18.md`. Reference it in the
+  submission payload, not in the voiceover.
+
+## External verification (Responsible-AI track rubric)
+
+The submission payload points to the captured gate7 transcript at
+`docs/evidence/stock-agent-session-v0.1.18.md` as the "stock OpenClaw
+agent used weavory from the README alone" evidence — exactly what the
+published NandaHack rubric asks for. Pitch voiceover does NOT claim
+this live; it's a submission artifact, referenced from the description.
+
+## Reshoot triggers (60-sec variant)
+
+Stop the take if any of the following fails to happen within the
+scripted window:
+
+- Quarantine LED does NOT flash red within 2 s of the forged-approval
+  row appearing.
+- Time-scrubber banner does NOT flip to amber HISTORICAL RAW VIEW when
+  dragged off 100%.
+- `/api/state` ever returns 401 during the recording (token mismatch —
+  expected to be anonymous when bound to `127.0.0.1`).
