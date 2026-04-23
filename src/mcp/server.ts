@@ -32,7 +32,7 @@ import { RuntimeWriter } from "../engine/runtime_writer.js";
  * Deliberately a string literal — NOT a runtime `readFileSync` on
  * package.json — so this module has zero side effects at load time.
  */
-export const VERSION = "0.1.11";
+export const VERSION = "0.1.12";
 
 // ---- Shared Zod fragments ----
 const JsonValueSchema: z.ZodType = z.lazy(() =>
@@ -134,11 +134,17 @@ export function createServer(
       title: "Recall matching beliefs",
       description:
         "Find beliefs matching a query. Supports bi-temporal as_of, per-signer trust gating, quarantine filtering, tombstone visibility, and subject/predicate/min_confidence filters.\n\n" +
+        "IMPORTANT — query semantics: `query` is a STRICT substring filter, NOT natural language. The string is split on whitespace and EVERY token must appear as a substring in at least one of subject / predicate / JSON.stringify(object). So query='claim events' with a belief having subject='claim/X' and predicate='claim_event' MATCHES ('claim' and 'events' both hit). But query='claim/X all records' would NOT match that belief because 'all' and 'records' are not substrings of any field. When you want to use only the structured filters (filters.subject, filters.predicate, etc.) and not substring-filter the results further, pass query='' (empty string). Empty query matches every candidate and is the safe default for compliance / audit enumeration.\n\n" +
         "Trust floor math (for filtering unattested signers): the default min_trust is 0.3 in normal mode and 0.6 under WEAVORY_ADVERSARIAL=1. Neutral trust for an unattested signer is 0.5, so in normal mode unattested signers ARE visible by default. To enforce 'show me only attested signers' without adversarial mode, pass min_trust: 0.6 explicitly.\n\n" +
         "Trust is per-predicate: the trust gate looks up state.trust[belief.signer_id][belief.predicate]. So an attestation at topic='claim' does NOT gate beliefs with predicate='amount' — you need an attestation at topic='amount' for that. If you're filtering by filters.subject, make sure attestations on the target signers cover each predicate used on that subject (commonly one attest per predicate).\n\n" +
-        "Full compliance / audit view showing EVERY belief regardless of trust, quarantine, or tombstone: combine min_trust: -1 with include_quarantined: true and include_tombstoned: true.",
+        "Full compliance / audit view showing EVERY belief regardless of trust, quarantine, or tombstone: combine query='' with min_trust: -1, include_quarantined: true, and include_tombstoned: true.",
       inputSchema: {
-        query: z.string().max(2048),
+        query: z
+          .string()
+          .max(2048)
+          .describe(
+            "Whitespace-tokenized substring filter. Every non-empty token must appear as a substring in subject / predicate / JSON.stringify(object) — case-insensitive, AND semantics. Pass '' (empty string) to disable substring filtering and match all beliefs that pass the other filters. Do NOT put natural-language words here; it is a literal substring match, not a semantic search."
+          ),
         top_k: z.number().int().min(1).max(100).optional(),
         as_of: z.string().nullable().optional(),
         min_trust: z.number().min(-1).max(1).optional(),
