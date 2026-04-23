@@ -120,7 +120,7 @@ async function main(): Promise<void> {
   // ─── Step 1 · Intake ────────────────────────────────────────────────────
   const intakeOut = (
     await intake.callTool({
-      name: "weavory.believe",
+      name: "weavory_believe",
       arguments: {
         subject: "claim:CLM-42017",
         predicate: "claim.intake",
@@ -141,7 +141,7 @@ async function main(): Promise<void> {
   // ─── Step 2 · Fraud assessment (references intake via causes[]) ─────────
   const fraudOut = (
     await fraud.callTool({
-      name: "weavory.believe",
+      name: "weavory_believe",
       arguments: {
         subject: "claim:CLM-42017",
         predicate: "fraud.assessment",
@@ -164,7 +164,7 @@ async function main(): Promise<void> {
   // ─── Step 3 · Attacker injects a forged approval ────────────────────────
   const malletOut = (
     await mallet.callTool({
-      name: "weavory.believe",
+      name: "weavory_believe",
       arguments: {
         subject: "claim:CLM-42017",
         predicate: "approval",
@@ -185,7 +185,7 @@ async function main(): Promise<void> {
 
   // ─── Step 4 · Underwriter attests trusted signers, recalls, publishes ───
   await uw.callTool({
-    name: "weavory.attest",
+    name: "weavory_attest",
     arguments: {
       signer_id: intakeOut.signer_id,
       topic: "claim.intake",
@@ -194,7 +194,7 @@ async function main(): Promise<void> {
     },
   });
   await uw.callTool({
-    name: "weavory.attest",
+    name: "weavory_attest",
     arguments: {
       signer_id: fraudOut.signer_id,
       topic: "fraud.assessment",
@@ -205,7 +205,7 @@ async function main(): Promise<void> {
 
   const uwRecall = (
     await uw.callTool({
-      name: "weavory.recall",
+      name: "weavory_recall",
       arguments: {
         query: "CLM-42017",
         top_k: 20,
@@ -225,7 +225,7 @@ async function main(): Promise<void> {
 
   const uwOut = (
     await uw.callTool({
-      name: "weavory.believe",
+      name: "weavory_believe",
       arguments: {
         subject: "claim:CLM-42017",
         predicate: "underwriting.terms",
@@ -250,7 +250,7 @@ async function main(): Promise<void> {
 
   // ─── Step 5 · Approver attests underwriter, recalls trusted chain, decides
   await app.callTool({
-    name: "weavory.attest",
+    name: "weavory_attest",
     arguments: {
       signer_id: uwOut.signer_id,
       topic: "underwriting.terms",
@@ -259,7 +259,7 @@ async function main(): Promise<void> {
     },
   });
   await app.callTool({
-    name: "weavory.attest",
+    name: "weavory_attest",
     arguments: {
       signer_id: intakeOut.signer_id,
       topic: "claim.intake",
@@ -268,7 +268,7 @@ async function main(): Promise<void> {
     },
   });
   await app.callTool({
-    name: "weavory.attest",
+    name: "weavory_attest",
     arguments: {
       signer_id: fraudOut.signer_id,
       topic: "fraud.assessment",
@@ -279,7 +279,7 @@ async function main(): Promise<void> {
 
   const appRecall = (
     await app.callTool({
-      name: "weavory.recall",
+      name: "weavory_recall",
       arguments: { query: "CLM-42017", top_k: 20 },
     })
   ).structuredContent as RecallOut;
@@ -293,7 +293,7 @@ async function main(): Promise<void> {
 
   const finalOut = (
     await app.callTool({
-      name: "weavory.believe",
+      name: "weavory_believe",
       arguments: {
         subject: "claim:CLM-42017",
         predicate: "final_decision",
@@ -317,7 +317,7 @@ async function main(): Promise<void> {
   // ─── Step 6 · Audit view surfaces the attempted forgery ─────────────────
   const auditRecall = (
     await app.callTool({
-      name: "weavory.recall",
+      name: "weavory_recall",
       arguments: { query: "CLM-42017", top_k: 20, min_trust: -1 },
     })
   ).structuredContent as RecallOut;

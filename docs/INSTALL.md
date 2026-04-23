@@ -65,8 +65,8 @@ After path 1 is complete, point your MCP-capable agent at the built CLI.
 ```
 
 Restart Claude Desktop. In a new conversation, ask the agent to "list
-your tools" — you should see `weavory.believe`, `weavory.recall`,
-`weavory.subscribe`, `weavory.attest`, `weavory.forget`.
+your tools" — you should see `weavory_believe`, `weavory_recall`,
+`weavory_subscribe`, `weavory_attest`, `weavory_forget`.
 
 ### Cursor / other stdio-MCP clients
 

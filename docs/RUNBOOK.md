@@ -74,7 +74,7 @@ pnpm exec tsx scripts/verify/gate_tamper.sh      # convenient reference
 WEAVORY_PERSIST=1 WEAVORY_STORE=duckdb WEAVORY_DATA_DIR=/var/lib/weavory-new \
   node dist/cli.js start
 
-# 4. Replay each belief via weavory.believe using a client script
+# 4. Replay each belief via weavory_believe using a client script
 ```
 
 Migration tooling (`weavory migrate --from jsonl --to duckdb`) is on the
@@ -154,7 +154,7 @@ and shows the alarm + incident export.
 
 ## Policy denial debugging
 
-When a client's `weavory.believe` returns an error message starting
+When a client's `weavory_believe` returns an error message starting
 with `policy denial`, the server already tells you the rule name and
 reason:
 
@@ -252,7 +252,7 @@ Weavory signer identities are derived deterministically from a seed
 2. New `signer_seed` → new `signer_id` (a new hex 32-byte string).
 3. Existing beliefs keep their old `signer_id`s forever — this is a
    feature, not a bug. Audit attributability must remain intact.
-4. Re-attest new identity for relevant topics via `weavory.attest`.
+4. Re-attest new identity for relevant topics via `weavory_attest`.
 
 There is no "revoke signer" operation. If a key is compromised,
 attestations should be lowered to -1 (explicit distrust), which

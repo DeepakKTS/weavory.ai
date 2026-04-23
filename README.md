@@ -40,11 +40,11 @@ snippet.
 
 | Tool | What it does |
 |------|--------------|
-| `weavory.believe` | Sign a claim (Ed25519), content-address it (BLAKE3), store it, append to the audit chain, fan out to matching subscribers. |
-| `weavory.recall` | Retrieve beliefs with trust gating, bi-temporal `as_of`, quarantine filter, and subject / predicate / confidence filters. |
-| `weavory.subscribe` | Register a bounded queue keyed on a pattern + filters. Drain via `recall`. |
-| `weavory.attest` | Update `trust(signer, topic)` in `[-1, 1]`. |
-| `weavory.forget` | Tombstone a belief — `invalidated_at` set, history preserved for `as_of` queries. |
+| `weavory_believe` | Sign a claim (Ed25519), content-address it (BLAKE3), store it, append to the audit chain, fan out to matching subscribers. |
+| `weavory_recall` | Retrieve beliefs with trust gating, bi-temporal `as_of`, quarantine filter, and subject / predicate / confidence filters. |
+| `weavory_subscribe` | Register a bounded queue keyed on a pattern + filters. Drain via `recall`. |
+| `weavory_attest` | Update `trust(signer, topic)` in `[-1, 1]`. |
+| `weavory_forget` | Tombstone a belief — `invalidated_at` set, history preserved for `as_of` queries. |
 
 This is the complete public API. No magic, no hidden surface.
 

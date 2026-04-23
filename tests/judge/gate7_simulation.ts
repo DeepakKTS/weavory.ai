@@ -101,22 +101,16 @@ async function main(): Promise<void> {
 
   // 3. Build Anthropic tool definitions from weavory's MCP tool list.
   //
-  // MCP tool names use dotted namespaces (`weavory.believe`). Anthropic's
-  // tool-use API requires names matching ^[a-zA-Z0-9_-]{1,128}$, so we
-  // translate dots to underscores on the wire and keep a reverse map for
-  // forwarding calls back to MCP.
+  // Since v0.1.8 MCP tool names use underscore form (weavory_believe, ...)
+  // which already satisfies Anthropic's tool-use regex ^[a-zA-Z0-9_-]{1,128}$.
+  // No translation layer needed — names pass through unchanged.
   const mcpTools = (await mcp.listTools()).tools;
-  const anthropicToMcpName = new Map<string, string>();
-  const tools = mcpTools.map((t) => {
-    const anthropicName = t.name.replace(/\./g, "_");
-    anthropicToMcpName.set(anthropicName, t.name);
-    return {
-      name: anthropicName,
-      description: t.description ?? "",
-      input_schema: (t.inputSchema ?? { type: "object" }) as Anthropic.Tool.InputSchema,
-    };
-  }) satisfies Anthropic.Tool[];
-  console.log(`[gate7] bridging ${tools.length} tools: ${tools.map((t) => t.name).join(", ")}`);
+  const tools = mcpTools.map((t) => ({
+    name: t.name,
+    description: t.description ?? "",
+    input_schema: (t.inputSchema ?? { type: "object" }) as Anthropic.Tool.InputSchema,
+  })) satisfies Anthropic.Tool[];
+  console.log(`[gate7] exposing ${tools.length} tools: ${tools.map((t) => t.name).join(", ")}`);
 
   // 4. Construct the system prompt. README is verbatim + prompt-cached so
   //    repeated iterations in the loop don't re-bill the prefix.
@@ -127,10 +121,7 @@ async function main(): Promise<void> {
       text:
         "You are Bob, an AI agent participating in the NandaHack 2026 Phase 1 judge test.\n\n" +
         "Below is the full contents of weavory.ai's judge runbook (docs/README.md). You have " +
-        "access to weavory's five MCP tools — use them exactly as the runbook describes. " +
-        "Note: the Anthropic tool-use wire format replaces dots with underscores, so the " +
-        "runbook's `weavory.believe` is invoked here as tool name `weavory_believe` (same " +
-        "for recall/subscribe/attest/forget). The semantics are identical.\n\n" +
+        "access to weavory's five MCP tools — use them exactly as the runbook describes.\n\n" +
         "Follow the 60-second walkthrough for Bob's side of the two-agent exchange. When you " +
         "have your answer, reply with that answer as plain text in a single short sentence " +
         "and stop — do not call any more tools. Be terse.\n\n" +
@@ -197,14 +188,12 @@ async function main(): Promise<void> {
     );
     const toolResults: Anthropic.ToolResultBlockParam[] = [];
     for (const call of toolUses) {
-      // Translate Anthropic tool name (underscored) back to MCP name (dotted).
-      const mcpToolName = anthropicToMcpName.get(call.name) ?? call.name;
       console.log(
-        `[gate7]   tool_use ${call.name} → ${mcpToolName}(${JSON.stringify(call.input).slice(0, 120)})`
+        `[gate7]   tool_use ${call.name}(${JSON.stringify(call.input).slice(0, 120)})`
       );
       const result = await callWeavoryTool(
         mcp,
-        mcpToolName,
+        call.name,
         call.input as Record<string, unknown>
       );
       toolResults.push({

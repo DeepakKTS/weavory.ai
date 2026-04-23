@@ -69,11 +69,11 @@ Defined in [`src/core/schema.ts`](../src/core/schema.ts):
 
 | Tool | One-line semantic |
 |------|-------------------|
-| `weavory.believe`   | Sign + store + append audit + fan out to subscribers. |
-| `weavory.recall`    | Filter by trust + as_of + subject/predicate + quarantine. |
-| `weavory.subscribe` | Register a bounded queue keyed on a pattern + filters. |
-| `weavory.attest`    | Update `trust(signer, topic)` in `[-1, 1]`. |
-| `weavory.forget`    | OR-set tombstone: `invalidated_at` is set, history preserved. |
+| `weavory_believe`   | Sign + store + append audit + fan out to subscribers. |
+| `weavory_recall`    | Filter by trust + as_of + subject/predicate + quarantine. |
+| `weavory_subscribe` | Register a bounded queue keyed on a pattern + filters. |
+| `weavory_attest`    | Update `trust(signer, topic)` in `[-1, 1]`. |
+| `weavory_forget`    | OR-set tombstone: `invalidated_at` is set, history preserved. |
 
 ## Trust + quarantine (why claims don't propagate automatically)
 

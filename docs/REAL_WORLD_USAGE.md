@@ -87,7 +87,7 @@ misread; remove it from active use but keep the record").
 |------|---------|
 | Who produced this observation? | `signer_id` + Ed25519 signature |
 | At what confidence? | `confidence` in `[0, 1]` |
-| Revoke without erasing | `weavory.forget` — invalidates live recall, preserves audit |
+| Revoke without erasing | `weavory_forget` — invalidates live recall, preserves audit |
 | Reconstruct at time of diagnosis | `recall({ as_of: "<ISO>" })` — bi-temporal |
 | Block PII predicates at ingest | `WEAVORY_POLICY_FILE` with `predicate_deny: ["pii.*"]` |
 

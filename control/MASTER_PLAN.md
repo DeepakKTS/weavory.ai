@@ -8,11 +8,11 @@ Build **weavory.ai** — an MCP-native **shared belief coordination layer** for 
 
 ## Non-negotiable public API (exactly five MCP tools)
 
-1. `weavory.believe(subject, predicate, object, confidence?, valid_from?, valid_to?, causes?)`
-2. `weavory.recall(query, top_k?, as_of?, min_trust?, filters?)`
-3. `weavory.subscribe(pattern, filters?)` → SSE stream
-4. `weavory.attest(signer_id, topic, score)`
-5. `weavory.forget(belief_id, reason?)` → OR-set tombstone
+1. `weavory_believe(subject, predicate, object, confidence?, valid_from?, valid_to?, causes?)`
+2. `weavory_recall(query, top_k?, as_of?, min_trust?, filters?)`
+3. `weavory_subscribe(pattern, filters?)` → SSE stream
+4. `weavory_attest(signer_id, topic, score)`
+5. `weavory_forget(belief_id, reason?)` → OR-set tombstone
 
 ## Differentiator
 

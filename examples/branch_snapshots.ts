@@ -60,7 +60,7 @@ async function main(): Promise<void> {
   // T0 — publish AAPL=100 and GOOG=200 by alice.
   const aapl0 = (
     await mainClient.callTool({
-      name: "weavory.believe",
+      name: "weavory_believe",
       arguments: {
         subject: "stock:AAPL",
         predicate: "price",
@@ -70,7 +70,7 @@ async function main(): Promise<void> {
     })
   ).structuredContent as BelieveOut;
   await mainClient.callTool({
-    name: "weavory.believe",
+    name: "weavory_believe",
     arguments: {
       subject: "stock:GOOG",
       predicate: "price",
@@ -81,7 +81,7 @@ async function main(): Promise<void> {
   // wally attests alice on "price" so the default trust gate lets the
   // recalls see her. This applies to the snapshot too.
   await mainClient.callTool({
-    name: "weavory.attest",
+    name: "weavory_attest",
     arguments: {
       signer_id: aapl0.signer_id,
       topic: "price",
@@ -96,7 +96,7 @@ async function main(): Promise<void> {
   // Capture T0 snapshot time via a recall.
   const t0Recall = (
     await mainClient.callTool({
-      name: "weavory.recall",
+      name: "weavory_recall",
       arguments: { query: "stock", top_k: 10 },
     })
   ).structuredContent as RecallOut;
@@ -115,7 +115,7 @@ async function main(): Promise<void> {
 
   // MAIN diverges: alice publishes AAPL=110 (spike).
   await mainClient.callTool({
-    name: "weavory.believe",
+    name: "weavory_believe",
     arguments: {
       subject: "stock:AAPL",
       predicate: "price",
@@ -125,7 +125,7 @@ async function main(): Promise<void> {
   });
   // BRANCH diverges: alice publishes AAPL=90 (dip).
   await branchClient.callTool({
-    name: "weavory.believe",
+    name: "weavory_believe",
     arguments: {
       subject: "stock:AAPL",
       predicate: "price",
@@ -138,7 +138,7 @@ async function main(): Promise<void> {
   // Recall on main — should see 100 and 110, NOT 90.
   const mainLive = (
     await mainClient.callTool({
-      name: "weavory.recall",
+      name: "weavory_recall",
       arguments: { query: "AAPL", top_k: 10 },
     })
   ).structuredContent as RecallOut;
@@ -153,7 +153,7 @@ async function main(): Promise<void> {
   // Recall on branch — should see 100 and 90, NOT 110.
   const branchLive = (
     await branchClient.callTool({
-      name: "weavory.recall",
+      name: "weavory_recall",
       arguments: { query: "AAPL", top_k: 10 },
     })
   ).structuredContent as RecallOut;
@@ -168,7 +168,7 @@ async function main(): Promise<void> {
   // as_of on main at T0 — should see AAPL=100 only, not 110 (came later) and not 90 (branch).
   const mainPast = (
     await mainClient.callTool({
-      name: "weavory.recall",
+      name: "weavory_recall",
       arguments: { query: "AAPL", top_k: 10, as_of: t0 },
     })
   ).structuredContent as RecallOut;

@@ -39,7 +39,7 @@ async function main() {
 
   // Alice (honest): traffic is congested.
   const aliceOut = (await alice.callTool({
-    name: "weavory.believe",
+    name: "weavory_believe",
     arguments: {
       subject: "scenario:traffic-cambridge",
       predicate: "observation",
@@ -51,7 +51,7 @@ async function main() {
 
   // Mallet (attacker): false flag — "all clear."
   const malletOut = (await mallet.callTool({
-    name: "weavory.believe",
+    name: "weavory_believe",
     arguments: {
       subject: "scenario:traffic-cambridge",
       predicate: "observation",
@@ -63,7 +63,7 @@ async function main() {
 
   // Charlie attests: alice high, mallet low.
   await charlie.callTool({
-    name: "weavory.attest",
+    name: "weavory_attest",
     arguments: {
       signer_id: aliceOut.signer_id,
       topic: "observation",
@@ -72,7 +72,7 @@ async function main() {
     },
   });
   await charlie.callTool({
-    name: "weavory.attest",
+    name: "weavory_attest",
     arguments: {
       signer_id: malletOut.signer_id,
       topic: "observation",
@@ -84,7 +84,7 @@ async function main() {
 
   // Charlie default recall — trust gate should filter mallet's claim.
   const defaultRecall = (await charlie.callTool({
-    name: "weavory.recall",
+    name: "weavory_recall",
     arguments: { query: "traffic", top_k: 10 },
   })).structuredContent as RecallOut;
   console.log(`[tamper] charlie default recall: ${defaultRecall.total_matched} match(es)`);
@@ -94,7 +94,7 @@ async function main() {
 
   // With min_trust=-1, mallet's claim is observable for audit but still marked.
   const auditRecall = (await charlie.callTool({
-    name: "weavory.recall",
+    name: "weavory_recall",
     arguments: { query: "traffic", top_k: 10, min_trust: -1 },
   })).structuredContent as RecallOut;
   console.log(`[tamper] charlie audit recall (min_trust=-1): ${auditRecall.total_matched} match(es)`);

@@ -71,7 +71,7 @@ async function main(): Promise<void> {
   // --- Stage 1: Alice advertises ---
   const offer = (
     await client.callTool({
-      name: "weavory.believe",
+      name: "weavory_believe",
       arguments: {
         subject: "agent:alice",
         predicate: CAPABILITY_OFFERS_PREDICATE,
@@ -89,7 +89,7 @@ async function main(): Promise<void> {
 
   // wally attests alice on the capability topic so her reputation is positive.
   await client.callTool({
-    name: "weavory.attest",
+    name: "weavory_attest",
     arguments: {
       signer_id: offer.signer_id,
       topic: "summarize_paragraph",
@@ -99,7 +99,7 @@ async function main(): Promise<void> {
   });
   // And on a generic "offerings" topic for a richer reputation profile.
   await client.callTool({
-    name: "weavory.attest",
+    name: "weavory_attest",
     arguments: {
       signer_id: offer.signer_id,
       topic: "offerings",
@@ -111,7 +111,7 @@ async function main(): Promise<void> {
   // --- Stage 2: Bob discovers + checks reputation ---
   const discovery = (
     await client.callTool({
-      name: "weavory.recall",
+      name: "weavory_recall",
       arguments: {
         query: "summarize",
         top_k: 10,
@@ -132,7 +132,7 @@ async function main(): Promise<void> {
 
   const repCall = (
     await client.callTool({
-      name: "weavory.recall",
+      name: "weavory_recall",
       arguments: {
         query: "",
         top_k: 50,
@@ -163,7 +163,7 @@ async function main(): Promise<void> {
   // --- Stage 3: Bob pays ---
   const payment = (
     await client.callTool({
-      name: "weavory.believe",
+      name: "weavory_believe",
       arguments: {
         subject: "agent:bob",
         predicate: ESCROW_PAYMENT_PREDICATE,
@@ -182,7 +182,7 @@ async function main(): Promise<void> {
   // --- Stage 4: Alice delivers ---
   const delivered = (
     await client.callTool({
-      name: "weavory.believe",
+      name: "weavory_believe",
       arguments: {
         subject: "agent:alice",
         predicate: ESCROW_DELIVERED_PREDICATE,
@@ -201,7 +201,7 @@ async function main(): Promise<void> {
   // --- Stage 5: Bob settles ---
   const settled = (
     await client.callTool({
-      name: "weavory.believe",
+      name: "weavory_believe",
       arguments: {
         subject: "agent:bob",
         predicate: ESCROW_SETTLED_PREDICATE,

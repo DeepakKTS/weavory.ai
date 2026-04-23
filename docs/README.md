@@ -48,11 +48,11 @@ The server speaks MCP over stdio. Point any MCP-capable agent at it.
 
 | Tool | Purpose | Key arguments |
 |------|---------|---------------|
-| `weavory.believe` | Write a signed belief | `subject`, `predicate`, `object`, optional `signer_seed`, `confidence`, `valid_from`, `valid_to`, `causes` |
-| `weavory.recall` | Retrieve beliefs | `query`, optional `top_k`, `as_of`, `min_trust`, `include_quarantined`, `filters` |
-| `weavory.subscribe` | Register a semantic subscription | `pattern`, optional `filters`, `signer_seed` |
-| `weavory.attest` | Raise / lower trust for (signer, topic) | `signer_id`, `topic`, `score` ∈ [-1,1], optional `attestor_seed` |
-| `weavory.forget` | Tombstone a belief | `belief_id`, optional `reason`, `forgetter_seed` |
+| `weavory_believe` | Write a signed belief | `subject`, `predicate`, `object`, optional `signer_seed`, `confidence`, `valid_from`, `valid_to`, `causes` |
+| `weavory_recall` | Retrieve beliefs | `query`, optional `top_k`, `as_of`, `min_trust`, `include_quarantined`, `filters` |
+| `weavory_subscribe` | Register a semantic subscription | `pattern`, optional `filters`, `signer_seed` |
+| `weavory_attest` | Raise / lower trust for (signer, topic) | `signer_id`, `topic`, `score` ∈ [-1,1], optional `attestor_seed` |
+| `weavory_forget` | Tombstone a belief | `belief_id`, optional `reason`, `forgetter_seed` |
 
 **`signer_seed`** is how an agent claims a stable identity without
 doing crypto itself. Use `"alice"`, `"bob"`, or any short string; the
@@ -68,7 +68,7 @@ server derives a deterministic Ed25519 key from it.
 
 ### Steps
 
-1. `weavory.recall` with `{ "query": "traffic cambridge", "top_k": 5 }`.
+1. `weavory_recall` with `{ "query": "traffic cambridge", "top_k": 5 }`.
    - If `total_matched == 0`, Alice hasn't published yet — wait or ask her to publish.
 2. If results exist, pick the top belief. It has the shape:
    ```json
@@ -83,8 +83,8 @@ server derives a deterministic Ed25519 key from it.
      "confidence": 1
    }
    ```
-3. Call `weavory.attest` with `{ "signer_id": "<alice's signer_id>", "topic": "observation", "score": 0.8 }` so Alice's beliefs clear Bob's default trust gate.
-4. Re-call `weavory.recall` — Alice's belief should now appear in Bob's default view.
+3. Call `weavory_attest` with `{ "signer_id": "<alice's signer_id>", "topic": "observation", "score": 0.8 }` so Alice's beliefs clear Bob's default trust gate.
+4. Re-call `weavory_recall` — Alice's belief should now appear in Bob's default view.
 5. Answer using `belief.object.congested` and `eta_delta_min`.
 
 **Expected answer:**

@@ -47,7 +47,7 @@ async function main() {
     object: { congested: true, eta_delta_min: 14, signal_source: "field-sensor-7" },
     signer_seed: "alice",
   };
-  const aliceBelieve = (await alice.callTool({ name: "weavory.believe", arguments: scenario }))
+  const aliceBelieve = (await alice.callTool({ name: "weavory_believe", arguments: scenario }))
     .structuredContent as BelieveOut;
   console.log(`[demo] alice believed ${short(aliceBelieve.id)} (signer=${short(aliceBelieve.signer_id)})`);
   assert(/^[0-9a-f]{64}$/.test(aliceBelieve.id), "belief id must be 64 hex");
@@ -55,7 +55,7 @@ async function main() {
 
   // Step 2: Bob attests Alice on the topic "observation" so the default trust gate lets through the recall.
   const attest = (await bob.callTool({
-    name: "weavory.attest",
+    name: "weavory_attest",
     arguments: {
       signer_id: aliceBelieve.signer_id,
       topic: "observation",
@@ -68,7 +68,7 @@ async function main() {
 
   // Step 3: Bob recalls the scenario.
   const recall = (await bob.callTool({
-    name: "weavory.recall",
+    name: "weavory_recall",
     arguments: { query: "traffic", top_k: 3 },
   })).structuredContent as RecallOut;
   console.log(`[demo] bob recalled ${recall.total_matched} belief(s)`);

@@ -842,11 +842,11 @@
             </thead>
             <tbody>
               <tr>
-                <td><code>weavory.believe</code></td>
+                <td><code>weavory_believe</code></td>
                 <td>Write a signed belief (Ed25519 + BLAKE3-chained audit).</td>
               </tr>
               <tr>
-                <td><code>weavory.recall</code></td>
+                <td><code>weavory_recall</code></td>
                 <td>
                   Search beliefs by query / signer / time / subscription queue.
                   Supports <code>as_of</code>, merge strategies, conflict
@@ -854,18 +854,18 @@
                 </td>
               </tr>
               <tr>
-                <td><code>weavory.subscribe</code></td>
+                <td><code>weavory_subscribe</code></td>
                 <td>
                   Open a pattern-based match queue; drain later via
                   <code>recall(subscription_id)</code>.
                 </td>
               </tr>
               <tr>
-                <td><code>weavory.attest</code></td>
+                <td><code>weavory_attest</code></td>
                 <td>Raise or lower trust for a (signer, topic) pair.</td>
               </tr>
               <tr>
-                <td><code>weavory.forget</code></td>
+                <td><code>weavory_forget</code></td>
                 <td>
                   Tombstone a belief (OR-set remove). Historical
                   <code>as_of</code> queries still see it.
@@ -1503,23 +1503,23 @@
 
             <g class="mono" font-size="12">
               <rect x="18" y="14" width="156" height="32" rx="10" fill="rgba(59,130,246,0.06)" stroke="rgba(59,130,246,0.2)"/>
-              <text x="96" y="34" text-anchor="middle" fill="#cbd5e1">weavory.believe</text>
+              <text x="96" y="34" text-anchor="middle" fill="#cbd5e1">weavory_believe</text>
               <line x1="174" y1="30" x2="228" y2="66" stroke="#64748b" stroke-width="1.2" opacity="0.5"/>
 
               <rect x="20" y="58" width="138" height="32" rx="10" fill="rgba(59,130,246,0.06)" stroke="rgba(59,130,246,0.2)"/>
-              <text x="89" y="78" text-anchor="middle" fill="#cbd5e1">weavory.recall</text>
+              <text x="89" y="78" text-anchor="middle" fill="#cbd5e1">weavory_recall</text>
               <line x1="158" y1="74" x2="228" y2="96" stroke="#64748b" stroke-width="1.2" opacity="0.5"/>
 
               <rect x="26" y="168" width="152" height="32" rx="10" fill="rgba(59,130,246,0.06)" stroke="rgba(59,130,246,0.2)"/>
-              <text x="102" y="188" text-anchor="middle" fill="#cbd5e1">weavory.subscribe</text>
+              <text x="102" y="188" text-anchor="middle" fill="#cbd5e1">weavory_subscribe</text>
               <line x1="178" y1="184" x2="228" y2="136" stroke="#64748b" stroke-width="1.2" opacity="0.5"/>
 
               <rect x="40" y="218" width="140" height="32" rx="10" fill="rgba(59,130,246,0.06)" stroke="rgba(59,130,246,0.2)"/>
-              <text x="110" y="238" text-anchor="middle" fill="#cbd5e1">weavory.attest</text>
+              <text x="110" y="238" text-anchor="middle" fill="#cbd5e1">weavory_attest</text>
               <line x1="180" y1="234" x2="228" y2="140" stroke="#64748b" stroke-width="1.2" opacity="0.5"/>
 
               <rect x="24" y="112" width="142" height="32" rx="10" fill="rgba(59,130,246,0.06)" stroke="rgba(59,130,246,0.2)"/>
-              <text x="95" y="132" text-anchor="middle" fill="#cbd5e1">weavory.forget</text>
+              <text x="95" y="132" text-anchor="middle" fill="#cbd5e1">weavory_forget</text>
               <line x1="166" y1="128" x2="228" y2="118" stroke="#64748b" stroke-width="1.2" opacity="0.5"/>
             </g>
 

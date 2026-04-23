@@ -82,7 +82,7 @@ async function main(): Promise<void> {
   // Bob subscribes FIRST so queue captures everything.
   const sub = (
     await client.callTool({
-      name: "weavory.subscribe",
+      name: "weavory_subscribe",
       arguments: { pattern: "market:", signer_seed: "bob", queue_cap: 100 },
     })
   ).structuredContent as SubscribeOut;
@@ -91,7 +91,7 @@ async function main(): Promise<void> {
   // Alice (trusted) and mallet (untrusted) both publish BTC price.
   const alicePub = (
     await client.callTool({
-      name: "weavory.believe",
+      name: "weavory_believe",
       arguments: {
         subject: "market:BTC",
         predicate: "price",
@@ -102,7 +102,7 @@ async function main(): Promise<void> {
   ).structuredContent as BelieveOut;
   const malletPub = (
     await client.callTool({
-      name: "weavory.believe",
+      name: "weavory_believe",
       arguments: {
         subject: "market:BTC",
         predicate: "price",
@@ -113,7 +113,7 @@ async function main(): Promise<void> {
   ).structuredContent as BelieveOut;
   // ETH via alice too — purely to grow the queue.
   await client.callTool({
-    name: "weavory.believe",
+    name: "weavory_believe",
     arguments: {
       subject: "market:ETH",
       predicate: "price",
@@ -124,11 +124,11 @@ async function main(): Promise<void> {
 
   // Attestations: operator raises alice high, drops mallet low.
   await client.callTool({
-    name: "weavory.attest",
+    name: "weavory_attest",
     arguments: { signer_id: alicePub.signer_id, topic: "price", score: 0.9, attestor_seed: "operator" },
   });
   await client.callTool({
-    name: "weavory.attest",
+    name: "weavory_attest",
     arguments: { signer_id: malletPub.signer_id, topic: "price", score: -0.9, attestor_seed: "operator" },
   });
 
@@ -136,7 +136,7 @@ async function main(): Promise<void> {
   // sees the queue content regardless of trust, matching W-0110 semantics.
   const drain = (
     await client.callTool({
-      name: "weavory.recall",
+      name: "weavory_recall",
       arguments: {
         query: "",
         subscription_id: sub.subscription_id,
@@ -156,7 +156,7 @@ async function main(): Promise<void> {
   // Consensus merge on the market:BTC conflict should pick alice's 50000.
   const consensus = (
     await client.callTool({
-      name: "weavory.recall",
+      name: "weavory_recall",
       arguments: {
         query: "BTC",
         top_k: 10,
@@ -183,7 +183,7 @@ async function main(): Promise<void> {
   // should filter mallet but keep alice.
   const defaultRecall = (
     await client.callTool({
-      name: "weavory.recall",
+      name: "weavory_recall",
       arguments: { query: "BTC", top_k: 10 },
     })
   ).structuredContent as RecallOut;
@@ -214,7 +214,7 @@ async function main(): Promise<void> {
 
   // Divergence: on branch, alice posts a crash ($30,000); on main, alice posts a pump ($60,000).
   await client.callTool({
-    name: "weavory.believe",
+    name: "weavory_believe",
     arguments: {
       subject: "market:BTC",
       predicate: "price",
@@ -223,7 +223,7 @@ async function main(): Promise<void> {
     },
   });
   await branchClient.callTool({
-    name: "weavory.believe",
+    name: "weavory_believe",
     arguments: {
       subject: "market:BTC",
       predicate: "price",
@@ -234,13 +234,13 @@ async function main(): Promise<void> {
 
   const mainBtc = (
     await client.callTool({
-      name: "weavory.recall",
+      name: "weavory_recall",
       arguments: { query: "BTC", top_k: 20 },
     })
   ).structuredContent as RecallOut;
   const branchBtc = (
     await branchClient.callTool({
-      name: "weavory.recall",
+      name: "weavory_recall",
       arguments: { query: "BTC", top_k: 20 },
     })
   ).structuredContent as RecallOut;
@@ -272,7 +272,7 @@ async function main(): Promise<void> {
   console.log("\n[e2e] ── ESCROW ──");
   const offer = (
     await client.callTool({
-      name: "weavory.believe",
+      name: "weavory_believe",
       arguments: {
         subject: "agent:alice",
         predicate: CAPABILITY_OFFERS_PREDICATE,
@@ -283,7 +283,7 @@ async function main(): Promise<void> {
   ).structuredContent as BelieveOut;
   // operator boosts alice's reputation on the capability topic to clear the adversarial 0.6 gate.
   await client.callTool({
-    name: "weavory.attest",
+    name: "weavory_attest",
     arguments: {
       signer_id: offer.signer_id,
       topic: "summarize_paragraph",
@@ -292,7 +292,7 @@ async function main(): Promise<void> {
     },
   });
   await client.callTool({
-    name: "weavory.attest",
+    name: "weavory_attest",
     arguments: {
       signer_id: offer.signer_id,
       topic: "capability.offers",
@@ -304,7 +304,7 @@ async function main(): Promise<void> {
   // Bob discovers and checks reputation.
   const discovery = (
     await client.callTool({
-      name: "weavory.recall",
+      name: "weavory_recall",
       arguments: {
         query: "summarize",
         top_k: 5,
@@ -318,7 +318,7 @@ async function main(): Promise<void> {
   );
   const repCall = (
     await client.callTool({
-      name: "weavory.recall",
+      name: "weavory_recall",
       arguments: {
         query: "",
         top_k: 50,
@@ -336,7 +336,7 @@ async function main(): Promise<void> {
   // Four-stage escrow.
   const payment = (
     await client.callTool({
-      name: "weavory.believe",
+      name: "weavory_believe",
       arguments: {
         subject: "agent:bob",
         predicate: ESCROW_PAYMENT_PREDICATE,
@@ -348,7 +348,7 @@ async function main(): Promise<void> {
   ).structuredContent as BelieveOut;
   const delivered = (
     await client.callTool({
-      name: "weavory.believe",
+      name: "weavory_believe",
       arguments: {
         subject: "agent:alice",
         predicate: ESCROW_DELIVERED_PREDICATE,
@@ -359,7 +359,7 @@ async function main(): Promise<void> {
     })
   ).structuredContent as BelieveOut;
   await client.callTool({
-    name: "weavory.believe",
+    name: "weavory_believe",
     arguments: {
       subject: "agent:bob",
       predicate: ESCROW_SETTLED_PREDICATE,

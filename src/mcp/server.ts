@@ -32,7 +32,7 @@ import { RuntimeWriter } from "../engine/runtime_writer.js";
  * Deliberately a string literal — NOT a runtime `readFileSync` on
  * package.json — so this module has zero side effects at load time.
  */
-export const VERSION = "0.1.7";
+export const VERSION = "0.1.8";
 
 // ---- Shared Zod fragments ----
 const JsonValueSchema: z.ZodType = z.lazy(() =>
@@ -97,7 +97,7 @@ export function createServer(
 
   // 1. believe --------------------------------------------------------------
   server.registerTool(
-    "weavory.believe",
+    "weavory_believe",
     {
       title: "Write a signed belief",
       description:
@@ -124,7 +124,7 @@ export function createServer(
 
   // 2. recall ---------------------------------------------------------------
   server.registerTool(
-    "weavory.recall",
+    "weavory_recall",
     {
       title: "Recall matching beliefs",
       description:
@@ -159,7 +159,7 @@ export function createServer(
 
   // 3. subscribe ------------------------------------------------------------
   server.registerTool(
-    "weavory.subscribe",
+    "weavory_subscribe",
     {
       title: "Subscribe to a semantic pattern",
       description:
@@ -182,7 +182,7 @@ export function createServer(
 
   // 4. attest ---------------------------------------------------------------
   server.registerTool(
-    "weavory.attest",
+    "weavory_attest",
     {
       title: "Attest trust for a signer × topic",
       description:
@@ -210,7 +210,7 @@ export function createServer(
 
   // 5. forget ---------------------------------------------------------------
   server.registerTool(
-    "weavory.forget",
+    "weavory_forget",
     {
       title: "Tombstone a belief (OR-set remove)",
       description:

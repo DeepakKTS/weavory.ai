@@ -70,7 +70,7 @@ async function main(): Promise<void> {
   // Publish three honest beliefs so the audit chain has substance.
   for (const i of [1, 2, 3]) {
     await client.callTool({
-      name: "weavory.believe",
+      name: "weavory_believe",
       arguments: {
         subject: `sensor:wall:${i}`,
         predicate: "reading",

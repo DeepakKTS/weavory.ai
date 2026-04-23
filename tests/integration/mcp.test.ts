@@ -10,11 +10,11 @@ import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { createServer } from "../../src/mcp/server.js";
 
 const EXPECTED_TOOLS = [
-  "weavory.believe",
-  "weavory.recall",
-  "weavory.subscribe",
-  "weavory.attest",
-  "weavory.forget",
+  "weavory_believe",
+  "weavory_recall",
+  "weavory_subscribe",
+  "weavory_attest",
+  "weavory_forget",
 ] as const;
 
 async function wire() {
@@ -40,7 +40,7 @@ describe("MCP surface (T-M-001..T-M-003, Gate 2)", () => {
 
   it("believe happy path returns a structured id + audit info", async () => {
     const r = await client.callTool({
-      name: "weavory.believe",
+      name: "weavory_believe",
       arguments: {
         subject: "s",
         predicate: "p",
@@ -58,7 +58,7 @@ describe("MCP surface (T-M-001..T-M-003, Gate 2)", () => {
 
   it("believe rejects malformed args with a structured error (T-M-002)", async () => {
     const r = await client.callTool({
-      name: "weavory.believe",
+      name: "weavory_believe",
       arguments: {
         // missing `subject`
         predicate: "p",
@@ -71,7 +71,7 @@ describe("MCP surface (T-M-001..T-M-003, Gate 2)", () => {
   it("recall happy path returns a beliefs array", async () => {
     // Write something first so recall has content.
     await client.callTool({
-      name: "weavory.believe",
+      name: "weavory_believe",
       arguments: {
         subject: "mcp:test:subject",
         predicate: "states",
@@ -81,7 +81,7 @@ describe("MCP surface (T-M-001..T-M-003, Gate 2)", () => {
     });
     // Raise trust so default min_trust doesn't filter it.
     await client.callTool({
-      name: "weavory.attest",
+      name: "weavory_attest",
       arguments: {
         signer_id: "0".repeat(64), // attesting the wrong id is harmless; we trust default
         topic: "states",
@@ -90,7 +90,7 @@ describe("MCP surface (T-M-001..T-M-003, Gate 2)", () => {
     });
 
     const r = await client.callTool({
-      name: "weavory.recall",
+      name: "weavory_recall",
       arguments: { query: "mcp", top_k: 5 },
     });
     expect(r.isError).toBeFalsy();
@@ -102,7 +102,7 @@ describe("MCP surface (T-M-001..T-M-003, Gate 2)", () => {
 
   it("subscribe returns a subscription_id", async () => {
     const r = await client.callTool({
-      name: "weavory.subscribe",
+      name: "weavory_subscribe",
       arguments: { pattern: "market:*" },
     });
     expect(r.isError).toBeFalsy();
@@ -112,7 +112,7 @@ describe("MCP surface (T-M-001..T-M-003, Gate 2)", () => {
 
   it("attest returns the clamped score and an entry_hash", async () => {
     const r = await client.callTool({
-      name: "weavory.attest",
+      name: "weavory_attest",
       arguments: {
         signer_id: "a".repeat(64),
         topic: "knows",
@@ -127,7 +127,7 @@ describe("MCP surface (T-M-001..T-M-003, Gate 2)", () => {
 
   it("forget on an unknown id reports found=false", async () => {
     const r = await client.callTool({
-      name: "weavory.forget",
+      name: "weavory_forget",
       arguments: { belief_id: "0".repeat(64) },
     });
     expect(r.isError).toBeFalsy();

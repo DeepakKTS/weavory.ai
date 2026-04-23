@@ -65,7 +65,7 @@ async function main(): Promise<void> {
   // 1. Wally subscribes FIRST so the queue captures all subsequent publishes.
   const sub = (
     await client.callTool({
-      name: "weavory.subscribe",
+      name: "weavory_subscribe",
       arguments: { pattern: "sensor:cambridge", signer_seed: "wally", queue_cap: 100 },
     })
   ).structuredContent as SubscribeOut;
@@ -75,7 +75,7 @@ async function main(): Promise<void> {
   const publish = async (seed: string, x: number): Promise<BelieveOut> =>
     (
       await client.callTool({
-        name: "weavory.believe",
+        name: "weavory_believe",
         arguments: {
           subject: "sensor:cambridge",
           predicate: "reading",
@@ -97,7 +97,7 @@ async function main(): Promise<void> {
   // 3. Trust attestations — wally trusts alice + bob highly, mallet little.
   const attest = async (signerId: string, score: number): Promise<void> => {
     await client.callTool({
-      name: "weavory.attest",
+      name: "weavory_attest",
       arguments: { signer_id: signerId, topic: "reading", score, attestor_seed: "wally" },
     });
   };
@@ -109,7 +109,7 @@ async function main(): Promise<void> {
   // 4. Drain the subscription queue.
   const drained = (
     await client.callTool({
-      name: "weavory.recall",
+      name: "weavory_recall",
       arguments: {
         query: "",
         subscription_id: sub.subscription_id,
@@ -133,7 +133,7 @@ async function main(): Promise<void> {
   // 5. Recall with include_conflicts=true — exposes the conflict group.
   const withConflicts = (
     await client.callTool({
-      name: "weavory.recall",
+      name: "weavory_recall",
       arguments: { query: "sensor", top_k: 10, include_conflicts: true, min_trust: -1 },
     })
   ).structuredContent as RecallOut;
@@ -153,7 +153,7 @@ async function main(): Promise<void> {
   // 6. merge_strategy=consensus — trust-weighted winner should be 42 (alice+bob = 1.8 > mallet 0.1).
   const consensus = (
     await client.callTool({
-      name: "weavory.recall",
+      name: "weavory_recall",
       arguments: { query: "sensor", top_k: 10, merge_strategy: "consensus", min_trust: -1 },
     })
   ).structuredContent as RecallOut;
@@ -169,7 +169,7 @@ async function main(): Promise<void> {
   // 7. merge_strategy=lww — latest recorded_at wins regardless of trust (mallet).
   const lww = (
     await client.callTool({
-      name: "weavory.recall",
+      name: "weavory_recall",
       arguments: { query: "sensor", top_k: 10, merge_strategy: "lww", min_trust: -1 },
     })
   ).structuredContent as RecallOut;

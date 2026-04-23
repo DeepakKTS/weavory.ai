@@ -32,7 +32,7 @@ async function main() {
 
   // 1. Publish.
   const out = (await alice.callTool({
-    name: "weavory.believe",
+    name: "weavory_believe",
     arguments: {
       subject: "scenario:rewind",
       predicate: "observation",
@@ -44,7 +44,7 @@ async function main() {
 
   // Self-attest so default trust gate lets us read back.
   await alice.callTool({
-    name: "weavory.attest",
+    name: "weavory_attest",
     arguments: {
       signer_id: out.signer_id,
       topic: "observation",
@@ -55,7 +55,7 @@ async function main() {
 
   // 2. Capture t_snapshot while the belief is live (use the server-side now()).
   const liveNow = (await alice.callTool({
-    name: "weavory.recall",
+    name: "weavory_recall",
     arguments: { query: "rewind", top_k: 1 },
   })).structuredContent as RecallOut;
   const t_snapshot = liveNow.now;
@@ -66,14 +66,14 @@ async function main() {
 
   // 3. Forget.
   await alice.callTool({
-    name: "weavory.forget",
+    name: "weavory_forget",
     arguments: { belief_id: out.id, forgetter_seed: "alice" },
   });
   console.log("[rewind] alice forgot the belief");
 
   // 4. Live recall — should be 0.
   const live = (await alice.callTool({
-    name: "weavory.recall",
+    name: "weavory_recall",
     arguments: { query: "rewind", top_k: 5 },
   })).structuredContent as RecallOut;
   console.log(`[rewind] live recall: ${live.total_matched} match(es)`);
@@ -81,7 +81,7 @@ async function main() {
 
   // 5. as_of=t_snapshot — should be 1.
   const past = (await alice.callTool({
-    name: "weavory.recall",
+    name: "weavory_recall",
     arguments: { query: "rewind", top_k: 5, as_of: t_snapshot },
   })).structuredContent as RecallOut;
   console.log(`[rewind] past recall (as_of=${t_snapshot}): ${past.total_matched} match(es)`);

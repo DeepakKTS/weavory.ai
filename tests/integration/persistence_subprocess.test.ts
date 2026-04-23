@@ -6,7 +6,7 @@
  * under a fresh child process, connects via the official MCP SDK stdio
  * client, writes a belief, terminates the child, spawns a second child
  * against the same `WEAVORY_DATA_DIR`, and asserts the belief id returned
- * by `weavory.recall` matches.
+ * by `weavory_recall` matches.
  *
  * Two tests:
  *   1. JSONL (always runs)     — zero native deps, default backend.
@@ -68,7 +68,7 @@ async function runOne<T>(env: NodeJS.ProcessEnv, fn: (c: Client) => Promise<T>):
 async function believeOnce(env: NodeJS.ProcessEnv, subject: string): Promise<string> {
   return runOne(env, async (c) => {
     const r = await c.callTool({
-      name: "weavory.believe",
+      name: "weavory_believe",
       arguments: {
         subject,
         predicate: "observation",
@@ -90,7 +90,7 @@ async function recallOnce(
 ): Promise<{ total_matched: number; ids: string[] }> {
   return runOne(env, async (c) => {
     const r = await c.callTool({
-      name: "weavory.recall",
+      name: "weavory_recall",
       arguments: { query, top_k: 5, min_trust: -1 },
     });
     const sc = r.structuredContent as

@@ -108,7 +108,7 @@ Chronological engineering log. One entry per meaningful work unit. Never fabrica
 
 ### Phase F · CI run on `510da98` — **Gates 6 & 7 BOTH PASS**
 - User rotated the leaked Anthropic key and added the new value as the `ANTHROPIC_API_KEY` repo secret on `DeepakKTS/weavory.ai`.
-- First attempted run (on `78bf49e`) hit a 400 from the Anthropic tool-use API: tool names `weavory.believe` failed the required `^[a-zA-Z0-9_-]{1,128}$` pattern. Fixed in `510da98` by adding a bidirectional dot↔underscore name bridge in `tests/judge/gate7_simulation.ts` (MCP keeps dotted names; Anthropic sees `weavory_believe` etc.) and a short note in the system prompt so Claude maps the runbook's dotted references to the underscored tool names.
+- First attempted run (on `78bf49e`) hit a 400 from the Anthropic tool-use API: tool names `weavory_believe` failed the required `^[a-zA-Z0-9_-]{1,128}$` pattern. Fixed in `510da98` by adding a bidirectional dot↔underscore name bridge in `tests/judge/gate7_simulation.ts` (MCP keeps dotted names; Anthropic sees `weavory_believe` etc.) and a short note in the system prompt so Claude maps the runbook's dotted references to the underscored tool names.
 - **GitHub Actions run 24746380567** on `510da98`:
   - `preflight-check-secrets` — 3s, green, output `has_anthropic_key=true`.
   - `gates-ubuntu-latest-node22` — 22s, green. tsc strict + Gates 1-5 all pass on a clean runner.
@@ -160,7 +160,7 @@ G.2 — The Commons. Starts with W-0110 (subscription match queue + delivery-rec
   - `RecallInput` gains optional `subscription_id`; when present, recall drains the subscription's queue instead of scanning state.beliefs. All other filters (as_of, min_trust, quarantine, query, subject/predicate) still apply to the drained candidates.
   - `RecallOutput` gains optional `subscription_id`, `delivered_count`, `dropped_count`.
   - `subscribe()` signature gains `queue_cap?` (default 1000, min 1).
-- `src/mcp/server.ts`: `weavory.recall` input schema gains `subscription_id: /^sub_[0-9a-f]+$/`. `weavory.subscribe` gains `queue_cap`. Both text summaries reflect the drain branch.
+- `src/mcp/server.ts`: `weavory_recall` input schema gains `subscription_id: /^sub_[0-9a-f]+$/`. `weavory_subscribe` gains `queue_cap`. Both text summaries reflect the drain branch.
 - `tests/integration/commons.test.ts` (new, 11 tests): subscribe shape, enqueue on match, no-enqueue on non-match, multi-subscription routing, subject/predicate filters, drain happy path, unknown subscription_id handling, re-drain shows only new beliefs, queue-overflow dropped count, plain recall (non-subscription) still works.
 
 ### Tests & verification
@@ -184,7 +184,7 @@ G.2 — The Commons. Starts with W-0110 (subscription match queue + delivery-rec
   - `RecallOutput` gains `conflicts?`, `merge_strategy?`.
   - **Critical design point:** merge is opt-in. Default behavior (no `merge_strategy`) preserves the pre-W-0111 semantics — all variants flow through — so Gate 4 (adversarial audit view) stays green. `include_conflicts: true` surfaces groups without collapsing. `merge_strategy: "consensus" | "lww"` explicitly collapses to the winner.
   - `as_of` queries skip merge entirely (historical fidelity).
-- `src/mcp/server.ts`: `weavory.recall` input schema gains `include_conflicts: boolean?` and `merge_strategy: enum("lww","consensus")?`.
+- `src/mcp/server.ts`: `weavory_recall` input schema gains `include_conflicts: boolean?` and `merge_strategy: enum("lww","consensus")?`.
 - `tests/unit/engine/merge.test.ts` (new, 7 tests): no-conflict pass-through, consensus-on-same-object (not a conflict), trust-weighted winner, LWW ignores trust, consensus equal-weight LWW tie-break, negative-trust clamp, multi-group independence.
 - `tests/integration/commons.test.ts` extended (4 new tests): default-returns-all-variants, include_conflicts exposes groups without collapse, consensus opt-in, lww opt-in (with trust above the min_trust gate so both reach merge), as_of skips merge.
 
@@ -326,7 +326,7 @@ Three small commits, each self-verifying.
 - `pnpm exec tsc --noEmit` strict clean throughout.
 - All existing gate scripts re-run PASS: `gate3`, `gate4`, `gate5`, `gate_commons`, `gate_wall`, `gate_gauntlet`.
 - New: **Gate Bazaar PASS (5/5)**. Recorded in `ops/data/gates.json`.
-- Five-tool MCP API surface unchanged. All Bazaar primitives ride on existing `weavory.believe` / `weavory.recall` / `weavory.attest` + the existing `belief.causes[]` field.
+- Five-tool MCP API surface unchanged. All Bazaar primitives ride on existing `weavory_believe` / `weavory_recall` / `weavory_attest` + the existing `belief.causes[]` field.
 
 ### Control updates
 - `STATUS.json`: `current_phase=G.5_complete`, `last_arena_gate_passed=bazaar`, `active_phase_g_sub='G.6 The Throne'`, `active_tasks=[W-0150]`.
