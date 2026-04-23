@@ -137,6 +137,33 @@ done
 TOTAL_END="$(date +%s)"
 TOTAL_DURATION="$((TOTAL_END - TOTAL_START))"
 
+# ---------- 2.5. Optional gate7 (stock-agent judge sim) ----------
+#
+# gate7 requires ANTHROPIC_API_KEY to talk to the Claude API. It's not on
+# the default rehearsal path because it's slow (~30s) and network-dependent.
+# When the key IS set (local dev rehearsal, pre-submission evidence capture),
+# run it and attach the result to rehearsal.json.
+GATE7_RAN="false"
+GATE7_PASSED="false"
+GATE7_DURATION="0"
+if [ -n "${ANTHROPIC_API_KEY:-}" ]; then
+  printf "\nrehearsal: [gate7] External stock-agent simulation (ANTHROPIC_API_KEY detected)\n"
+  g7_start_ms="$(python3 -c 'import time;print(int(time.time()*1000))')"
+  if pnpm exec tsx tests/judge/gate7_simulation.ts > "$LOG_DIR/gate7.log" 2>&1; then
+    GATE7_PASSED="true"
+    printf "rehearsal: [gate7] PASS\n"
+  else
+    printf "rehearsal: [gate7] FAIL — see %s\n" "$LOG_DIR/gate7.log" >&2
+  fi
+  g7_end_ms="$(python3 -c 'import time;print(int(time.time()*1000))')"
+  GATE7_DURATION="$(python3 -c "print(round(($g7_end_ms - $g7_start_ms) / 1000.0, 2))")"
+  GATE7_RAN="true"
+  # gate7's pass/fail does NOT flip ALL_PASSED — the mandatory rehearsal path
+  # stays deterministic and cheap. Treat gate7 as supplementary evidence.
+else
+  printf "\nrehearsal: [gate7] SKIP (ANTHROPIC_API_KEY not set — not on the mandatory path)\n"
+fi
+
 # ---------- 3. Emit JSON evidence ----------
 
 GENERATED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
@@ -154,6 +181,9 @@ jq -n \
   --argjson gates "$GATES_JSON" \
   --argjson all_passed "$ALL_PASSED" \
   --argjson total_duration "$TOTAL_DURATION" \
+  --argjson gate7_ran "$GATE7_RAN" \
+  --argjson gate7_passed "$GATE7_PASSED" \
+  --argjson gate7_duration "$GATE7_DURATION" \
   '{
     schema_version: $schema_version,
     generated_at: $generated_at,
@@ -161,7 +191,12 @@ jq -n \
     runtime: { node: $node, pnpm: $pnpm, platform: $platform, arch: $arch },
     gates: $gates,
     all_passed: $all_passed,
-    total_duration_sec: $total_duration
+    total_duration_sec: $total_duration,
+    gate7_optional: {
+      ran: $gate7_ran,
+      passed: $gate7_passed,
+      duration_sec: $gate7_duration
+    }
   }' > "$OUT_FILE"
 
 printf "\nrehearsal: wrote %s\n" "$OUT_FILE"

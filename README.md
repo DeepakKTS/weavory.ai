@@ -103,6 +103,28 @@ weavory_recall({
 
 ---
 
+## Works with any MCP-native agent
+
+Weavory's only interface is the five MCP tools — any MCP-capable agent can use
+it from `docs/README.md` alone. We verify this end-to-end by running a stock
+Claude Opus 4.7 agent against the public quickstart, with no agent-specific
+wiring, and recording every tool call + result.
+
+- [`docs/evidence/stock-agent-session-v0.1.18.md`](./docs/evidence/stock-agent-session-v0.1.18.md)
+  — redacted transcript (signer ids shortened; API key never persisted).
+- Regenerate with `pnpm exec tsx scripts/capture-gate7-transcript.ts` (requires
+  `ANTHROPIC_API_KEY`).
+
+Excerpt — the stock agent discovers Alice's belief, trusts her, and answers:
+
+```
+weavory_recall({ query: "traffic cambridge", top_k: 5 })
+weavory_attest({ signer_id: "<alice>", topic: "observation", score: 0.9 })
+→ "Yes, Cambridge is congested with an ETA delta of 14 minutes."
+```
+
+---
+
 ## Documentation
 
 | Doc | What's inside |

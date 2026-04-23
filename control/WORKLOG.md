@@ -668,3 +668,21 @@ Appends a Responsible-AI-framed short pitch to `control/PITCH_SCRIPT.md` after t
 - **Reshoot triggers** call out the three failure modes that would invalidate a take: quarantine LED fails to flash red within 2 s of the forged-approval row; HISTORICAL RAW VIEW banner fails to flip; `/api/state` returns 401 (token mismatch).
 
 No code changes; no version bump; no tests affected. Ships alongside the next patch commit.
+
+### N.4.5 · Stock-agent evidence infrastructure (capture script + rehearsal hook + README section)
+
+Stages everything needed to capture the "a stock MCP-native agent uses weavory from the README alone" transcript that satisfies the NandaHack Responsible-AI track rubric. The actual transcript file is produced by running `pnpm capture:gate7` with `ANTHROPIC_API_KEY` in env and is committed in a follow-up.
+
+- **New `scripts/capture-gate7-transcript.ts`** wraps the same harness as `tests/judge/gate7_simulation.ts` (Claude Opus 4.7 + adaptive thinking + xhigh effort, README.md cached system prompt, weavory MCP tools exposed via InMemoryTransport). For each iteration it records stop_reason, token usage, tool_use → result pairs (input + result previews), and the final assistant text. Redactor:
+  - `sk-ant-*` → `sk-ant-REDACTED` (belt-and-suspenders; the script never persists the env key)
+  - 64-hex signer ids → 12-hex prefix + `…`
+  - 64-hex belief / audit ids → also collapsed (12-hex in this initial redaction; belief id references still readable for a human)
+- Output lands at `docs/evidence/stock-agent-session-v${VERSION}.md` (filename auto-tracks `src/mcp/server.ts` `VERSION`). Exit codes: `0` transcript written · `2` key absent (skip, not fail) · `1` other error.
+- **`scripts/rehearsal.sh`** — new optional post-sweep gate7 step that runs when `ANTHROPIC_API_KEY` is set and records `gate7_optional: {ran, passed, duration_sec}` into `ops/data/rehearsal.json`. gate7's result does NOT flip `all_passed` — the mandatory rehearsal path stays deterministic and cheap; gate7 is supplementary evidence. Without the key, rehearsal prints `[gate7] SKIP` and continues.
+- **`package.json`** — new `capture:gate7` script.
+- **Root `README.md`** — new "Works with any MCP-native agent" section linking the transcript path, showing a three-line excerpt of the typical tool-call sequence, and pointing to the regenerate command.
+- **New `docs/evidence/README.md`** explaining the directory's purpose (frozen submission artifacts tied to a tagged release), the regenerate recipe, and the redaction / hand-review discipline.
+
+Verification: `pnpm lint` clean; `pnpm test` 239/239 (unchanged); `bash scripts/rehearsal.sh` 7/7 mandatory gates green + `[gate7] SKIP` line printed when key is absent; `ops/data/rehearsal.json` now carries the new `gate7_optional` key.
+
+**Remaining step** (user-gated): run `ANTHROPIC_API_KEY=<key> pnpm capture:gate7` to produce the transcript; hand-review for redaction completeness; commit the transcript. The infrastructure is in place and the README already links the target path so the broken link will be fixed the moment the transcript lands.
