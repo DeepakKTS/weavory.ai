@@ -552,3 +552,25 @@ Pinned green-state snapshot before starting the plan at `.claude/plans/good-cont
 Plan scope under Phase N: N.0.5 Responsible-AI narrative re-frame (content only) · N.1 engine `onEvent` hook (v0.1.15) · N.2 dashboard SSE sidecar (v0.1.16) · N.3a+N.3b live demo dashboard (v0.1.17) · N.4 BFSI Scenes 7–8 (v0.1.18) · N.4.5 gate7 stock-agent transcript · N.5 60-second pitch variant · N.6 final verification sweep + submission.
 
 Non-goals (explicit): no new MCP tools (ADR-005 lock holds); no HTTP + SSE MCP transport (dashboard is a sidecar, not an MCP surface); no second vertical demo (BFSI stays the flagship); no Cloud/Enterprise-specific copy in public docs.
+
+### N.1 · Engine `onEvent` hook + `StreamEvent` discriminated union (v0.1.15)
+
+First tagged release of Phase N. Adds the plumbing a sidecar (Phase N.2 SSE dashboard) needs to observe engine ops in real time, without changing the MCP wire protocol or any existing test/gate path.
+
+- **New file** `src/engine/stream_event.ts` — discriminated union over `believe | quarantine | forget | attest | subscribe`; pure builder functions (`buildBelieveEvent`, `buildQuarantineEvent`, `buildForgetEvent`, `buildAttestEvent`, `buildSubscribeEvent`); `emitStreamEvent(state, event)` helper with per-process log-throttled try/catch so a misbehaving listener can never poison the engine. Payload safety: `signer_short` = first 12 hex chars (96 bits), `belief_id_prefix` = first 16 hex, `timestamp` rounded to second precision, no private-key / raw-seed material.
+- **`src/engine/state.ts`** — added `onEvent?: (event: StreamEvent) => void` alongside existing `onOp`. Zero cost when unset; listener exceptions contained.
+- **`src/engine/ops.ts`** — wired `emitStreamEvent(...)` strictly AFTER `state.onOp?.(...)` at every op boundary (believe, forget, attest, subscribe). `recall` does NOT emit (reads are observed via sidecar snapshot endpoints, not the stream). On `believe`, the signer's current trust for the belief's predicate is compared against the default floor (0.3 normal / 0.6 adversarial) — below-floor admits fire a `quarantine` event in place of `believe`, so the dashboard LED can react to risky inputs. Belief is still stored either way; quarantine remains a read-time filter, not a persistent flag.
+- **`src/index.ts`** — re-exported `StreamEvent` and `StreamEventKind` types for embedders.
+- **`src/mcp/server.ts` + `package.json`** — bumped `VERSION` and `version` to `0.1.15`. Package description re-framed to Responsible-AI (was "Shared belief coordination substrate").
+- **`tests/unit/engine/stream_event.test.ts` (new)** — 7 asserts:
+  1. correct discriminant per op kind (believe → subscribe → attest → forget)
+  2. below-floor believe under adversarial mode promotes to `quarantine`
+  3. payload shape closed + `signer_seed` / private material never leaked
+  4. throwing listener is contained; next op still emits
+  5. strict ordering `onOp:believe → onEvent:believe` (truthful-runtime path untouched)
+  6. `recall()` does not emit (reads are off-stream)
+  7. `hexPrefix` / `toSecondPrecision` pure-helper edge cases
+
+Verification: `pnpm lint` clean · `pnpm test` → **239 / 239 passed** in 2.95 s (+7 new, no regressions) · `bash scripts/rehearsal.sh` → 6 / 6 gates green in 5 s · `gate2.sh` (MCP surface five-tool lock) unaffected.
+
+ADR-005 five-tool lock: untouched. No MCP surface change. Non-breaking patch.

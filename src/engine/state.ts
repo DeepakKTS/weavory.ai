@@ -25,6 +25,7 @@ import { generateKeyPair, signerIdOf, type KeyPair } from "../core/sign.js";
 import type { PersistentStore } from "../store/persist.js";
 import type { Policy } from "./policy.js";
 import { RateLimiter, parseRateLimitPerSigner } from "./rate_limit.js";
+import type { StreamEvent } from "./stream_event.js";
 
 /** Phase-G-visible op names — mirrored in runtime_writer.ts. */
 export type EngineOp =
@@ -147,6 +148,23 @@ export class EngineState {
    * isolating its own errors.
    */
   onOp: ((op: EngineOp) => void) | undefined = undefined;
+
+  /**
+   * Phase N.1 — optional richer post-op hook. Called strictly AFTER `onOp`
+   * for each op that matches a `StreamEvent` kind (believe / quarantine /
+   * forget / attest / subscribe). Used by the dashboard SSE sidecar (Phase
+   * N.2) to fan out per-event deltas to connected browsers.
+   *
+   * Invariants:
+   *  - Zero-cost when unset — `emitStreamEvent` short-circuits on undefined.
+   *  - Listener exceptions are caught by `emitStreamEvent`; they never
+   *    propagate into engine state or downstream ops.
+   *  - Payload excludes private keys, raw signer seeds, full audit hashes,
+   *    and sub-second timestamp precision (see `src/engine/stream_event.ts`).
+   *  - `recall` is NOT emitted — reads are observed via snapshot endpoints
+   *    on the sidecar, not via the stream.
+   */
+  onEvent: ((event: StreamEvent) => void) | undefined = undefined;
 
   /**
    * Optional persistence backend (Phase I.P0-3). When attached, every

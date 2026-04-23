@@ -1,7 +1,7 @@
 {
   "name": "@weavory/mcp",
-  "version": "0.1.14",
-  "description": "weavory.ai — Shared belief coordination substrate for AI agents. MCP-native, NANDA AgentFacts-compatible.",
+  "version": "0.1.15",
+  "description": "weavory.ai — Responsible-AI memory for agent swarms. Every belief signed, every decision auditable. MCP-native.",
   "type": "module",
   "license": "Apache-2.0",
   "author": "DeepakKTS",

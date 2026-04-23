@@ -21,6 +21,27 @@ import { SubscriptionLimitError, type EngineState, type SubscriptionFilters } fr
 import { mergeConflicts, type ConflictGroup, type MergeStrategy } from "./merge.js";
 import { getReputation, type ReputationSummary } from "./escrow.js";
 import { evaluate as evaluatePolicy, PolicyDenialError } from "./policy.js";
+import {
+  buildAttestEvent,
+  buildBelieveEvent,
+  buildForgetEvent,
+  buildQuarantineEvent,
+  buildSubscribeEvent,
+  emitStreamEvent,
+} from "./stream_event.js";
+
+/**
+ * Phase N.1 — default min-trust floor used to classify a freshly-stored
+ * belief as "would be filtered under the current recall default floor,"
+ * which the dashboard visualizes via a quarantine event. Kept inline with
+ * the floors used by `recall` (see DEFAULT_MIN_TRUST / ADVERSARIAL_MIN_TRUST
+ * below). This does NOT mark the belief `quarantined: true` in-store —
+ * quarantine is still a read-time filter; the stream event is purely a
+ * visibility signal for sidecars.
+ */
+function currentTrustFloor(state: EngineState): number {
+  return state.adversarialMode ? 0.6 : 0.3;
+}
 
 /**
  * Default hard cap on a belief's `object` payload when NO policy file is
@@ -175,6 +196,19 @@ export function believe(state: EngineState, input: BelieveInput): BelieveOutput 
   // so subscribers never see a belief that isn't also durably stored.
   state.enqueueMatches(stored);
   state.onOp?.("believe");
+  // Phase N.1 — stream event. Fires AFTER onOp so runtime_writer observes
+  // the op first. If the signer's trust for this predicate is below the
+  // current default floor (adversarial or normal), emit `quarantine`
+  // instead of `believe` so the dashboard LED can react to risky inputs.
+  // The belief remains stored either way — quarantine is a visibility
+  // signal only, not a persistent flag change.
+  const trustAfter = state.trustScore(signer_id, stored.predicate);
+  emitStreamEvent(
+    state,
+    trustAfter < currentTrustFloor(state)
+      ? buildQuarantineEvent(stored, trustAfter)
+      : buildBelieveEvent(stored, trustAfter)
+  );
   return {
     id: stored.id,
     signer_id,
@@ -430,7 +464,7 @@ export function subscribe(state: EngineState, input: SubscribeInput): SubscribeO
   const subscription_id = "sub_" + cryptoRandomId();
   const created_at = new Date().toISOString();
   const queue_cap = Math.max(1, input.queue_cap ?? DEFAULT_SUBSCRIPTION_QUEUE_CAP);
-  state.registerSubscription({
+  const sub = {
     id: subscription_id,
     pattern: input.pattern,
     filters: input.filters ?? {},
@@ -441,8 +475,10 @@ export function subscribe(state: EngineState, input: SubscribeInput): SubscribeO
     queue_cap,
     dropped_count: 0,
     last_drained_at: null,
-  });
+  };
+  state.registerSubscription(sub);
   state.onOp?.("subscribe");
+  emitStreamEvent(state, buildSubscribeEvent(sub));
   return { subscription_id, created_at, signer_id, queue_cap };
 }
 
@@ -480,6 +516,10 @@ export function attest(state: EngineState, input: AttestInput): AttestOutput {
     recorded_at,
   });
   state.onOp?.("attest");
+  emitStreamEvent(
+    state,
+    buildAttestEvent(input.signer_id, input.topic, attestor_id, applied, recorded_at)
+  );
   return {
     signer_id: input.signer_id,
     topic: input.topic,
@@ -526,6 +566,7 @@ export function forget(state: EngineState, input: ForgetInput): ForgetOutput {
     recorded_at: invalidated_at,
   });
   state.onOp?.("forget");
+  emitStreamEvent(state, buildForgetEvent(updated, signer_id, invalidated_at));
   return {
     belief_id: input.belief_id,
     found: true,

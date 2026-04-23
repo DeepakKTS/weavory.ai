@@ -32,6 +32,9 @@ export type {
   TrustVector,
 } from "./engine/state.js";
 
+// ─── Stream events (Phase N.1 · v0.1.15) ───────────────────────────────
+export type { StreamEvent, StreamEventKind } from "./engine/stream_event.js";
+
 export {
   believe,
   recall,
