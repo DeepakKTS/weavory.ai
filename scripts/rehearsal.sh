@@ -13,6 +13,7 @@
 #   gate4         · Adversarial filtering (trust quarantine)
 #   gate5         · Bi-temporal recall after forget
 #   gate_bfsi     · BFSI claims-triage demo (the killer end-to-end)
+#   gate_dashboard · Dashboard SSE sidecar (Phase N.2 — SSE + auth + rate limit)
 #
 # Skipped on purpose:
 #   gate6         · Fresh-machine CI itself — redundant to run locally
@@ -97,6 +98,7 @@ GATES=(
   "gate4:Adversarial filtering"
   "gate5:Bi-temporal recall"
   "gate_bfsi:BFSI claims-triage"
+  "gate_dashboard:Dashboard SSE sidecar"
 )
 
 GATES_JSON="[]"

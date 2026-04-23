@@ -1,6 +1,6 @@
 {
   "name": "@weavory/mcp",
-  "version": "0.1.15",
+  "version": "0.1.16",
   "description": "weavory.ai — Responsible-AI memory for agent swarms. Every belief signed, every decision auditable. MCP-native.",
   "type": "module",
   "license": "Apache-2.0",
@@ -58,6 +58,7 @@
     "verify:gate5": "bash scripts/verify/gate5.sh",
     "verify:gate6": "bash scripts/verify/gate6.sh",
     "verify:gate7": "bash scripts/verify/gate7.sh",
+    "verify:gate_dashboard": "tsx scripts/verify/gate_dashboard.ts",
     "bench": "tsx scripts/bench/throughput.ts",
     "lint": "tsc --noEmit"
   },

@@ -574,3 +574,29 @@ First tagged release of Phase N. Adds the plumbing a sidecar (Phase N.2 SSE dash
 Verification: `pnpm lint` clean · `pnpm test` → **239 / 239 passed** in 2.95 s (+7 new, no regressions) · `bash scripts/rehearsal.sh` → 6 / 6 gates green in 5 s · `gate2.sh` (MCP surface five-tool lock) unaffected.
 
 ADR-005 five-tool lock: untouched. No MCP surface change. Non-breaking patch.
+
+### N.2 · Dashboard SSE sidecar (v0.1.16)
+
+Second tagged release of Phase N. Extends the existing `scripts/serve-dashboard.ts` static-file server with event-stream endpoints for the upcoming live demo dashboard (Phase N.3). This is a sidecar process, NOT the MCP server — ADR-005 five-tool lock is untouched.
+
+- **`scripts/serve-dashboard.ts`** rewrite. Keeps the existing static-file route (backwards compat with the truthful control dashboard tooling at `/ops/weavory-dashboard.html`) and adds three new endpoints:
+  - `GET /events` — Server-Sent Events, tailing a 200-entry ring buffer of `StreamEvent` frames. `id:` per frame + Last-Event-ID resume.
+  - `GET /api/state` — one-shot JSON snapshot: beliefs_total/live/quarantine counts, audit length, active subscriptions, sse_clients count, last_event_id, trust_graph (per-signer-prefix × predicate score matrix).
+  - `POST /api/replay` — thin wrapper over `ops.recall({...})` with `top_k` hard-capped at 50 server-side. Clamp applies even when the client asks for more; `total_matched` still reflects the full candidate set.
+- **Binding + auth.** Defaults to `127.0.0.1:4317`. `WEAVORY_DASHBOARD_BIND=<ip:port>` overrides. When bound non-loopback, ALL new endpoints require `?token=<WEAVORY_DASHBOARD_TOKEN>` (EventSource can't send Authorization headers) or the `X-Weavory-Token` header. Comparison uses `crypto.timingSafeEqual`. Refuses to start non-loopback without a token.
+- **CORS tightened.** Legacy `access-control-allow-origin: *` preserved ONLY on static routes (unchanged tooling continuity); new API + SSE routes restrict to the sidecar's own origin or `WEAVORY_DASHBOARD_ALLOWED_ORIGIN`. Prevents a malicious page from slurping the stream if a user pastes a tokened URL elsewhere.
+- **CSP on HTML responses.** `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'`.
+- **Rate limits.** Max 10 concurrent SSE (global); 11th → HTTP 429. Per-IP SSE connect-rate: 1 per second (override via `perIpMinIntervalMs`). 5-minute idle close per connection. `POST /api/replay`: 10 req/s global.
+- **Public factory + handle.** `startDashboardSidecar(opts)` returns `{ state, server, ring, sseClientCount, close }` so tests and future demo drivers can compose with a pre-built `EngineState` or inspect live SSE state without restarting the process.
+- **New gate.** `scripts/verify/gate_dashboard.ts` + `.sh` wrapper verify five assertions:
+  1. SSE delivers a correctly-framed event on a live `believe()` (id numeric, kind matches, belief_id_prefix matches ops output).
+  2. Static HTML route serves CSP + no-store cache headers; legacy `*` CORS preserved on static; API route CORS is NOT wildcard.
+  3. Non-loopback bind returns 401 without token, 200 with `?token=` OR `X-Weavory-Token` header.
+  4. Concurrency cap: 10 concurrent SSE accepted, 11th refused 429. Per-IP rapid reconnect also returns 429.
+  5. `POST /api/replay` with `top_k: 999` is clamped to ≤ 50 beliefs; `total_matched` still reflects the full candidate set (here 60).
+- **`scripts/rehearsal.sh`** now chains `gate_dashboard` after `gate_bfsi`. Rehearsal is 7/7 PASS in 7 s.
+- **`package.json`** adds `verify:gate_dashboard` script; version `0.1.15` → `0.1.16`.
+
+Verification: `pnpm lint` clean · `pnpm test` → **239 / 239 passed** in 3.00 s (no regressions; tests unchanged — tests never touched the sidecar directly) · `bash scripts/rehearsal.sh` → 7 / 7 gates green in 7 s · gate_dashboard direct run → all 5 test groups + 2 sub-asserts pass.
+
+ADR-005 five-tool lock: untouched. No MCP surface change. Non-breaking patch.
