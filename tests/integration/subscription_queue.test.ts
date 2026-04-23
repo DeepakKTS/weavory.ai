@@ -104,6 +104,79 @@ describe("match enqueue (W-0110)", () => {
     expect(stored?.queue[0].subject).toBe("allowed");
     expect(stored?.queue[0].predicate).toBe("observation");
   });
+
+  it("multi-word pattern tokens AND-match across fields (v0.1.14 tokenization)", () => {
+    // Pre-v0.1.14 subscriptionMatches() did a whole-string .includes(pattern)
+    // on "subject predicate object" and silently dropped beliefs whose tokens
+    // were split across fields. v0.1.14 tokenizes on whitespace and requires
+    // every token to substring-match at least one of subject / predicate /
+    // JSON.stringify(object) — mirror of recall().
+    const s = newState();
+    const sub = subscribe(s, {
+      pattern: "traffic watch",
+      filters: { predicate: "traffic" },
+      signer_seed: "monitor",
+    });
+
+    believe(s, {
+      subject: "road:A",
+      predicate: "traffic",
+      object: "watch-for-congestion",
+      signer_seed: "sensor-1",
+    });
+    // Token "traffic" matches predicate; token "watch" matches object.
+
+    const stored = s.subscriptions.get(sub.subscription_id);
+    expect(stored?.queue).toHaveLength(1);
+
+    // And via the public MCP-shaped drain path.
+    const drained = recall(s, { query: "", subscription_id: sub.subscription_id });
+    expect(drained.delivered_count).toBe(1);
+  });
+
+  it("empty and single-token patterns preserve pre-v0.1.14 behavior (regression)", () => {
+    const s = newState();
+    const subEmpty = subscribe(s, {
+      pattern: "",
+      filters: { predicate: "traffic" },
+      signer_seed: "monitor-empty",
+    });
+    const subSingle = subscribe(s, {
+      pattern: "cambridge",
+      signer_seed: "monitor-single",
+    });
+
+    believe(s, {
+      subject: "scenario:traffic-cambridge",
+      predicate: "traffic",
+      object: "congested",
+      signer_seed: "sensor-2",
+    });
+
+    expect(
+      recall(s, { query: "", subscription_id: subEmpty.subscription_id }).delivered_count
+    ).toBe(1);
+    expect(
+      recall(s, { query: "", subscription_id: subSingle.subscription_id }).delivered_count
+    ).toBe(1);
+  });
+
+  it("multi-token pattern with a missing token rejects the belief (AND semantics)", () => {
+    const s = newState();
+    const sub = subscribe(s, {
+      pattern: "traffic cambridge",
+      signer_seed: "m",
+    });
+    // Token "traffic" hits subject, but "cambridge" is absent → reject.
+    believe(s, {
+      subject: "road:A",
+      predicate: "traffic",
+      object: "heavy",
+      signer_seed: "sensor",
+    });
+    const stored = s.subscriptions.get(sub.subscription_id);
+    expect(stored?.queue).toHaveLength(0);
+  });
 });
 
 describe("recall drain (W-0110)", () => {

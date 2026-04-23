@@ -439,16 +439,26 @@ export function subscriptionMatches(sub: Subscription, belief: StoredBelief): bo
   ) {
     return false;
   }
-  // Pattern is a case-insensitive substring over subject/predicate/object.
-  // Empty pattern matches everything passing the filters.
+  // Pattern is whitespace-tokenized — every non-empty token must appear as a
+  // substring in subject / predicate / JSON.stringify(object) — AND semantics,
+  // case-insensitive. Empty or whitespace-only pattern matches everything
+  // passing the filters. Mirrors recall()'s query logic in src/engine/ops.ts
+  // (v0.1.9 token-AND upgrade) so subscribers see the same beliefs a recall
+  // with the same pattern-as-query would return.
+  //
+  // Perf: object blob is JSON-stringified lazily, only for tokens that didn't
+  // already match the small subject / predicate strings.
   const p = sub.pattern.toLowerCase();
   if (p.length === 0) return true;
-  const blob = (
-    belief.subject +
-    " " +
-    belief.predicate +
-    " " +
-    JSON.stringify(belief.object)
-  ).toLowerCase();
-  return blob.includes(p);
+  const tokens = p.split(/\s+/u).filter((t) => t.length > 0);
+  if (tokens.length === 0) return true;
+  const subjLc = belief.subject.toLowerCase();
+  const predLc = belief.predicate.toLowerCase();
+  let objStrLc: string | null = null;
+  for (const tok of tokens) {
+    if (subjLc.includes(tok) || predLc.includes(tok)) continue;
+    if (objStrLc === null) objStrLc = JSON.stringify(belief.object).toLowerCase();
+    if (!objStrLc.includes(tok)) return false;
+  }
+  return true;
 }

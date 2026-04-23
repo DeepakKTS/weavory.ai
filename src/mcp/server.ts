@@ -32,7 +32,7 @@ import { RuntimeWriter } from "../engine/runtime_writer.js";
  * Deliberately a string literal — NOT a runtime `readFileSync` on
  * package.json — so this module has zero side effects at load time.
  */
-export const VERSION = "0.1.13";
+export const VERSION = "0.1.14";
 
 // ---- Shared Zod fragments ----
 const JsonValueSchema: z.ZodType = z.lazy(() =>
@@ -101,7 +101,8 @@ export function createServer(
     {
       title: "Write a signed belief",
       description:
-        "Record a new signed belief. Fields follow the weavory Belief schema (a NANDA AgentFacts superset). Returns {id, signer_id, entry_hash, ingested_at}.",
+        "Record a new signed belief. Fields follow the weavory Belief schema (a NANDA AgentFacts superset). Returns {id, signer_id, entry_hash, ingested_at}.\n\n" +
+        "Belief id composition: `id` is the BLAKE3 hash of the canonical belief payload (subject, predicate, object, confidence, valid_from, valid_to, recorded_at, signer_id, causes). `recorded_at` is generated per call from the server's current time (`new Date().toISOString()`), so two calls with identical subject / predicate / object / confidence / signer_seed produce DIFFERENT `id` values (their `recorded_at` timestamps differ by at least a millisecond). Each invocation is a distinct audit-chain entry — the engine does NOT deduplicate on content. For deterministic id generation in tests or deterministic replays, use the lower-level `buildBelief()` library export that accepts an explicit `recorded_at`; that surface is intentionally not exposed through MCP so agents can't backdate beliefs.",
       inputSchema: {
         subject: z.string().min(1).max(2048),
         predicate: z.string().min(1).max(512),
@@ -234,9 +235,15 @@ export function createServer(
     {
       title: "Subscribe to a semantic pattern",
       description:
-        "Register a semantic subscription. Returns a subscription_id. Matching beliefs can be polled via recall(filters); real-time SSE delivery is served out-of-band at /events/:subscription_id (dashboard mode).",
+        "Register a semantic subscription. Returns a subscription_id. Matching beliefs can be polled via recall(filters); real-time SSE delivery is served out-of-band at /events/:subscription_id (dashboard mode).\n\n" +
+        "Pattern semantics (v0.1.14+): `pattern` is whitespace-tokenized with the same AND-across-fields substring match as `weavory_recall`'s `query`. Every non-empty token must appear as a substring in subject / predicate / JSON.stringify(object) of each published belief — case-insensitive, AND semantics. Pass `pattern: \"\"` to queue every belief that matches the structured `filters` block (subject / predicate / min_confidence). A multi-word descriptive pattern like \"traffic watch\" matches beliefs with token `traffic` in the predicate AND token `watch` anywhere else — it does NOT look for the literal 14-char string.",
       inputSchema: {
-        pattern: z.string().min(1).max(2048),
+        pattern: z
+          .string()
+          .max(2048)
+          .describe(
+            "Whitespace-tokenized substring filter (same semantics as weavory_recall.query). Every non-empty token must appear in subject / predicate / JSON.stringify(object) — AND semantics, case-insensitive. Pass '' (empty string) to match all beliefs that pass the structured filters."
+          ),
         filters: SubscriptionFiltersSchema.optional(),
         signer_seed: z.string().min(1).max(256).optional(),
         queue_cap: z.number().int().min(1).max(100000).optional(),
