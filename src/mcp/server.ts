@@ -22,8 +22,7 @@ import {
 } from "../engine/ops.js";
 import { EngineState } from "../engine/state.js";
 import { RuntimeWriter } from "../engine/runtime_writer.js";
-
-const VERSION = "0.1.0";
+import { VERSION } from "../core/version.js";
 
 // ---- Shared Zod fragments ----
 const JsonValueSchema: z.ZodType = z.lazy(() =>

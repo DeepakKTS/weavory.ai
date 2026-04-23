@@ -26,6 +26,37 @@ import {
   persistEnabledFromEnv,
 } from "./store/persist.js";
 import { loadPolicy, policyPathFromEnv } from "./engine/policy.js";
+import { VERSION } from "./core/version.js";
+
+/**
+ * Startup banner (ANSI Shadow figlet of "weavory.ai"). Printed to stderr
+ * only when stderr is an interactive TTY and the operator has not opted
+ * out with WEAVORY_NO_BANNER=1. Stdout stays sacred for the MCP stdio
+ * JSON-RPC stream — do NOT move this to stdout under any circumstances.
+ */
+const BANNER = `
+ ██╗    ██╗███████╗ █████╗ ██╗   ██╗ ██████╗ ██████╗ ██╗   ██╗    █████╗ ██╗
+ ██║    ██║██╔════╝██╔══██╗██║   ██║██╔═══██╗██╔══██╗╚██╗ ██╔╝   ██╔══██╗██║
+ ██║ █╗ ██║█████╗  ███████║██║   ██║██║   ██║██████╔╝ ╚████╔╝    ███████║██║
+ ██║███╗██║██╔══╝  ██╔══██║╚██╗ ██╔╝██║   ██║██╔══██╗  ╚██╔╝     ██╔══██║██║
+ ╚███╔███╔╝███████╗██║  ██║ ╚████╔╝ ╚██████╔╝██║  ██║   ██║   ██╗██║  ██║██║
+  ╚══╝╚══╝ ╚══════╝╚═╝  ╚═╝  ╚═══╝   ╚═════╝ ╚═╝  ╚═╝   ╚═╝   ╚═╝╚═╝  ╚═╝╚═╝
+`;
+
+export function printStartupBanner(opts: {
+  version: string;
+  writer?: (s: string) => void;
+  isTty?: boolean;
+  suppressed?: boolean;
+}): void {
+  const writer = opts.writer ?? ((s) => process.stderr.write(s));
+  const isTty = opts.isTty ?? Boolean(process.stderr.isTTY);
+  const suppressed = opts.suppressed ?? (process.env.WEAVORY_NO_BANNER === "1");
+  if (!isTty || suppressed) return;
+  writer(BANNER);
+  writer(` shared-belief MCP server · v${opts.version} · Apache-2.0\n`);
+  writer(` github.com/DeepakKTS/weavory.ai · npm @weavory/mcp\n\n`);
+}
 
 const HELP = `weavory — shared belief coordination substrate for AI agents
 
@@ -261,6 +292,7 @@ const cmd = process.argv[2] ?? "start";
 
 try {
   if (cmd === "start") {
+    printStartupBanner({ version: VERSION });
     buildStateFromEnv()
       .then((state) => runStdio(state))
       .catch((err) => {
