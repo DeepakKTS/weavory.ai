@@ -3,16 +3,16 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>weavory.ai — Responsible-AI belief coordination substrate</title>
+    <title>weavory.ai — Responsible-AI memory for agent swarms</title>
     <meta
       name="description"
-      content="weavory · MCP-native shared-belief coordination substrate for AI agents. Signed beliefs, hash-chained audit, trust-gated recall, bi-temporal replay. Apache 2.0."
+      content="Responsible-AI memory for agent swarms. Every belief signed. Every decision auditable. Works with any MCP-native agent. Apache 2.0."
     />
     <meta property="og:title" content="weavory.ai" />
     <meta property="og:type" content="website" />
     <meta
       property="og:description"
-      content="Shared belief coordination substrate for AI agents — signed, hash-chained, trust-gated."
+      content="Responsible-AI memory for agent swarms — every belief signed, every decision auditable, works with any MCP-native agent."
     />
     <meta property="og:image" content="/assets/weavory-logo.png" />
 
@@ -225,7 +225,8 @@
         <div>
           <h1>weavory.ai</h1>
           <div class="subtitle">
-            Responsible-AI belief coordination substrate for agent swarms.
+            Responsible-AI memory for agent swarms.
+            Every belief signed. Every decision auditable.
           </div>
         </div>
       </header>
@@ -235,28 +236,30 @@
         <span class="pill">Responsible&nbsp;AI</span>
         <span class="pill">MCP-native</span>
         <br /><br />
-        An MCP server that lets AI agents share <strong>signed beliefs</strong>
-        with <strong>trust-gated recall</strong>, <strong>hash-chained audit</strong>,
-        <strong>bi-temporal replay</strong>, and a
-        <strong>pre-ingest governance policy</strong> — in five tools, one
-        process, zero fabricated claims.
+        Agents in regulated industries can't be trusted without a paper trail.
+        When an agent <strong>denies a claim</strong>, nothing signed that.
+        When it <strong>changes its mind</strong>, nothing records the history.
+        When compliance asks <strong>what it knew on Tuesday</strong>, nothing answers.
+        weavory fixes that in five MCP tools — and works with any MCP-native agent.
       </p>
 
       <div class="cards">
-        <a class="card" href="/overview/">
-          <h2>Overview &amp; architecture</h2>
+        <a class="card" href="/demo/">
+          <h2>Live demo</h2>
           <p>
-            The full visual walkthrough — what it is, how the flow works,
-            each arena explained, mind map, Phase-G timeline, 12-gate scorecard.
+            Scrub a BFSI claims-triage session in your browser — watch signed
+            beliefs arrive, trust cells light up, a quarantine LED flash on
+            forged input, and replay exactly what was known at any past instant.
           </p>
-          <div class="arrow">→ /overview/</div>
+          <div class="arrow">→ /demo/</div>
         </a>
 
         <a class="card" href="/dashboard/">
-          <h2>Truthful project dashboard</h2>
+          <h2>Project status</h2>
           <p>
-            Live-refreshing state from machine-readable sources only —
-            commits, tests, gates, runtime activity. No fabricated progress.
+            Live-refreshing build + test state from machine-readable sources
+            only — commits, tests, verify gates, runtime activity. No
+            fabricated progress.
           </p>
           <div class="arrow">→ /dashboard/</div>
         </a>
@@ -264,9 +267,9 @@
         <a class="card" href="https://github.com/DeepakKTS/weavory.ai">
           <h2>Source code</h2>
           <p>
-            Apache-2.0, strict TypeScript. 197 tests. 12 machine-verified
-            gates. Full compliance mapping to SOC2, ISO27001, GDPR, EU AI
-            Act, NIST AI-RMF.
+            Apache-2.0, strict TypeScript. 232 tests. 11 machine-verified
+            gates. Compliance mapping to SOC2, ISO27001, GDPR, EU AI Act,
+            NIST AI-RMF.
           </p>
           <div class="arrow">→ github.com/DeepakKTS/weavory.ai</div>
         </a>
@@ -279,9 +282,9 @@
         <pre>npx -y @weavory/mcp start</pre>
 
         <div class="label">Container · multi-arch (amd64, arm64)</div>
-        <pre>docker run -v weavory-data:/data ghcr.io/deepakkts/weavory:0.1.0</pre>
+        <pre>docker run -v weavory-data:/data ghcr.io/deepakkts/weavory:latest</pre>
 
-        <div class="label">From source · canonical Gate-7 judge path</div>
+        <div class="label">From source</div>
         <pre>git clone https://github.com/DeepakKTS/weavory.ai.git
 cd weavory.ai &amp;&amp; pnpm install &amp;&amp; pnpm build</pre>
       </section>

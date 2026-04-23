@@ -4,11 +4,21 @@
 > any official MCP SDK client) to start using weavory in about 60
 > seconds.
 
+## The problem
+
+Multi-agent pipelines in regulated industries (banking, insurance,
+healthcare) need a shared memory where **who said what, when,
+whether they're trusted, and what was known at any past instant**
+are first-class properties — not implementation details. Today
+agents pass JSON around and hope for the best; compliance can't
+reconstruct what the system knew before a decision was made.
+
 ## What weavory is
 
 An MCP server that lets two or more AI agents share **signed beliefs**
-with trust-aware recall. Five tools, one object ("belief"), nothing
-else to learn.
+with trust-aware recall. Every belief is Ed25519-signed, per-predicate
+trust-gated, hash-chain-audited, and replayable at any past instant
+via `as_of`. Five tools, one object ("belief"), nothing else to learn.
 
 ## 1 · Install
 

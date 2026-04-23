@@ -1,17 +1,22 @@
 # weavory.ai
 
-**Shared belief coordination substrate for AI agents.**
-An MCP server with signed beliefs, trust-gated recall, hash-chained audit, and bi-temporal replay — in five tools.
+**Responsible-AI memory for agent swarms.**
+Every belief signed. Every decision auditable. Works with any MCP-native agent — in five tools.
 
 [![npm](https://img.shields.io/npm/v/@weavory/mcp.svg)](https://www.npmjs.com/package/@weavory/mcp)
 [![license](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](./LICENSE)
-[![tests](https://img.shields.io/badge/tests-227%2F227-brightgreen.svg)](#status)
+[![tests](https://img.shields.io/badge/tests-232%2F232-brightgreen.svg)](#status)
 [![ci](https://img.shields.io/badge/ci-passing-brightgreen.svg)](./.github/workflows)
 
-When multiple AI agents share memory, every claim needs a signer, a
-timestamp, and a way to be revoked — or the whole pipeline is
-untrustworthy. weavory gives you that, as an MCP-native server your
-agents can spawn with one command.
+## Why Responsible AI
+
+Agents in banking, insurance, and healthcare can't be trusted without a paper
+trail. Today, when an agent denies a claim, nothing signed that. When it changes
+its mind, nothing records the history. When compliance asks what it knew on
+Tuesday, nothing answers. weavory is the shared memory layer that closes that
+gap — signed beliefs, per-(signer, predicate) trust gating, hash-chained audit,
+bi-temporal replay, and revocation by tombstone — in an MCP-native server any
+agent can spawn with one command.
 
 ---
 
@@ -115,7 +120,7 @@ weavory_recall({
 
 ## Status
 
-- **227/227** automated tests — unit + integration + performance
+- **232/232** automated tests — unit + integration + performance
 - **CI green** on Ubuntu + macOS with Node 22 LTS
 - **Strict TypeScript** — no `any` in `src/`
 - Published to [npm](https://www.npmjs.com/package/@weavory/mcp) and [GitHub Container Registry](https://github.com/DeepakKTS/weavory.ai/pkgs/container/weavory) on every release tag

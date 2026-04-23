@@ -3,6 +3,17 @@
 > **Goal.** Give a technical reader enough of the mental model in
 > 2–3 minutes to follow any feature, demo, or source file.
 
+## The problem
+
+Agents in regulated industries (BFSI, healthcare) share memory today
+by passing JSON with no signer, no trust model, and no audit trail.
+Compliance can't answer "what did the system know before this
+decision?", revoking a claim erases its history, and a malicious
+agent is indistinguishable from an honest one. weavory's primitives
+(signatures, per-predicate trust, hash-chained audit, bi-temporal
+replay, tombstone-based revocation) directly address each of those
+gaps — composed as one MCP server.
+
 ## What weavory is
 
 A single-process **MCP server** that brokers signed, trust-gated,

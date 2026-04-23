@@ -532,3 +532,23 @@ mitigated. Reproduction recipe for every claim.
   4 (policy load failed), 1 (generic fatal, unchanged).
 - Zero Phase-1 test or gate modified. Phase-1 semantics preserved by
   making every new capability optional and default-off.
+
+---
+
+## 2026-04-23
+
+### N.0 · Baseline lock before Phase N (live dashboard + BFSI deepen + 60s pitch + Responsible-AI reframe)
+
+Pinned green-state snapshot before starting the plan at `.claude/plans/good-context-nanda-frolicking-shore.md`. Every rollback in Phases N.0.5 through N.6 returns to this point.
+
+- **Commit (rollback target):** `1336b5ade03c049fd57a978c58ab9903cd2c73f4` — `fix(subscribe): tokenize pattern AND-match like recall.query; allow empty pattern via MCP (v0.1.14)`
+- **npm:** `@weavory/mcp@0.1.14` (dist-tags latest)
+- **CI:** last 5 `fresh-machine.yml` runs all `success`; latest green on `1336b5a` is run id `24826942584` — <https://github.com/DeepakKTS/weavory.ai/actions/runs/24826942584>
+- **Lint:** `pnpm lint` (= `tsc --noEmit`) clean
+- **Tests:** `pnpm test` → **232 / 232 passed** across 22 test files in 3.01s (perf + persistence subprocess + security all green)
+- **Rehearsal:** `bash scripts/rehearsal.sh` → all 6 gates PASS in 6 s (gate1 bootstrap · gate2 MCP surface · gate3 two-agent · gate4 adversarial · gate5 bi-temporal · gate_bfsi claims-triage)
+- **Worktree status:** clean
+
+Plan scope under Phase N: N.0.5 Responsible-AI narrative re-frame (content only) · N.1 engine `onEvent` hook (v0.1.15) · N.2 dashboard SSE sidecar (v0.1.16) · N.3a+N.3b live demo dashboard (v0.1.17) · N.4 BFSI Scenes 7–8 (v0.1.18) · N.4.5 gate7 stock-agent transcript · N.5 60-second pitch variant · N.6 final verification sweep + submission.
+
+Non-goals (explicit): no new MCP tools (ADR-005 lock holds); no HTTP + SSE MCP transport (dashboard is a sidecar, not an MCP surface); no second vertical demo (BFSI stays the flagship); no Cloud/Enterprise-specific copy in public docs.
