@@ -127,6 +127,93 @@ describe("forget + as_of bi-temporal recall (T-S-004, T-I-003)", () => {
   });
 });
 
+describe("recall query uses token-AND substring match", () => {
+  it("multi-token query matches a belief when every token appears in subject/predicate/object", () => {
+    // Regression fix: previously `query: 'demo/hello status'` looked for the
+    // literal 18-char substring and returned 0 matches. After v0.1.9 the
+    // query is tokenized on whitespace and each token is checked
+    // independently — so a belief with subject=demo/hello, predicate=status
+    // matches because both tokens are found.
+    const s = new EngineState();
+    believe(s, {
+      subject: "demo/hello",
+      predicate: "status",
+      object: "it works",
+      signer_seed: "tok-test",
+    });
+    const sid = [...s.beliefs.values()][0].signer_id;
+    s.setTrust(sid, "status", 0.9);
+
+    const hit = recall(s, { query: "demo/hello status" });
+    expect(hit.total_matched).toBe(1);
+  });
+
+  it("single-token query behaves identically to pre-v0.1.9 substring match", () => {
+    const s = new EngineState();
+    believe(s, {
+      subject: "weather:cambridge",
+      predicate: "traffic",
+      object: "congested",
+      signer_seed: "tok-single",
+    });
+    const sid = [...s.beliefs.values()][0].signer_id;
+    s.setTrust(sid, "traffic", 0.9);
+
+    expect(recall(s, { query: "cambridge" }).total_matched).toBe(1);
+    expect(recall(s, { query: "congested" }).total_matched).toBe(1);
+    expect(recall(s, { query: "traffic" }).total_matched).toBe(1);
+    expect(recall(s, { query: "nonmatching" }).total_matched).toBe(0);
+  });
+
+  it("all tokens must match — missing any one token rejects the belief", () => {
+    const s = new EngineState();
+    believe(s, {
+      subject: "demo/hello",
+      predicate: "status",
+      object: "it works",
+      signer_seed: "tok-and",
+    });
+    const sid = [...s.beliefs.values()][0].signer_id;
+    s.setTrust(sid, "status", 0.9);
+
+    // Both tokens present → match
+    expect(recall(s, { query: "demo/hello works" }).total_matched).toBe(1);
+    // Second token absent → no match (token-AND, not token-OR)
+    expect(recall(s, { query: "demo/hello absent" }).total_matched).toBe(0);
+  });
+
+  it("empty and whitespace-only queries match every belief (no-op)", () => {
+    const s = new EngineState();
+    believe(s, {
+      subject: "a",
+      predicate: "p",
+      object: 1,
+      signer_seed: "tok-empty",
+    });
+    const sid = [...s.beliefs.values()][0].signer_id;
+    s.setTrust(sid, "p", 0.9);
+
+    expect(recall(s, { query: "" }).total_matched).toBe(1);
+    expect(recall(s, { query: "   " }).total_matched).toBe(1);
+    expect(recall(s, { query: "\t\n  " }).total_matched).toBe(1);
+  });
+
+  it("tokens matching ACROSS fields still count — subject+predicate+object together", () => {
+    // token "cambridge" in subject, token "congested" in object — both match
+    const s = new EngineState();
+    believe(s, {
+      subject: "weather:cambridge",
+      predicate: "traffic",
+      object: "congested (+14 min)",
+      signer_seed: "tok-across",
+    });
+    const sid = [...s.beliefs.values()][0].signer_id;
+    s.setTrust(sid, "traffic", 0.9);
+
+    expect(recall(s, { query: "cambridge congested" }).total_matched).toBe(1);
+  });
+});
+
 describe("believe() validates causes[]", () => {
   it("throws when causes[] contains an unknown belief id", () => {
     const s = new EngineState();

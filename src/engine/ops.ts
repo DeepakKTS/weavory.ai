@@ -291,25 +291,37 @@ export function recall(state: EngineState, input: RecallInput): RecallOutput {
     if (t < min_trust) continue;
     if (input.filters?.min_trust !== undefined && t < input.filters.min_trust) continue;
 
-    // Score: substring match over stringified subject/predicate/object +
-    // confidence + trust. This is the placeholder for semantic embedding
-    // search (W-0021) — good enough for Gate 3.
+    // Token-AND substring match over subject/predicate/object + confidence
+    // + trust weighting. The query is split on whitespace and EVERY non-empty
+    // token must appear in at least one of subject / predicate / object for
+    // the belief to match. This is the placeholder for semantic embedding
+    // search (W-0021); tokenized-AND is a strict upgrade over literal
+    // whole-string substring match so multi-word queries like
+    // `"demo/hello status"` correctly match a belief with subject=demo/hello
+    // and predicate=status.
     //
-    // Perf: build the (expensive) stringified blob lazily. When the caller
-    // passed an empty query, every candidate "matches" so we skip the blob
-    // construction entirely — O(beliefs) stringify → O(1).
+    // Perf: build the (expensive) stringified object blob lazily — only for
+    // tokens that didn't already match the small subject/predicate strings.
+    // Empty or whitespace-only queries match every candidate (no blob work).
     let hits = 1;
     if (q.length > 0) {
-      // Cheap prefilter: subject / predicate are small strings; check them
-      // before touching JSON.stringify(belief.object) which can be arbitrarily
-      // large.
-      const subjHit = belief.subject.toLowerCase().includes(q);
-      const predHit = belief.predicate.toLowerCase().includes(q);
-      if (subjHit || predHit) {
-        hits = 1;
-      } else {
-        const objStr = JSON.stringify(belief.object).toLowerCase();
-        if (!objStr.includes(q)) continue;
+      const tokens = q.split(/\s+/u).filter((t) => t.length > 0);
+      if (tokens.length > 0) {
+        const subjLc = belief.subject.toLowerCase();
+        const predLc = belief.predicate.toLowerCase();
+        let objStrLc: string | null = null;
+        let allTokensMatch = true;
+        for (const tok of tokens) {
+          if (subjLc.includes(tok) || predLc.includes(tok)) continue;
+          if (objStrLc === null) {
+            objStrLc = JSON.stringify(belief.object).toLowerCase();
+          }
+          if (!objStrLc.includes(tok)) {
+            allTokensMatch = false;
+            break;
+          }
+        }
+        if (!allTokensMatch) continue;
       }
     }
 
