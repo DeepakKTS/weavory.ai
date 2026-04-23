@@ -32,7 +32,7 @@ import { RuntimeWriter } from "../engine/runtime_writer.js";
  * Deliberately a string literal — NOT a runtime `readFileSync` on
  * package.json — so this module has zero side effects at load time.
  */
-export const VERSION = "0.1.10";
+export const VERSION = "0.1.11";
 
 // ---- Shared Zod fragments ----
 const JsonValueSchema: z.ZodType = z.lazy(() =>
@@ -156,14 +156,46 @@ export function createServer(
     async (args) => {
       const input: RecallInput = args as RecallInput;
       const out = recall(state, input);
-      const summary =
-        input.subscription_id
-          ? `drained ${out.delivered_count ?? 0} from ${input.subscription_id}` +
-            (out.dropped_count ? ` (dropped=${out.dropped_count})` : "")
-          : `recalled ${out.beliefs.length} / ${out.total_matched} match(es)` +
-            (input.as_of ? ` @as_of=${input.as_of}` : "");
+      const header = input.subscription_id
+        ? `drained ${out.delivered_count ?? 0} from ${input.subscription_id}` +
+          (out.dropped_count ? ` (dropped=${out.dropped_count})` : "")
+        : `recalled ${out.beliefs.length} / ${out.total_matched} match(es)` +
+          (input.as_of ? ` @as_of=${input.as_of}` : "");
+      const flagSummary = (() => {
+        let inv = 0;
+        let q = 0;
+        for (const b of out.beliefs) {
+          if (b.invalidated_at) inv++;
+          if (b.quarantined) q++;
+        }
+        const parts: string[] = [];
+        if (inv > 0) parts.push(`tombstoned=${inv}`);
+        if (q > 0) parts.push(`quarantined=${q}`);
+        return parts.length > 0 ? ` [${parts.join(" ")}]` : "";
+      })();
+      const lines: string[] = [header + flagSummary];
+      const MAX_SHOWN = 5;
+      for (const b of out.beliefs.slice(0, MAX_SHOWN)) {
+        const idShort = b.id.slice(0, 16) + "…";
+        const sigShort = b.signer_id.slice(0, 12) + "…";
+        const objStr = (() => {
+          const s = JSON.stringify(b.object);
+          return s.length > 80 ? s.slice(0, 77) + "…" : s;
+        })();
+        const extras: string[] = [];
+        if (b.invalidated_at) extras.push(`invalidated_at=${b.invalidated_at}`);
+        if (b.quarantined) extras.push(`quarantined=true`);
+        const extrasStr = extras.length > 0 ? ` [${extras.join(" ")}]` : "";
+        lines.push(
+          `  • ${idShort} ${b.subject} / ${b.predicate} → ${objStr} ` +
+            `(confidence=${b.confidence}, signer=${sigShort})${extrasStr}`
+        );
+      }
+      if (out.beliefs.length > MAX_SHOWN) {
+        lines.push(`  … and ${out.beliefs.length - MAX_SHOWN} more`);
+      }
       return {
-        content: [{ type: "text", text: summary }],
+        content: [{ type: "text", text: lines.join("\n") }],
         structuredContent: out,
       };
     }
@@ -236,10 +268,11 @@ export function createServer(
     },
     async (args) => {
       const out = forget(state, args);
+      const text = out.found
+        ? `forgot ${out.belief_id} invalidated_at=${out.invalidated_at} entry_hash=${out.entry_hash}`
+        : `no such belief: ${out.belief_id}`;
       return {
-        content: [
-          { type: "text", text: out.found ? `forgot ${out.belief_id}` : `no such belief: ${out.belief_id}` },
-        ],
+        content: [{ type: "text", text }],
         structuredContent: out,
       };
     }
