@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0.0",
-  "captured_at": "2026-04-23T21:50:01.762Z",
-  "commit": "fda642a9a2b9dfc0b60454864d8031e5ff43b323",
+  "captured_at": "2026-04-23T23:51:11.462Z",
+  "commit": "4d1a3ad1d56e13af59dba5b9db7402324521ca27",
   "events": [
     {
       "kind": "attest",
@@ -9,7 +9,7 @@
       "subject": "cee4511de24f",
       "predicate": "intake",
       "signer_short": "a69d889a5b9c",
-      "timestamp": "2026-04-23T21:50:01Z",
+      "timestamp": "2026-04-23T23:51:11Z",
       "trust_after": 0.85
     },
     {
@@ -18,7 +18,7 @@
       "subject": "e800d02903e8",
       "predicate": "fraud_score",
       "signer_short": "a69d889a5b9c",
-      "timestamp": "2026-04-23T21:50:01Z",
+      "timestamp": "2026-04-23T23:51:11Z",
       "trust_after": 0.85
     },
     {
@@ -27,7 +27,7 @@
       "subject": "20b170b262bf",
       "predicate": "underwriting",
       "signer_short": "a69d889a5b9c",
-      "timestamp": "2026-04-23T21:50:01Z",
+      "timestamp": "2026-04-23T23:51:11Z",
       "trust_after": 0.85
     },
     {
@@ -36,68 +36,96 @@
       "subject": "7a7a07e0d0b9",
       "predicate": "final_decision",
       "signer_short": "a69d889a5b9c",
-      "timestamp": "2026-04-23T21:50:01Z",
+      "timestamp": "2026-04-23T23:51:11Z",
       "trust_after": 0.85
     },
     {
       "kind": "believe",
-      "belief_id_prefix": "609d537cca4aaf2e",
+      "belief_id_prefix": "3c2bfcdca2640b62",
       "subject": "claim/CLM-42017",
       "predicate": "intake",
       "signer_short": "cee4511de24f",
       "confidence": 0.95,
-      "timestamp": "2026-04-23T21:50:01Z",
+      "timestamp": "2026-04-23T23:51:11Z",
       "trust_after": 0.85
     },
     {
       "kind": "believe",
-      "belief_id_prefix": "8990a767a80e2aa2",
+      "belief_id_prefix": "53a2b1a0b953130b",
       "subject": "claim/CLM-42017",
       "predicate": "fraud_score",
       "signer_short": "e800d02903e8",
       "confidence": 0.88,
-      "timestamp": "2026-04-23T21:50:01Z",
+      "timestamp": "2026-04-23T23:51:11Z",
       "trust_after": 0.85
     },
     {
       "kind": "quarantine",
-      "belief_id_prefix": "005e2738d2958584",
+      "belief_id_prefix": "71287835a2dbb3bb",
       "subject": "claim/CLM-42017",
       "predicate": "approval",
       "signer_short": "a55423e04869",
       "confidence": 0.99,
-      "timestamp": "2026-04-23T21:50:01Z",
+      "timestamp": "2026-04-23T23:51:11Z",
       "trust_after": 0.5
     },
     {
       "kind": "believe",
-      "belief_id_prefix": "204b43b16d0663c9",
+      "belief_id_prefix": "1ca8635567833f83",
       "subject": "claim/CLM-42017",
       "predicate": "underwriting",
       "signer_short": "20b170b262bf",
       "confidence": 0.9,
-      "timestamp": "2026-04-23T21:50:01Z",
+      "timestamp": "2026-04-23T23:51:11Z",
       "trust_after": 0.85
     },
     {
       "kind": "believe",
-      "belief_id_prefix": "5bd114ce92c8f2c3",
+      "belief_id_prefix": "4fd47f928343f6fe",
       "subject": "claim/CLM-42017",
       "predicate": "final_decision",
       "signer_short": "7a7a07e0d0b9",
       "confidence": 0.95,
-      "timestamp": "2026-04-23T21:50:01Z",
+      "timestamp": "2026-04-23T23:51:11Z",
       "trust_after": 0.85
     },
     {
+      "kind": "quarantine",
+      "belief_id_prefix": "346ebe340aead6f0",
+      "subject": "signer:eve",
+      "predicate": "credentials",
+      "signer_short": "997ffe6eff66",
+      "confidence": 1,
+      "timestamp": "2026-04-23T23:51:11Z",
+      "trust_after": 0.5
+    },
+    {
+      "kind": "attest",
+      "belief_id_prefix": "997ffe6eff668cb4",
+      "subject": "997ffe6eff66",
+      "predicate": "credentials",
+      "signer_short": "a55423e04869",
+      "timestamp": "2026-04-23T23:51:11Z",
+      "trust_after": 0.95
+    },
+    {
+      "kind": "attest",
+      "belief_id_prefix": "a55423e048695d35",
+      "subject": "a55423e04869",
+      "predicate": "credentials",
+      "signer_short": "997ffe6eff66",
+      "timestamp": "2026-04-23T23:51:11Z",
+      "trust_after": 0.95
+    },
+    {
       "kind": "forget",
-      "belief_id_prefix": "8990a767a80e2aa2",
+      "belief_id_prefix": "71287835a2dbb3bb",
       "subject": "claim/CLM-42017",
-      "predicate": "fraud_score",
-      "signer_short": "a69d889a5b9c",
-      "timestamp": "2026-04-23T21:50:01Z"
+      "predicate": "approval",
+      "signer_short": "04f8d1f770b7",
+      "timestamp": "2026-04-23T23:51:11Z"
     }
   ],
-  "event_count": 10,
+  "event_count": 13,
   "scenario": "bfsi-claims-triage-minimal"
 }

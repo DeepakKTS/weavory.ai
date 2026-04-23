@@ -641,3 +641,19 @@ Completes the live demo dashboard. Ships together with N.3a as one tagged releas
 Verification: `pnpm lint` clean; `pnpm test` 239/239 passed in 2.98s; `gate_dashboard.sh` → 7 groups + sub-asserts all pass; `rehearsal.sh` → 7/7 green in 6s.
 
 No MCP surface change. ADR-005 five-tool lock untouched. Tag: v0.1.17.
+
+### N.4 · BFSI Scene 7 (regulator rewind) + Scene 8 (collusion-ring detection) (v0.1.18)
+
+Deepens the flagship BFSI demo end-to-end from 6 steps to 9, exercising the exact primitives the live demo dashboard visualizes (bi-temporal replay, attestation ring). Adds three new demo personas: **Eve** (second attacker), **Regulator**, **Compliance**.
+
+- **`examples/bfsi_claims_triage.ts`** — unchanged up through Step 6 (pitch-script SHOW cues preserved verbatim). New Steps 7–9:
+  - **Step 7 — Regulator rewind.** `T_PRE_FORGET = new Date().toISOString()` captured, then `compliance.weavory_forget(malletOut.id)` tombstones the attacker's forged approval. Post-forget live audit recall (`min_trust=-1`) returns 4 beliefs with the attacker **HIDDEN**. Regulator then calls `weavory_recall({filters:{subject:"claim:CLM-42017"}, as_of: T_PRE_FORGET, include_tombstoned: true, min_trust: -1, top_k: 100})` and sees 5 beliefs — the attacker INCLUDED — and the narrator prints *"What did the system know at $T_PRE_FORGET? → 5 beliefs, including attacker (tombstoned-after=1) ✓"*. Hard-asserts both directions.
+  - **Step 8 — Collusion-ring detection.** Eve publishes a self-credential. Mallet attests Eve on `credentials`; Eve attests Mallet on `credentials`. No third-party attestation. Underwriter traverses `state.audit.entries()` (the MCP primitives `attest` audit entries already carry both `belief_id = target_signer` and `signer_id = attestor`) and builds the attestor graph. Detects the mutual-attestation ring: `{mallet ↔ eve}` — every attestor is inside the peer-cluster, none outside. Emits `⚠ mutual-attestation ring detected: peer-attested-only signers = {...} — underwriter refuses to credit their beliefs`. Hard-asserts the ring includes Mallet. Shows the defense pattern composed on existing primitives, NOT a new MCP tool.
+  - **Step 9** is the existing audit-chain verify renumbered.
+- **`scripts/verify/gate_bfsi.sh`** extended from 5 to 7 numbered assertion groups. New: (5) Scene 7 three log lines (`compliance tombstoned attacker belief`, `attacker HIDDEN`, `What did the system know at`); (6) Scene 8 detection + confirmation lines. Existing assertions preserved.
+- **`scripts/demo-capture.ts`** updated to mirror the expanded BFSI shape. Fixture `ops/data/demo-fixtures.json` grows from 10 to **13 events** — adds an `eve` self-credential (fires `quarantine` — unattested), the two ring attest events, and aligns the forget target to the attacker belief (matching Scene 7). Pages `/demo/` replay mode now tells the full Responsible-AI story including the ring and the regulator rewind trigger.
+- **Version bump.** `package.json` 0.1.17 → 0.1.18; `src/mcp/server.ts` VERSION matches.
+
+Verification: `pnpm lint` clean; `pnpm test` 239/239 in 3.09 s; `bash scripts/verify/gate_bfsi.sh` → 7/7 groups pass; `bash scripts/rehearsal.sh` → 7/7 gates green in 7 s; the demo exits 0 and prints the expanded closing summary (honest chain · attacker · regulator · collusion · provable · replayable).
+
+No MCP surface change. ADR-005 five-tool lock untouched. Tag: v0.1.18.

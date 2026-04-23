@@ -81,7 +81,7 @@ function main(): void {
 
   // Attacker injects a forged "approval" without attestation — under
   // adversarial mode (floor 0.6, unknown signer 0.5) this fires `quarantine`.
-  believe(state, {
+  const mallet = believe(state, {
     subject: "claim/CLM-42017",
     predicate: "approval",
     object: { status: "approved", method: "bypass" },
@@ -106,11 +106,36 @@ function main(): void {
     signer_seed: "agent.approver",
     causes: [intake.id, fraud.id, uw.id],
   });
-
-  // Forget the fraud belief to show the tombstone path.
-  forget(state, { belief_id: fraud.id, forgetter_seed: "insurer.authority" });
-
   void finalDecision;
+
+  // Scene 8 — mutual-attestation ring (mallet ↔ eve). Both attackers attest
+  // each other on `credentials` with no third-party vouching. The demo
+  // dashboard will show these attest events side-by-side with no green
+  // cells from outside the ring.
+  believe(state, {
+    subject: "signer:eve",
+    predicate: "credentials",
+    object: { cert: "self-issued-fake-SOC2-badge" },
+    confidence: 1,
+    signer_seed: "eve.attacker",
+  });
+  attest(state, {
+    signer_id: state.signerFromSeed("eve.attacker").signer_id,
+    topic: "credentials",
+    score: 0.95,
+    attestor_seed: "mallet.attacker",
+  });
+  attest(state, {
+    signer_id: state.signerFromSeed("mallet.attacker").signer_id,
+    topic: "credentials",
+    score: 0.95,
+    attestor_seed: "eve.attacker",
+  });
+
+  // Scene 7 — compliance tombstones the attacker's forged approval (live
+  // recall hides it; regulator rewind via as_of + include_tombstoned still
+  // sees it).
+  forget(state, { belief_id: mallet.id, forgetter_seed: "compliance" });
 
   // ─── Write the fixture ───────────────────────────────────────────────
   const fixture = {
