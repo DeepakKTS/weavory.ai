@@ -127,6 +127,81 @@ describe("forget + as_of bi-temporal recall (T-S-004, T-I-003)", () => {
   });
 });
 
+describe("recall include_tombstoned flag (v0.1.10)", () => {
+  it("default recall hides tombstoned beliefs; include_tombstoned: true surfaces them", () => {
+    const s = new EngineState();
+    const out = believe(s, {
+      subject: "ephemeral/x",
+      predicate: "status",
+      object: "live",
+      signer_seed: "tomb-test",
+    });
+    s.setTrust(out.signer_id, "status", 0.9);
+
+    forget(s, { belief_id: out.id, forgetter_seed: "tomb-test" });
+
+    const liveDefault = recall(s, { query: "", min_trust: -1 });
+    expect(liveDefault.total_matched).toBe(0);
+
+    const liveWithTomb = recall(s, { query: "", min_trust: -1, include_tombstoned: true });
+    expect(liveWithTomb.total_matched).toBe(1);
+    expect(liveWithTomb.beliefs[0].invalidated_at).not.toBeNull();
+    expect(liveWithTomb.beliefs[0].id).toBe(out.id);
+  });
+
+  it("include_tombstoned + include_quarantined are orthogonal — both flags stack", () => {
+    const s = new EngineState();
+    const b = believe(s, {
+      subject: "q/1",
+      predicate: "p",
+      object: "x",
+      signer_seed: "both",
+    });
+    s.setTrust(b.signer_id, "p", 0.9);
+    // Mark as quarantined via the engine internal API (matches tamper scan behavior).
+    const stored = s.beliefs.get(b.id)!;
+    s.beliefs.set(b.id, { ...stored, quarantined: true, quarantine_reason: "test" });
+    forget(s, { belief_id: b.id, forgetter_seed: "both" });
+
+    // Default recall: quarantined AND tombstoned → doubly hidden.
+    expect(recall(s, { query: "", min_trust: -1 }).total_matched).toBe(0);
+    // Only one flag lifts only one filter.
+    expect(recall(s, { query: "", min_trust: -1, include_quarantined: true }).total_matched).toBe(0);
+    expect(recall(s, { query: "", min_trust: -1, include_tombstoned: true }).total_matched).toBe(0);
+    // Both flags → surfaced.
+    const all = recall(s, {
+      query: "",
+      min_trust: -1,
+      include_quarantined: true,
+      include_tombstoned: true,
+    });
+    expect(all.total_matched).toBe(1);
+    expect(all.beliefs[0].invalidated_at).not.toBeNull();
+    expect(all.beliefs[0].quarantined).toBe(true);
+  });
+
+  it("as_of branch ignores include_tombstoned (bi-temporal governs)", async () => {
+    const s = new EngineState();
+    const out = believe(s, {
+      subject: "as-of/x",
+      predicate: "p",
+      object: "v",
+      signer_seed: "as-of-test",
+    });
+    s.setTrust(out.signer_id, "p", 0.9);
+
+    const tPre = new Date().toISOString();
+    await new Promise((r) => setTimeout(r, 5));
+    forget(s, { belief_id: out.id, forgetter_seed: "as-of-test" });
+
+    // as_of before the forget — belief visible regardless of include_tombstoned.
+    expect(recall(s, { query: "", as_of: tPre, min_trust: -1 }).total_matched).toBe(1);
+    expect(
+      recall(s, { query: "", as_of: tPre, min_trust: -1, include_tombstoned: true }).total_matched
+    ).toBe(1);
+  });
+});
+
 describe("recall query uses token-AND substring match", () => {
   it("multi-token query matches a belief when every token appears in subject/predicate/object", () => {
     // Regression fix: previously `query: 'demo/hello status'` looked for the

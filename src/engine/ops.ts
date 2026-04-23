@@ -194,6 +194,13 @@ export type RecallInput = {
   filters?: SubscriptionFilters;
   include_quarantined?: boolean;
   /**
+   * When true, live recall surfaces tombstoned beliefs (those with
+   * `invalidated_at` set by `forget()`) alongside active beliefs. Default
+   * false, matching pre-v0.1.10 behavior. Orthogonal to `as_of`: if `as_of`
+   * is set, bi-temporal semantics govern and this flag has no effect.
+   */
+  include_tombstoned?: boolean;
+  /**
    * Phase G.2 — if set, recall drains the subscription queue instead of
    * scanning all beliefs. All other filters still apply to the drained set.
    * Returns `delivered_count` and `dropped_count` in addition to beliefs.
@@ -262,14 +269,18 @@ export function recall(state: EngineState, input: RecallInput): RecallOutput {
   const candidates: Iterable<StoredBelief> = queuedSource ?? state.beliefs.values();
   const matches: Array<{ belief: StoredBelief; score: number }> = [];
 
+  const includeTomb = input.include_tombstoned ?? false;
+
   for (const belief of candidates) {
     // Bi-temporal: if as_of is set, skip beliefs ingested after as_of or invalidated at/before as_of.
     if (asOf) {
       if (belief.ingested_at > asOf) continue;
       if (belief.invalidated_at && belief.invalidated_at <= asOf) continue;
     } else {
-      // live view: skip invalidated
-      if (belief.invalidated_at) continue;
+      // Live view: skip tombstoned beliefs unless the caller explicitly
+      // asked to see them (include_tombstoned: true — the audit / compliance
+      // path). Parallel to include_quarantined below.
+      if (belief.invalidated_at && !includeTomb) continue;
     }
 
     // Quarantine filter.

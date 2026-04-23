@@ -32,7 +32,7 @@ import { RuntimeWriter } from "../engine/runtime_writer.js";
  * Deliberately a string literal — NOT a runtime `readFileSync` on
  * package.json — so this module has zero side effects at load time.
  */
-export const VERSION = "0.1.9";
+export const VERSION = "0.1.10";
 
 // ---- Shared Zod fragments ----
 const JsonValueSchema: z.ZodType = z.lazy(() =>
@@ -116,7 +116,12 @@ export function createServer(
     async (args) => {
       const out = believe(state, args);
       return {
-        content: [{ type: "text", text: `believed ${out.id} (signer=${shortId(out.signer_id)}, audit=${out.audit_length})` }],
+        content: [
+          {
+            type: "text",
+            text: `believed ${out.id} signer=${out.signer_id} (audit=${out.audit_length})`,
+          },
+        ],
         structuredContent: out,
       };
     }
@@ -128,13 +133,20 @@ export function createServer(
     {
       title: "Recall matching beliefs",
       description:
-        "Find beliefs matching a query. Supports bi-temporal as_of, per-signer trust gating, quarantine filtering, and subject/predicate/min_confidence filters.",
+        "Find beliefs matching a query. Supports bi-temporal as_of, per-signer trust gating, quarantine filtering, tombstone visibility, and subject/predicate/min_confidence filters.\n\n" +
+        "Trust floor math (for filtering unattested signers): the default min_trust is 0.3 in normal mode and 0.6 under WEAVORY_ADVERSARIAL=1. Neutral trust for an unattested signer is 0.5, so in normal mode unattested signers ARE visible by default. To enforce 'show me only attested signers' without adversarial mode, pass min_trust: 0.6 explicitly. For a full compliance / audit view showing EVERY belief regardless of trust, quarantine, or tombstone state, combine min_trust: -1 with include_quarantined: true and include_tombstoned: true.",
       inputSchema: {
         query: z.string().max(2048),
         top_k: z.number().int().min(1).max(100).optional(),
         as_of: z.string().nullable().optional(),
         min_trust: z.number().min(-1).max(1).optional(),
         include_quarantined: z.boolean().optional(),
+        include_tombstoned: z
+          .boolean()
+          .optional()
+          .describe(
+            "If true, live recall surfaces tombstoned (forgotten) beliefs with their invalidated_at populated. Default false. Orthogonal to as_of — use include_tombstoned for 'show me everything including forgotten' in the current timeline; use as_of for 'show me state at time T'."
+          ),
         filters: SubscriptionFiltersSchema.optional(),
         subscription_id: z.string().regex(/^sub_[0-9a-f]+$/u).optional(),
         include_conflicts: z.boolean().optional(),
@@ -186,7 +198,8 @@ export function createServer(
     {
       title: "Attest trust for a signer × topic",
       description:
-        "Raise or lower the attestor's trust vector for (signer_id, topic). Affects default recall ranking and quarantine. Score is clamped to [-1, 1].",
+        "Raise or lower the attestor's trust vector for (signer_id, topic). Affects default recall ranking and quarantine. Score is clamped to [-1, 1].\n\n" +
+        "Signer_id is the full 64-hex Ed25519 public key (as returned in weavory_believe's text/structuredContent). Trust deltas compose: additional attest calls on the same signer+topic accumulate, averaged across attestors. One attestor with score >= 0.2 is enough to push an unattested signer (neutral 0.5) past the 0.6 adversarial-mode floor.",
       inputSchema: {
         signer_id: z.string().regex(/^[0-9a-f]{64}$/u),
         topic: z.string().min(1).max(512),
@@ -200,7 +213,7 @@ export function createServer(
         content: [
           {
             type: "text",
-            text: `attested ${shortId(out.signer_id)} on "${out.topic}" → ${out.applied_score.toFixed(2)}`,
+            text: `attested ${out.signer_id} on "${out.topic}" → ${out.applied_score.toFixed(2)}`,
           },
         ],
         structuredContent: out,
@@ -233,10 +246,6 @@ export function createServer(
   );
 
   return { server, state };
-}
-
-function shortId(id: string): string {
-  return id.length > 12 ? id.slice(0, 12) : id;
 }
 
 /** CLI entrypoint: wire stdio transport and keep the process alive.
