@@ -19,7 +19,7 @@ import {
 } from "../core/schema.js";
 import { SubscriptionLimitError, type EngineState, type SubscriptionFilters } from "./state.js";
 import { mergeConflicts, type ConflictGroup, type MergeStrategy } from "./merge.js";
-import { getReputation, type ReputationSummary } from "./bazaar.js";
+import { getReputation, type ReputationSummary } from "./escrow.js";
 import { evaluate as evaluatePolicy, PolicyDenialError } from "./policy.js";
 
 /**

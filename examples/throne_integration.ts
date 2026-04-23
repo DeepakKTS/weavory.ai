@@ -32,9 +32,9 @@ import {
   ESCROW_SETTLED_PREDICATE,
   escrowStatus,
   isEscrowSettled,
-} from "../src/engine/bazaar.js";
+} from "../src/engine/escrow.js";
 import type { StoredBelief } from "../src/core/schema.js";
-import type { ReputationSummary, ConflictGroup as _CG } from "../src/engine/bazaar.js";
+import type { ReputationSummary, ConflictGroup as _CG } from "../src/engine/escrow.js";
 import type { ConflictGroup } from "../src/engine/merge.js";
 
 type BelieveOut = { id: string; signer_id: string };

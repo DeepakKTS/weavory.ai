@@ -1,5 +1,5 @@
 /**
- * Unit tests — src/engine/bazaar.ts (Phase G.5 · W-0140 + W-0141)
+ * Unit tests — src/engine/escrow.ts (Phase G.5 · W-0140 + W-0141)
  */
 import { describe, it, expect } from "vitest";
 import { EngineState } from "../../../src/engine/state.js";
@@ -14,7 +14,7 @@ import {
   getReputation,
   isEscrowSettled,
   walkEscrowThread,
-} from "../../../src/engine/bazaar.js";
+} from "../../../src/engine/escrow.js";
 
 describe("getReputation (W-0140)", () => {
   it("returns zeros for an unknown signer", () => {
