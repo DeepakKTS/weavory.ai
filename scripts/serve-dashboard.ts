@@ -335,19 +335,86 @@ export async function startDashboardSidecar(
     });
   }
 
-  function handleApiState(req: IncomingMessage, res: ServerResponse): void {
+  function handleApiState(_req: IncomingMessage, res: ServerResponse, url: URL): void {
+    // Branch 1: belief lookup by id prefix (for the causality chain panel).
+    const prefix = url.searchParams.get("belief_id");
+    if (prefix && /^[0-9a-f]{4,64}$/.test(prefix)) {
+      const match = findBeliefByPrefix(state, prefix);
+      if (!match) {
+        res.writeHead(404, { "content-type": "application/json" });
+        res.end(JSON.stringify({ error: "not_found", prefix }));
+        return;
+      }
+      // Resolve causes[] to their subject/predicate so the UI can draw a tree
+      // without a second round-trip per parent.
+      const causes = (match.causes ?? []).map((cid) => {
+        const c = state.beliefs.get(cid);
+        if (!c) return { id_prefix: cid.slice(0, 16), subject: null, predicate: null };
+        return { id_prefix: c.id.slice(0, 16), subject: c.subject, predicate: c.predicate };
+      });
+      res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" });
+      res.end(
+        JSON.stringify({
+          belief: {
+            id_prefix: match.id.slice(0, 16),
+            subject: match.subject,
+            predicate: match.predicate,
+            object: match.object,
+            confidence: match.confidence,
+            signer_short: match.signer_id.slice(0, 12),
+            ingested_at: match.ingested_at,
+            invalidated_at: match.invalidated_at,
+            quarantined: match.quarantined,
+          },
+          causes,
+        })
+      );
+      return;
+    }
+
+    // Branch 2: histogram of belief timestamps (for the time scrubber stops).
+    if (url.searchParams.get("histogram") === "1") {
+      const buckets = buildHistogram(state);
+      res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" });
+      res.end(JSON.stringify(buckets));
+      return;
+    }
+
+    // Branch 3: default — snapshot.
     let beliefs_live = 0;
     let quarantine_count = 0;
     const trust_graph: Record<string, Record<string, number>> = {};
+    let oldestIngestedAt: string | null = null;
+    let newestIngestedAt: string | null = null;
     for (const b of state.beliefs.values()) {
       if (!b.invalidated_at) beliefs_live++;
       if (b.quarantined) quarantine_count++;
+      if (oldestIngestedAt === null || b.ingested_at < oldestIngestedAt) oldestIngestedAt = b.ingested_at;
+      if (newestIngestedAt === null || b.ingested_at > newestIngestedAt) newestIngestedAt = b.ingested_at;
     }
     for (const [signer, vec] of state.trust) {
       const short = signer.slice(0, 12);
       const row: Record<string, number> = {};
       for (const [topic, score] of vec) row[topic] = score;
       trust_graph[short] = row;
+    }
+    const subscriptions = [] as Array<{
+      id: string;
+      pattern: string;
+      queue_depth: number;
+      dropped_count: number;
+      matches_since_created: number;
+      signer_short: string | null;
+    }>;
+    for (const sub of state.subscriptions.values()) {
+      subscriptions.push({
+        id: sub.id,
+        pattern: sub.pattern,
+        queue_depth: sub.queue.length,
+        dropped_count: sub.dropped_count,
+        matches_since_created: sub.matches_since_created,
+        signer_short: sub.signer_id ? sub.signer_id.slice(0, 12) : null,
+      });
     }
     const body = JSON.stringify({
       beliefs_total: state.beliefs.size,
@@ -357,7 +424,10 @@ export async function startDashboardSidecar(
       active_subscriptions: state.subscriptions.size,
       sse_clients: sseClients.size,
       last_event_id: ring.lastId,
+      oldest_ingested_at: oldestIngestedAt,
+      newest_ingested_at: newestIngestedAt,
       trust_graph,
+      subscriptions,
     });
     res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
     res.end(body);
@@ -461,7 +531,7 @@ export async function startDashboardSidecar(
         return;
       }
       if (path === "/api/state") {
-        handleApiState(req, res);
+        handleApiState(req, res, url);
         return;
       }
       if (path === "/api/replay") {
@@ -516,6 +586,47 @@ export async function startDashboardSidecar(
 function formatSseFrame(id: number, event: StreamEvent): string {
   // SSE frames MUST end with a blank line. `id:` enables `Last-Event-ID` resume.
   return `id: ${id}\ndata: ${JSON.stringify(event)}\n\n`;
+}
+
+/** Locate a belief by its id prefix (client only knows the first 16 hex). */
+function findBeliefByPrefix(
+  state: EngineState,
+  prefix: string
+): import("../src/core/schema.js").StoredBelief | null {
+  for (const b of state.beliefs.values()) {
+    if (b.id.startsWith(prefix)) return b;
+  }
+  return null;
+}
+
+/** Build a simple time histogram for the scrubber — evenly-spaced buckets
+ *  over the belief timeline, each carrying {ingested_at ISO, count}. */
+function buildHistogram(
+  state: EngineState
+): { bucket_count: number; buckets: Array<{ t: string; n: number }> } {
+  const timestamps: number[] = [];
+  for (const b of state.beliefs.values()) {
+    const ms = Date.parse(b.ingested_at);
+    if (Number.isFinite(ms)) timestamps.push(ms);
+  }
+  if (timestamps.length === 0) {
+    return { bucket_count: 0, buckets: [] };
+  }
+  timestamps.sort((a, b) => a - b);
+  const first = timestamps[0]!;
+  const last = timestamps[timestamps.length - 1]!;
+  const span = Math.max(1, last - first);
+  const bucketCount = Math.min(40, Math.max(1, timestamps.length));
+  const bucketSize = span / bucketCount;
+  const buckets: Array<{ t: string; n: number }> = [];
+  for (let i = 0; i < bucketCount; i++) {
+    const lo = first + i * bucketSize;
+    const hi = i === bucketCount - 1 ? last + 1 : first + (i + 1) * bucketSize;
+    let n = 0;
+    for (const t of timestamps) if (t >= lo && t < hi) n++;
+    buckets.push({ t: new Date(lo).toISOString(), n });
+  }
+  return { bucket_count: bucketCount, buckets };
 }
 
 function readBody(req: IncomingMessage, maxBytes: number): Promise<string> {

@@ -196,6 +196,69 @@ async function test4_SseConcurrencyCap(): Promise<void> {
   });
 }
 
+async function test6_Histogram(): Promise<void> {
+  process.stdout.write("[6/7] GET /api/state?histogram=1 returns bucket array\n");
+  await withSidecar({ bindHost: "127.0.0.1", port: 0 }, async (h) => {
+    // Empty engine first: histogram should report 0 buckets.
+    const base = `http://${h.address.host}:${h.address.port}`;
+    const r0 = await fetch(`${base}/api/state?histogram=1`);
+    if (r0.status !== 200) bad(`histogram (empty) status ${r0.status}`);
+    const b0 = (await r0.json()) as { bucket_count: number; buckets: unknown[] };
+    if (b0.bucket_count !== 0) bad(`empty engine should have 0 buckets, got ${b0.bucket_count}`);
+    ok("empty engine → 0 histogram buckets");
+
+    for (let i = 0; i < 8; i++) {
+      believe(h.state, {
+        subject: `hist/${i}`,
+        predicate: "tick",
+        object: { i },
+        signer_seed: "alice",
+      });
+    }
+    const r1 = await fetch(`${base}/api/state?histogram=1`);
+    const b1 = (await r1.json()) as { bucket_count: number; buckets: Array<{ t: string; n: number }> };
+    if (b1.bucket_count < 1) bad(`expected buckets after 8 beliefs, got ${b1.bucket_count}`);
+    const total = b1.buckets.reduce((acc, e) => acc + e.n, 0);
+    if (total !== 8) bad(`bucket counts should sum to 8, got ${total}`);
+    ok(`populated engine → ${b1.bucket_count} buckets summing to 8`);
+  });
+}
+
+async function test7_BeliefLookup(): Promise<void> {
+  process.stdout.write("[7/7] GET /api/state?belief_id=<prefix> returns a belief + causes\n");
+  await withSidecar({ bindHost: "127.0.0.1", port: 0 }, async (h) => {
+    const base = `http://${h.address.host}:${h.address.port}`;
+    const parent = believe(h.state, {
+      subject: "causes/root",
+      predicate: "emit",
+      object: { v: 1 },
+      signer_seed: "alice",
+    });
+    const child = believe(h.state, {
+      subject: "causes/child",
+      predicate: "derive",
+      object: { v: 2 },
+      signer_seed: "alice",
+      causes: [parent.id],
+    });
+
+    const r = await fetch(`${base}/api/state?belief_id=${child.id.slice(0, 16)}`);
+    if (r.status !== 200) bad(`belief_id lookup status ${r.status}`);
+    const body = (await r.json()) as {
+      belief: { id_prefix: string; subject: string; predicate: string };
+      causes: Array<{ id_prefix: string; subject: string | null; predicate: string | null }>;
+    };
+    if (!body.belief || body.belief.subject !== "causes/child") bad(`wrong belief returned: ${JSON.stringify(body.belief)}`);
+    if (!Array.isArray(body.causes) || body.causes.length !== 1) bad(`expected 1 cause, got ${body.causes?.length}`);
+    if (body.causes[0]!.subject !== "causes/root") bad(`resolved cause subject wrong: ${body.causes[0]!.subject}`);
+    ok("belief + resolved cause subject/predicate returned");
+
+    const r404 = await fetch(`${base}/api/state?belief_id=deadbeef00000000`);
+    if (r404.status !== 404) bad(`expected 404 on unknown prefix, got ${r404.status}`);
+    ok("unknown belief_id prefix → 404");
+  });
+}
+
 async function test5_ReplayTopKClamp(): Promise<void> {
   process.stdout.write("[5/5] POST /api/replay clamps top_k to 50\n");
   await withSidecar({ bindHost: "127.0.0.1", port: 0 }, async (h) => {
@@ -236,6 +299,10 @@ async function main(): Promise<void> {
   await test4_SseConcurrencyCap();
   process.stdout.write("\n");
   await test5_ReplayTopKClamp();
+  process.stdout.write("\n");
+  await test6_Histogram();
+  process.stdout.write("\n");
+  await test7_BeliefLookup();
   process.stdout.write("\n[32mGATE DASHBOARD: PASS[0m\n");
 }
 

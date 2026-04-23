@@ -265,6 +265,149 @@
         border-top: none;
       }
 
+      .panels {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+        margin-top: 20px;
+      }
+      .panel {
+        background: var(--glass);
+        border: 1px solid var(--border);
+        border-radius: var(--r-card);
+        padding: 16px 18px;
+      }
+      .panel h3 {
+        margin: 0 0 12px;
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+        color: var(--text-dim);
+      }
+
+      .trust-grid {
+        display: grid;
+        gap: 2px;
+        font-family: var(--font-mono);
+        font-size: 10px;
+      }
+      .trust-row {
+        display: grid;
+        grid-template-columns: 96px 1fr;
+        gap: 4px;
+        align-items: center;
+      }
+      .trust-row.head {
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        font-size: 9px;
+      }
+      .trust-cells {
+        display: grid;
+        gap: 2px;
+      }
+      .trust-cell {
+        padding: 3px 4px;
+        border-radius: 4px;
+        text-align: center;
+        color: var(--text);
+        background: rgba(100, 116, 139, 0.12);
+      }
+      .trust-cell.hi { color: #0a1628; background: var(--green); }
+      .trust-cell.mid { color: #0a1628; background: var(--amber); }
+      .trust-cell.lo { color: #fee2e2; background: var(--red); }
+      .trust-cell.unk { color: var(--text-muted); }
+      .trust-label { color: var(--text-dim); padding-right: 4px; text-align: right; }
+
+      .subs-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        max-height: 280px;
+        overflow-y: auto;
+      }
+      .sub-row {
+        display: grid;
+        grid-template-columns: 1fr 70px 70px 60px;
+        gap: 8px;
+        padding: 8px 10px;
+        background: var(--bg-2);
+        border: 1px solid var(--border);
+        border-radius: var(--r-chip);
+        font-family: var(--font-mono);
+        font-size: 11px;
+        align-items: center;
+      }
+      .sub-row .pattern {
+        color: var(--text);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .sub-row .k { color: var(--text-muted); font-size: 9px; text-transform: uppercase; letter-spacing: 0.05em; }
+      .sub-row .n { color: var(--text); font-size: 12px; font-weight: 600; }
+
+      .scrubber-wrap {
+        display: grid;
+        grid-template-columns: 100px 1fr 100px;
+        gap: 10px;
+        align-items: center;
+        font-family: var(--font-mono);
+        font-size: 11px;
+      }
+      .scrubber-wrap input[type="range"] {
+        width: 100%;
+        accent-color: var(--cyan);
+      }
+      .scrubber-label {
+        text-align: center;
+        color: var(--text-dim);
+      }
+      .scrubber-banner {
+        margin-top: 10px;
+        padding: 8px 12px;
+        border-radius: var(--r-chip);
+        background: var(--bg-2);
+        border: 1px solid var(--border);
+        color: var(--text-dim);
+        font-family: var(--font-mono);
+        font-size: 11px;
+        text-align: center;
+      }
+      .scrubber-banner.historical {
+        background: rgba(251, 191, 36, 0.08);
+        border-color: rgba(251, 191, 36, 0.3);
+        color: var(--amber);
+      }
+
+      .causality-box {
+        display: none;
+        margin-top: 14px;
+        padding: 12px;
+        background: var(--bg-2);
+        border: 1px solid var(--border);
+        border-radius: var(--r-chip);
+        font-family: var(--font-mono);
+        font-size: 11px;
+        color: var(--text);
+      }
+      .causality-box.open { display: block; }
+      .causality-box .head {
+        color: var(--cyan);
+        margin-bottom: 6px;
+      }
+      .causality-box .arrow {
+        color: var(--text-muted);
+      }
+      .causality-box .cause {
+        color: var(--text-dim);
+        margin-left: 14px;
+      }
+      .feed .row { cursor: pointer; }
+      .feed .row:hover { background: var(--bg-2); }
+
       .footer-note {
         margin-top: 32px;
         padding-top: 20px;
@@ -287,6 +430,7 @@
         .feed .row .conf,
         .feed .row .trust,
         .feed .row .time { display: none; }
+        .panels { grid-template-columns: 1fr; }
       }
     </style>
   </head>
@@ -318,7 +462,7 @@
         <div class="counter"><div class="k">SSE clients</div><div class="v" id="c-sse">–</div></div>
       </section>
 
-      <h2 class="section">Belief feed · newest first</h2>
+      <h2 class="section">Belief feed · newest first · click a row for its causal chain</h2>
       <div class="feed" id="feed">
         <div class="row header-row">
           <div>kind</div>
@@ -331,6 +475,35 @@
         </div>
         <div class="empty" id="feed-empty">No events yet. Drive a demo to populate.</div>
       </div>
+
+      <div class="causality-box" id="causality" aria-live="polite"></div>
+
+      <section class="panels">
+        <div class="panel">
+          <h3>Trust graph · signer × predicate</h3>
+          <div id="trust-grid" class="trust-grid">
+            <div class="trust-row head"><div class="trust-label">signer</div><div>predicates →</div></div>
+            <div style="padding: 10px 4px; color: var(--text-muted); font-size: 11px;">No attestations recorded yet.</div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h3>Subscription queues</h3>
+          <div id="subs-list" class="subs-list">
+            <div style="padding: 10px 4px; color: var(--text-muted); font-size: 11px;">No active subscriptions.</div>
+          </div>
+        </div>
+
+        <div class="panel" style="grid-column: 1 / -1;">
+          <h3>Bi-temporal scrubber · what did the system know?</h3>
+          <div class="scrubber-wrap">
+            <div class="scrubber-label" id="scrubber-left">session start</div>
+            <input id="scrubber" type="range" min="0" max="100" step="1" value="100" aria-label="time scrubber" />
+            <div class="scrubber-label" id="scrubber-right">NOW</div>
+          </div>
+          <div id="scrubber-banner" class="scrubber-banner">LIVE · showing the most recent events as they arrive</div>
+        </div>
+      </section>
 
       <div class="footer-note">
         <div>
@@ -351,6 +524,9 @@
       const MODE_PARAM = new URLSearchParams(window.location.search).get("mode") || "auto";
       const COUNTER_POLL_MS = 5000;
       const LED_DECAY_MS = 3000;
+      const SCRUBBER_DEBOUNCE_MS = 150;
+      const TRUST_CAP = 50;
+      const REPLAY_TOP_K = 50;
 
       // ── State ───────────────────────────────────────────────────────────
       let mode = "initializing"; // live | replay | initializing
@@ -366,6 +542,12 @@
       const $qCount = document.getElementById("q-count");
       const $qBox = document.getElementById("c-box-quarantine");
       const $lastFrame = document.getElementById("last-frame");
+      const $trustGrid = document.getElementById("trust-grid");
+      const $subsList = document.getElementById("subs-list");
+      const $causality = document.getElementById("causality");
+      const $scrubber = document.getElementById("scrubber");
+      const $scrubberLeft = document.getElementById("scrubber-left");
+      const $scrubberBanner = document.getElementById("scrubber-banner");
       const counters = {
         total: document.getElementById("c-total"),
         live: document.getElementById("c-live"),
@@ -413,6 +595,10 @@
         // STRICT textContent rendering — never innerHTML user-supplied values.
         const row = document.createElement("div");
         row.className = "row " + ev.kind;
+        if (ev.belief_id_prefix) {
+          row.dataset.beliefId = ev.belief_id_prefix;
+          row.addEventListener("click", () => showCausality(ev.belief_id_prefix));
+        }
 
         const cells = [
           ev.kind,
@@ -490,7 +676,7 @@
         appendEventRow(ev);
       }
 
-      // ── Counters panel (polled from /api/state) ──────────────────────
+      // ── Counters + trust graph + subscriptions (polled from /api/state) ──
       async function pollCounters() {
         try {
           const url = TOKEN_PARAM ? "/api/state?token=" + encodeURIComponent(TOKEN_PARAM) : "/api/state";
@@ -505,10 +691,261 @@
           counters.audit.textContent = String(s.audit_length ?? 0);
           counters.subs.textContent = String(s.active_subscriptions ?? 0);
           counters.sse.textContent = String(s.sse_clients ?? 0);
+
+          renderTrustGrid(s.trust_graph || {});
+          renderSubscriptions(s.subscriptions || []);
+
+          if (s.oldest_ingested_at) {
+            $scrubberLeft.textContent = s.oldest_ingested_at.slice(11, 19);
+          }
         } catch {
           /* ignore */
         }
       }
+
+      function trustCellClass(score) {
+        if (typeof score !== "number") return "unk";
+        if (score >= 0.6) return "hi";
+        if (score >= 0.3) return "mid";
+        return "lo";
+      }
+
+      function renderTrustGrid(graph) {
+        const signers = Object.keys(graph).slice(0, TRUST_CAP);
+        const predicateSet = new Set();
+        for (const s of signers) {
+          for (const p of Object.keys(graph[s])) predicateSet.add(p);
+        }
+        const predicates = Array.from(predicateSet).slice(0, TRUST_CAP);
+        // Rebuild the grid DOM fresh — small table, cheap.
+        while ($trustGrid.firstChild) $trustGrid.removeChild($trustGrid.firstChild);
+
+        if (signers.length === 0 || predicates.length === 0) {
+          const empty = document.createElement("div");
+          empty.style.cssText = "padding: 10px 4px; color: var(--text-muted); font-size: 11px;";
+          empty.textContent = "No attestations recorded yet.";
+          $trustGrid.appendChild(empty);
+          return;
+        }
+
+        const head = document.createElement("div");
+        head.className = "trust-row head";
+        const hLabel = document.createElement("div");
+        hLabel.className = "trust-label";
+        hLabel.textContent = "signer ↓  /  predicate →";
+        head.appendChild(hLabel);
+        const hCells = document.createElement("div");
+        hCells.className = "trust-cells";
+        hCells.style.gridTemplateColumns = "repeat(" + predicates.length + ", 1fr)";
+        for (const p of predicates) {
+          const c = document.createElement("div");
+          c.className = "trust-cell unk";
+          c.textContent = p;
+          hCells.appendChild(c);
+        }
+        head.appendChild(hCells);
+        $trustGrid.appendChild(head);
+
+        for (const signer of signers) {
+          const row = document.createElement("div");
+          row.className = "trust-row";
+          const lab = document.createElement("div");
+          lab.className = "trust-label";
+          lab.textContent = signer;
+          row.appendChild(lab);
+          const cells = document.createElement("div");
+          cells.className = "trust-cells";
+          cells.style.gridTemplateColumns = "repeat(" + predicates.length + ", 1fr)";
+          for (const p of predicates) {
+            const score = graph[signer] && typeof graph[signer][p] === "number" ? graph[signer][p] : null;
+            const cell = document.createElement("div");
+            cell.className = "trust-cell " + trustCellClass(score);
+            cell.textContent = score === null ? "—" : score.toFixed(2);
+            cells.appendChild(cell);
+          }
+          row.appendChild(cells);
+          $trustGrid.appendChild(row);
+        }
+      }
+
+      function renderSubscriptions(subs) {
+        while ($subsList.firstChild) $subsList.removeChild($subsList.firstChild);
+        if (!subs.length) {
+          const empty = document.createElement("div");
+          empty.style.cssText = "padding: 10px 4px; color: var(--text-muted); font-size: 11px;";
+          empty.textContent = "No active subscriptions.";
+          $subsList.appendChild(empty);
+          return;
+        }
+        for (const sub of subs) {
+          const row = document.createElement("div");
+          row.className = "sub-row";
+          const pat = document.createElement("div");
+          pat.className = "pattern";
+          pat.textContent = sub.pattern || "(empty filter)";
+          row.appendChild(pat);
+          const q = document.createElement("div");
+          const qK = document.createElement("div");
+          qK.className = "k";
+          qK.textContent = "queue";
+          const qN = document.createElement("div");
+          qN.className = "n";
+          qN.textContent = String(sub.queue_depth ?? 0);
+          q.appendChild(qK);
+          q.appendChild(qN);
+          row.appendChild(q);
+          const m = document.createElement("div");
+          const mK = document.createElement("div");
+          mK.className = "k";
+          mK.textContent = "matched";
+          const mN = document.createElement("div");
+          mN.className = "n";
+          mN.textContent = String(sub.matches_since_created ?? 0);
+          m.appendChild(mK);
+          m.appendChild(mN);
+          row.appendChild(m);
+          const d = document.createElement("div");
+          const dK = document.createElement("div");
+          dK.className = "k";
+          dK.textContent = "dropped";
+          const dN = document.createElement("div");
+          dN.className = "n";
+          dN.textContent = String(sub.dropped_count ?? 0);
+          d.appendChild(dK);
+          d.appendChild(dN);
+          row.appendChild(d);
+          $subsList.appendChild(row);
+        }
+      }
+
+      // ── Causality chain (click a belief row) ──────────────────────────
+      async function showCausality(idPrefix) {
+        const url =
+          "/api/state?belief_id=" +
+          encodeURIComponent(idPrefix) +
+          (TOKEN_PARAM ? "&token=" + encodeURIComponent(TOKEN_PARAM) : "");
+        try {
+          const r = await fetch(url, { cache: "no-store" });
+          while ($causality.firstChild) $causality.removeChild($causality.firstChild);
+          if (!r.ok) {
+            $causality.classList.add("open");
+            const err = document.createElement("div");
+            err.textContent = "belief not found (historical or tombstoned-off-screen)";
+            $causality.appendChild(err);
+            return;
+          }
+          const data = await r.json();
+          $causality.classList.add("open");
+          const head = document.createElement("div");
+          head.className = "head";
+          head.textContent = data.belief.signer_short + " · " + data.belief.subject + " · " + data.belief.predicate;
+          $causality.appendChild(head);
+          const summary = document.createElement("div");
+          summary.textContent =
+            "belief " + data.belief.id_prefix + (data.belief.invalidated_at ? " · tombstoned" : "");
+          $causality.appendChild(summary);
+          if (data.causes && data.causes.length > 0) {
+            const label = document.createElement("div");
+            label.className = "arrow";
+            label.style.marginTop = "8px";
+            label.textContent = "↑ causes";
+            $causality.appendChild(label);
+            for (const c of data.causes) {
+              const line = document.createElement("div");
+              line.className = "cause";
+              line.textContent =
+                "· " + c.id_prefix + (c.subject ? "  " + c.subject + " / " + c.predicate : "  (unknown)");
+              $causality.appendChild(line);
+            }
+          } else {
+            const none = document.createElement("div");
+            none.className = "arrow";
+            none.style.marginTop = "8px";
+            none.textContent = "(no upstream causes)";
+            $causality.appendChild(none);
+          }
+        } catch {
+          /* ignore */
+        }
+      }
+
+      // ── Bi-temporal scrubber ──────────────────────────────────────────
+      let scrubberTimer = null;
+      let histogram = null;
+
+      async function loadHistogram() {
+        try {
+          const url = TOKEN_PARAM
+            ? "/api/state?histogram=1&token=" + encodeURIComponent(TOKEN_PARAM)
+            : "/api/state?histogram=1";
+          const r = await fetch(url, { cache: "no-store" });
+          if (!r.ok) return;
+          histogram = await r.json();
+        } catch {
+          /* ignore */
+        }
+      }
+
+      async function runReplay(asOf) {
+        try {
+          const url = TOKEN_PARAM
+            ? "/api/replay?token=" + encodeURIComponent(TOKEN_PARAM)
+            : "/api/replay";
+          const body = {
+            query: "",
+            as_of: asOf,
+            include_tombstoned: true,
+            min_trust: -1,
+            top_k: REPLAY_TOP_K,
+          };
+          const r = await fetch(url, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify(body),
+          });
+          if (!r.ok) return null;
+          return await r.json();
+        } catch {
+          return null;
+        }
+      }
+
+      function setHistoricalBanner(asOf, count) {
+        $scrubberBanner.classList.add("historical");
+        while ($scrubberBanner.firstChild) $scrubberBanner.removeChild($scrubberBanner.firstChild);
+        $scrubberBanner.appendChild(
+          document.createTextNode("HISTORICAL RAW VIEW @ " + asOf.slice(11, 19) + " · " + count + " beliefs visible")
+        );
+      }
+
+      function setLiveBanner() {
+        $scrubberBanner.classList.remove("historical");
+        while ($scrubberBanner.firstChild) $scrubberBanner.removeChild($scrubberBanner.firstChild);
+        $scrubberBanner.appendChild(
+          document.createTextNode("LIVE · showing the most recent events as they arrive")
+        );
+      }
+
+      $scrubber.addEventListener("input", () => {
+        const pct = Number($scrubber.value);
+        if (scrubberTimer) clearTimeout(scrubberTimer);
+        scrubberTimer = setTimeout(async () => {
+          if (pct >= 100) {
+            setLiveBanner();
+            return;
+          }
+          if (!histogram || histogram.bucket_count === 0) {
+            await loadHistogram();
+          }
+          if (!histogram || histogram.bucket_count === 0 || !histogram.buckets.length) {
+            return;
+          }
+          const idx = Math.max(0, Math.min(histogram.buckets.length - 1, Math.floor((pct / 100) * (histogram.buckets.length - 1))));
+          const asOf = histogram.buckets[idx].t;
+          const result = await runReplay(asOf);
+          if (result) setHistoricalBanner(asOf, result.total_matched);
+        }, SCRUBBER_DEBOUNCE_MS);
+      });
 
       // ── SSE wiring ──────────────────────────────────────────────────────
       function connectLive() {

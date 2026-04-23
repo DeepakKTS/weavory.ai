@@ -619,3 +619,25 @@ First half of the v0.1.17 release (N.3a + N.3b ship together as v0.1.17). Adds a
 Verification: `pnpm lint` clean; `pnpm test` 239/239 passed; `bash scripts/verify/gate_dashboard.sh` → all 5 test groups + sub-asserts green (CSP assertions updated for fonts allowlisting); manual smoke test via `pnpm dashboard:serve` — `/api/state` returns correct zeros, `/ops/demo-dashboard.html` serves 200 with updated CSP header, fixture payload is 10 events covering attest → believe → quarantine → forget.
 
 No MCP surface change. ADR-005 five-tool lock untouched. No version bump at this checkpoint (N.3b will tag v0.1.17).
+
+### N.3b · Trust graph + time scrubber + causality chain (v0.1.17)
+
+Completes the live demo dashboard. Ships together with N.3a as one tagged release so the whole dashboard story is atomic for rollback.
+
+- **Sidecar (`scripts/serve-dashboard.ts`)** — `/api/state` branches on two new query params in addition to the default snapshot:
+  - `?belief_id=<prefix>` (4–64 lower-hex) → returns `{belief, causes[]}` with each cause's id prefix + subject + predicate resolved in-place. 404 on unknown prefix.
+  - `?histogram=1` → returns `{bucket_count, buckets: [{t: ISO, n: count}]}` over the belief timeline. Up to 40 buckets; empty engine → 0 buckets.
+  Default snapshot now also includes `oldest_ingested_at`, `newest_ingested_at`, and the `subscriptions[]` list (pattern + queue_depth + matches_since_created + dropped_count + signer_short). All reads are O(|beliefs|) or smaller; caps prevent payload growth.
+- **Dashboard (`ops/demo-dashboard.html`)** — three new panels + click-to-expand on the feed:
+  - **Trust graph.** 2-D table (signer_short rows × predicate columns). Color-coded cells: green ≥ 0.6, amber 0.3–0.6, red < 0.3, grey unknown/missing. 50×50 cap on rows/cols. Rebuilt on every `/api/state` poll.
+  - **Subscription queues.** Per-sub row: pattern · queue depth · matches-since-created · dropped count. Scrollable column.
+  - **Bi-temporal scrubber.** Range slider 0 (session start) → 100 (NOW). 150 ms client debounce before firing `POST /api/replay`. Histogram pre-computed once per scrubber-open; slider position maps to histogram bucket, becomes `as_of` on replay. Server caps `top_k` at 50. UI label flips to **"HISTORICAL RAW VIEW @ <HH:MM:SS> · N beliefs visible"** in amber when dragging back; returns to **"LIVE"** when the slider is at the right end. The "raw" phrasing matches the plan's note that conflict-merge is skipped for `as_of` queries (`src/engine/ops.ts:362`).
+  - **Causality chain.** Clicking any row in the belief feed calls `GET /api/state?belief_id=<prefix>` and renders the belief + its resolved causes beneath the feed. Tombstone + quarantine flags preserved.
+- **Gate extended.** `scripts/verify/gate_dashboard.ts` grows from 5 → 7 test groups:
+  6. Histogram returns 0 buckets on empty engine; 8 beliefs produce 8 events summed across buckets.
+  7. `belief_id=<prefix>` lookup returns the belief with resolved cause subject/predicate; 404 on unknown prefix.
+- **Version bump.** `package.json` 0.1.16 → 0.1.17; `src/mcp/server.ts` VERSION matches.
+
+Verification: `pnpm lint` clean; `pnpm test` 239/239 passed in 2.98s; `gate_dashboard.sh` → 7 groups + sub-asserts all pass; `rehearsal.sh` → 7/7 green in 6s.
+
+No MCP surface change. ADR-005 five-tool lock untouched. Tag: v0.1.17.
