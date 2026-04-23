@@ -600,3 +600,22 @@ Second tagged release of Phase N. Extends the existing `scripts/serve-dashboard.
 Verification: `pnpm lint` clean · `pnpm test` → **239 / 239 passed** in 3.00 s (no regressions; tests unchanged — tests never touched the sidecar directly) · `bash scripts/rehearsal.sh` → 7 / 7 gates green in 7 s · gate_dashboard direct run → all 5 test groups + 2 sub-asserts pass.
 
 ADR-005 five-tool lock: untouched. No MCP surface change. Non-breaking patch.
+
+### N.3a · Live demo dashboard — scaffold + belief feed + counters + quarantine LED (pre-tag)
+
+First half of the v0.1.17 release (N.3a + N.3b ship together as v0.1.17). Adds a new `ops/demo-dashboard.html` separate from the existing truthful status dashboard. Pitch-worthy minimum — enough to SHOW the Responsible-AI story of signed beliefs arriving, attacker quarantine lighting up, and counters ticking. Trust-graph / time-scrubber / causality chain land in N.3b.
+
+- **New** `ops/demo-dashboard.html`. Single file, inline CSS + vanilla JS, no bundler. Matches `docs-site/index.html` design tokens (deep navy `#0a1628`, Geist + Geist Mono, teal/cyan accents, no gradients). Strict `textContent` rendering for every user-supplied field — no `innerHTML`, no `eval`, no `Function()`.
+- **Header + counters.** Six counters polled from `/api/state` every 5 s: beliefs total / live / quarantined / audit length / active subscriptions / SSE client count.
+- **Belief feed panel.** SSE-driven, newest-first, DOM-capped at 100 rows (FIFO evict). Each row colour-coded by kind: believe (default), quarantine (red), attest (teal), forget (amber), subscribe (cyan). Kind chip + signer short + subject + predicate + object preview + confidence + relative timestamp.
+- **Quarantine LED.** Header indicator. Grey when quiet; on `kind:"quarantine"` event flashes red with 500 ms transition; decays back to grey after 3 s via `CSS transition`. Session-total counter next to the bulb.
+- **SSE client.** Native `EventSource` with reconnect; token appended via `?token=` from the URL query string (injected server-side in the bind-non-loopback case).
+- **Mode detect.** On load, probes `/api/state`. If 200 → LIVE mode, connects `EventSource` to `/events`. Else → REPLAY mode, loads `./fixtures.json` and plays the recorded events with 250 ms stagger. `?mode=replay|live` query param forces override.
+- **CSP widened (minimally).** `serve-dashboard.ts` now allows Google Fonts (`fonts.googleapis.com` + `fonts.gstatic.com`) in the CSP so the Geist typography resolves identically on Pages and on localhost. `script-src`, `connect-src`, `object-src`, `frame-ancestors`, `base-uri` remain locked to `'self'` / `'none'`. gate_dashboard assertions still pass.
+- **`.github/workflows/publish-pages.yml`** copies `ops/demo-dashboard.html` → `_site/demo/index.html` plus a fixture JSON (`ops/data/demo-fixtures.json` when present, else an empty placeholder) so Pages visitors at `/demo/` see a working replay mode without a sidecar.
+- **New** `scripts/demo-capture.ts` drives a short BFSI-style narrative against a fresh `EngineState`: attests four honest agents up front (intake / fraud_score / underwriting / final_decision), publishes the intake → fraud → underwriting → final chain, injects an unattested attacker's forged "approval" (fires `quarantine` under adversarial mode), and forgets the fraud belief (fires `forget`). Emits 10 events → `ops/data/demo-fixtures.json`. `pnpm demo:capture` wired up; fixture allowlisted in `.gitignore` so Pages ships with real motion, not an empty list.
+- **New `pnpm demo:capture`** script in `package.json`.
+
+Verification: `pnpm lint` clean; `pnpm test` 239/239 passed; `bash scripts/verify/gate_dashboard.sh` → all 5 test groups + sub-asserts green (CSP assertions updated for fonts allowlisting); manual smoke test via `pnpm dashboard:serve` — `/api/state` returns correct zeros, `/ops/demo-dashboard.html` serves 200 with updated CSP header, fixture payload is 10 events covering attest → believe → quarantine → forget.
+
+No MCP surface change. ADR-005 five-tool lock untouched. No version bump at this checkpoint (N.3b will tag v0.1.17).

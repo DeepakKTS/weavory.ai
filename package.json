@@ -51,6 +51,7 @@
     "collect:git": "tsx scripts/collect/git.ts",
     "collect:all": "pnpm collect:git",
     "dashboard:serve": "tsx scripts/serve-dashboard.ts",
+    "demo:capture": "tsx scripts/demo-capture.ts",
     "verify:gate1": "bash scripts/verify/gate1.sh",
     "verify:gate2": "bash scripts/verify/gate2.sh",
     "verify:gate3": "bash scripts/verify/gate3.sh",

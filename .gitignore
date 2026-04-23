@@ -19,6 +19,9 @@ ops/data/*.json
 # bench.json is a committed baseline of local throughput numbers — regenerate
 # via `pnpm bench`; committed so the dashboard has real values on checkout
 !ops/data/bench.json
+# demo-fixtures.json is the checked-in replay-mode source for the live demo
+# dashboard on GitHub Pages — regenerate via `pnpm demo:capture`.
+!ops/data/demo-fixtures.json
 # Adversarial drill artefacts (Phase G.3) — transient, regenerated per run
 ops/data/incidents/
 

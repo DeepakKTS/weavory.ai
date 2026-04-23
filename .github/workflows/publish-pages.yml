@@ -23,7 +23,10 @@ name: publish-pages
 #
 # Site layout served by Pages:
 #   /                 → docs-site/index.html (landing page)
-#   /dashboard/       → ops/weavory-dashboard.html
+#   /dashboard/       → ops/weavory-dashboard.html (truthful status dashboard)
+#   /demo/            → ops/demo-dashboard.html + ops/data/demo-fixtures.json
+#                       (live demo dashboard, replay-mode on Pages; mode=live
+#                       is only available when run against a local sidecar)
 #   /assets/          → ops/assets/ (logo, etc.)
 #   /data/            → ops/data/{git,gates,tests,bench,runtime}.json
 #                       (only non-gitignored artifacts that the
@@ -49,13 +52,22 @@ jobs:
       - name: Build _site/ tree
         run: |
           set -euo pipefail
-          mkdir -p _site/overview _site/dashboard _site/assets _site/data
+          mkdir -p _site/overview _site/dashboard _site/demo _site/assets _site/data
 
           # Landing page
           cp docs-site/index.html _site/index.html
 
-          # Dashboard (visible at /dashboard/)
+          # Truthful status dashboard (visible at /dashboard/)
           cp ops/weavory-dashboard.html _site/dashboard/index.html
+
+          # Live demo dashboard (visible at /demo/; replay mode with fixtures
+          # since Pages is static — the live SSE path is localhost-only).
+          cp ops/demo-dashboard.html _site/demo/index.html
+          if [[ -f "ops/data/demo-fixtures.json" ]]; then
+            cp ops/data/demo-fixtures.json _site/demo/fixtures.json
+          else
+            printf '{"events":[],"captured_at":null}\n' > _site/demo/fixtures.json
+          fi
 
           # Static assets
           cp -R ops/assets/. _site/assets/
