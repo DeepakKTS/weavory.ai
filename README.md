@@ -5,7 +5,7 @@ An MCP server with signed beliefs, trust-gated recall, hash-chained audit, and b
 
 [![npm](https://img.shields.io/npm/v/@weavory/mcp.svg)](https://www.npmjs.com/package/@weavory/mcp)
 [![license](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](./LICENSE)
-[![tests](https://img.shields.io/badge/tests-197%2F197-brightgreen.svg)](#status)
+[![tests](https://img.shields.io/badge/tests-227%2F227-brightgreen.svg)](#status)
 [![ci](https://img.shields.io/badge/ci-passing-brightgreen.svg)](./.github/workflows)
 
 When multiple AI agents share memory, every claim needs a signer, a
@@ -41,7 +41,7 @@ snippet.
 | Tool | What it does |
 |------|--------------|
 | `weavory_believe` | Sign a claim (Ed25519), content-address it (BLAKE3), store it, append to the audit chain, fan out to matching subscribers. |
-| `weavory_recall` | Retrieve beliefs with trust gating, bi-temporal `as_of`, quarantine filter, and subject / predicate / confidence filters. |
+| `weavory_recall` | Retrieve beliefs with trust gating, bi-temporal `as_of`, quarantine filter, tombstone visibility (`include_tombstoned`), and subject / predicate / confidence filters. |
 | `weavory_subscribe` | Register a bounded queue keyed on a pattern + filters. Drain via `recall`. |
 | `weavory_attest` | Update `trust(signer, topic)` in `[-1, 1]`. |
 | `weavory_forget` | Tombstone a belief — `invalidated_at` set, history preserved for `as_of` queries. |
@@ -63,8 +63,10 @@ pnpm exec tsx examples/bfsi_claims_triage.ts
 ```
 
 Self-asserts: the attacker's belief is **never visible** in the
-approver's default recall, but **is visible** in the compliance audit
-view (`min_trust: -1`). Audit chain verifies `ok` at the end.
+approver's default recall (under `WEAVORY_ADVERSARIAL=1` where the
+trust floor is 0.6), but **is visible** in the compliance audit view
+(`min_trust: -1, include_quarantined: true, include_tombstoned: true`).
+Audit chain verifies `ok` at the end.
 
 Full walkthrough in [`docs/REAL_WORLD_USAGE.md`](./docs/REAL_WORLD_USAGE.md).
 
@@ -74,7 +76,7 @@ Full walkthrough in [`docs/REAL_WORLD_USAGE.md`](./docs/REAL_WORLD_USAGE.md).
 
 - **Ed25519-signed beliefs** — every claim is cryptographically attributable to a signer.
 - **BLAKE3 hash-chained audit log** — retroactive edits break the chain; tamper is detected.
-- **Trust-gated recall** — unknown signers default to neutral (0.5); raise the floor to 0.6 for adversarial deployments.
+- **Trust-gated recall** — per-`(signer, predicate)` trust in `[-1, 1]`. Default `min_trust=0.3` (0.6 under `WEAVORY_ADVERSARIAL=1`); neutral trust for an unattested signer is `0.5`. Pass `min_trust: 0.6` explicitly to enforce "only attested signers" without adversarial mode. Attest at `topic=<predicate>` to gate that predicate.
 - **Bi-temporal replay** — `recall({ as_of: "<ISO>" })` reconstructs the world as it was at any past instant.
 - **Dual persistence** — JSONL (default, zero native deps, synchronously durable) or DuckDB (opt-in, WAL-backed) with graceful binary fallback.
 - **Pre-ingest policy hook** — `WEAVORY_POLICY_FILE=<json>` for allow / deny rules on subjects (glob), predicates (exact), payload size.
@@ -100,7 +102,7 @@ Full walkthrough in [`docs/REAL_WORLD_USAGE.md`](./docs/REAL_WORLD_USAGE.md).
 
 ## Status
 
-- **197/197** automated tests — unit + integration + performance
+- **227/227** automated tests — unit + integration + performance
 - **CI green** on Ubuntu + macOS with Node 22 LTS
 - **Strict TypeScript** — no `any` in `src/`
 - Published to [npm](https://www.npmjs.com/package/@weavory/mcp) and [GitHub Container Registry](https://github.com/DeepakKTS/weavory.ai/pkgs/container/weavory) on every release tag

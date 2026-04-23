@@ -134,7 +134,9 @@ export function createServer(
       title: "Recall matching beliefs",
       description:
         "Find beliefs matching a query. Supports bi-temporal as_of, per-signer trust gating, quarantine filtering, tombstone visibility, and subject/predicate/min_confidence filters.\n\n" +
-        "Trust floor math (for filtering unattested signers): the default min_trust is 0.3 in normal mode and 0.6 under WEAVORY_ADVERSARIAL=1. Neutral trust for an unattested signer is 0.5, so in normal mode unattested signers ARE visible by default. To enforce 'show me only attested signers' without adversarial mode, pass min_trust: 0.6 explicitly. For a full compliance / audit view showing EVERY belief regardless of trust, quarantine, or tombstone state, combine min_trust: -1 with include_quarantined: true and include_tombstoned: true.",
+        "Trust floor math (for filtering unattested signers): the default min_trust is 0.3 in normal mode and 0.6 under WEAVORY_ADVERSARIAL=1. Neutral trust for an unattested signer is 0.5, so in normal mode unattested signers ARE visible by default. To enforce 'show me only attested signers' without adversarial mode, pass min_trust: 0.6 explicitly.\n\n" +
+        "Trust is per-predicate: the trust gate looks up state.trust[belief.signer_id][belief.predicate]. So an attestation at topic='claim' does NOT gate beliefs with predicate='amount' — you need an attestation at topic='amount' for that. If you're filtering by filters.subject, make sure attestations on the target signers cover each predicate used on that subject (commonly one attest per predicate).\n\n" +
+        "Full compliance / audit view showing EVERY belief regardless of trust, quarantine, or tombstone: combine min_trust: -1 with include_quarantined: true and include_tombstoned: true.",
       inputSchema: {
         query: z.string().max(2048),
         top_k: z.number().int().min(1).max(100).optional(),
@@ -231,7 +233,9 @@ export function createServer(
       title: "Attest trust for a signer × topic",
       description:
         "Raise or lower the attestor's trust vector for (signer_id, topic). Affects default recall ranking and quarantine. Score is clamped to [-1, 1].\n\n" +
-        "Signer_id is the full 64-hex Ed25519 public key (as returned in weavory_believe's text/structuredContent). Trust deltas compose: additional attest calls on the same signer+topic accumulate, averaged across attestors. One attestor with score >= 0.2 is enough to push an unattested signer (neutral 0.5) past the 0.6 adversarial-mode floor.",
+        "signer_id must be the full 64-hex Ed25519 public key (as returned in weavory_believe's text/structuredContent).\n\n" +
+        "IMPORTANT — topic/predicate alignment: recall's trust gate looks up trust by (signer_id, belief.predicate). So attesting at topic='X' ONLY affects recall filtering for beliefs whose predicate is 'X'. If you want to raise trust for a signer's beliefs with predicate='amount', attest at topic='amount' — attesting at topic='claim' will NOT gate 'amount'-predicated beliefs. To cover multiple predicates for the same signer, call attest once per predicate.\n\n" +
+        "Trust deltas compose: additional attest calls on the same (signer_id, topic) accumulate (averaged across attestors). One attestor with score >= 0.2 is enough to push an unattested signer (neutral 0.5) past the 0.6 adversarial-mode floor for that topic/predicate.",
       inputSchema: {
         signer_id: z.string().regex(/^[0-9a-f]{64}$/u),
         topic: z.string().min(1).max(512),
