@@ -1,5 +1,5 @@
 /**
- * examples/commons_swarm.ts — Phase G.2 · The Commons
+ * examples/swarm_consensus.ts — subscription queue + consensus merge
  *
  * Exercises two new G.2 capabilities end-to-end over the MCP surface:
  *   1. Subscription match queue + recall drain (W-0110).
@@ -20,7 +20,7 @@
  *     regardless of trust — proves strategies are orthogonal to trust.
  *
  * Exit 0 on success; process.exit(1) on any assertion failure. Used by
- * scripts/verify/gate_commons.sh.
+ * scripts/verify/gate_swarm.sh.
  */
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
@@ -41,7 +41,7 @@ type RecallOut = {
 
 function assert(cond: boolean, msg: string): void {
   if (!cond) {
-    console.error("[commons] ✗ assertion failed:", msg);
+    console.error("[swarm] ✗ assertion failed:", msg);
     process.exit(1);
   }
 }
@@ -51,16 +51,16 @@ function shortId(s: string, n = 12): string {
 }
 
 async function main(): Promise<void> {
-  console.log("[commons] starting commons_swarm demo");
+  console.log("[swarm] starting swarm_consensus demo");
 
   // Shared engine state so alice/bob/mallet/wally all reach the same weavory.
   const { server, state } = createServer();
   const [clientT, serverT] = InMemoryTransport.createLinkedPair();
   await server.connect(serverT);
 
-  const client = new Client({ name: "commons-swarm", version: "1.0.0" });
+  const client = new Client({ name: "swarm-consensus", version: "1.0.0" });
   await client.connect(clientT);
-  console.log("[commons] one MCP client connected to shared weavory");
+  console.log("[swarm] one MCP client connected to shared weavory");
 
   // 1. Wally subscribes FIRST so the queue captures all subsequent publishes.
   const sub = (
@@ -69,7 +69,7 @@ async function main(): Promise<void> {
       arguments: { pattern: "sensor:cambridge", signer_seed: "wally", queue_cap: 100 },
     })
   ).structuredContent as SubscribeOut;
-  console.log(`[commons] wally subscribed: ${sub.subscription_id} (cap=${sub.queue_cap})`);
+  console.log(`[swarm] wally subscribed: ${sub.subscription_id} (cap=${sub.queue_cap})`);
 
   // 2. Alice, Bob, Mallet all publish — same subject+predicate, different objects.
   const publish = async (seed: string, x: number): Promise<BelieveOut> =>
@@ -91,7 +91,7 @@ async function main(): Promise<void> {
   await new Promise((r) => setTimeout(r, 10));
   const m = await publish("mallet", 0);
   console.log(
-    `[commons] published 3 beliefs: alice=${shortId(a.id)} bob=${shortId(b.id)} mallet=${shortId(m.id)}`
+    `[swarm] published 3 beliefs: alice=${shortId(a.id)} bob=${shortId(b.id)} mallet=${shortId(m.id)}`
   );
 
   // 3. Trust attestations — wally trusts alice + bob highly, mallet little.
@@ -104,7 +104,7 @@ async function main(): Promise<void> {
   await attest(a.signer_id, 0.9);
   await attest(b.signer_id, 0.9);
   await attest(m.signer_id, 0.1);
-  console.log("[commons] wally attested: alice=+0.9, bob=+0.9, mallet=+0.1");
+  console.log("[swarm] wally attested: alice=+0.9, bob=+0.9, mallet=+0.1");
 
   // 4. Drain the subscription queue.
   const drained = (
@@ -119,7 +119,7 @@ async function main(): Promise<void> {
     })
   ).structuredContent as RecallOut;
   console.log(
-    `[commons] subscription drain: delivered=${drained.delivered_count} dropped=${drained.dropped_count}`
+    `[swarm] subscription drain: delivered=${drained.delivered_count} dropped=${drained.dropped_count}`
   );
   assert(
     drained.delivered_count === 3,
@@ -147,7 +147,7 @@ async function main(): Promise<void> {
     `conflict group should carry all 3 variants (got ${group.variants.length})`
   );
   console.log(
-    `[commons] include_conflicts=true: 1 group with ${group.variants.length} variants`
+    `[swarm] include_conflicts=true: 1 group with ${group.variants.length} variants`
   );
 
   // 6. merge_strategy=consensus — trust-weighted winner should be 42 (alice+bob = 1.8 > mallet 0.1).
@@ -164,7 +164,7 @@ async function main(): Promise<void> {
   const consensusWinner = consensus.beliefs[0];
   const winnerX = (consensusWinner.object as { X: number }).X;
   assert(winnerX === 42, `consensus winner.X should be 42 (got ${winnerX})`);
-  console.log(`[commons] merge_strategy=consensus → winner.X = ${winnerX} (alice+bob outvote mallet)`);
+  console.log(`[swarm] merge_strategy=consensus → winner.X = ${winnerX} (alice+bob outvote mallet)`);
 
   // 7. merge_strategy=lww — latest recorded_at wins regardless of trust (mallet).
   const lww = (
@@ -179,12 +179,12 @@ async function main(): Promise<void> {
   );
   const lwwX = (lww.beliefs[0].object as { X: number }).X;
   assert(lwwX === 0, `lww winner.X should be 0 (mallet, latest) but got ${lwwX}`);
-  console.log(`[commons] merge_strategy=lww → winner.X = ${lwwX} (latest recorded_at)`);
+  console.log(`[swarm] merge_strategy=lww → winner.X = ${lwwX} (latest recorded_at)`);
 
-  console.log("\n[commons] ✓ Gate Commons demo passed — queue drain + conflict merge both live.");
+  console.log("\n[swarm] ✓ Gate Swarm demo passed — queue drain + conflict merge both live.");
 }
 
 main().catch((err) => {
-  console.error("[commons] fatal:", err instanceof Error ? err.stack ?? err.message : err);
+  console.error("[swarm] fatal:", err instanceof Error ? err.stack ?? err.message : err);
   process.exit(1);
 });

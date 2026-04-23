@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Gate Gauntlet — Phase G.4 arena verification
+# Gate Temporal — Phase G.4 phase verification
 # Pass iff:
-#   1) examples/gauntlet_branch.ts exits 0 with the three scripted AAPL
+#   1) examples/branch_snapshots.ts exits 0 with the three scripted AAPL
 #      value lines (main: [100,110], branch: [100,90], as_of=T0: [100]).
 #   2) The demo exports an incident file.
 #   3) `weavory replay --from <that incident>` rehydrates it and surfaces
@@ -15,16 +15,16 @@ cd "$REPO_ROOT"
 ok()  { printf "  \033[32m✓\033[0m %s\n" "$1"; }
 bad() { printf "  \033[31m✗\033[0m %s\n" "$1"; exit 1; }
 
-echo "Gate Gauntlet — Phase G.4 branch snapshot + replay CLI"
+echo "Gate Temporal — Phase G.4 branch snapshot + replay CLI"
 
-LOG=$(mktemp -t weavory-gauntlet.XXXXXX)
-CLI_LOG=$(mktemp -t weavory-gauntlet-cli.XXXXXX)
+LOG=$(mktemp -t weavory-temporal.XXXXXX)
+CLI_LOG=$(mktemp -t weavory-temporal-cli.XXXXXX)
 trap 'rm -f "$LOG" "$CLI_LOG"' EXIT
 
-echo "[1/6] Running examples/gauntlet_branch.ts"
-if ! pnpm exec tsx examples/gauntlet_branch.ts >"$LOG" 2>&1; then
+echo "[1/6] Running examples/branch_snapshots.ts"
+if ! pnpm exec tsx examples/branch_snapshots.ts >"$LOG" 2>&1; then
   tail -30 "$LOG"
-  bad "gauntlet_branch demo exited non-zero"
+  bad "branch_snapshots demo exited non-zero"
 fi
 ok "demo exit 0"
 
@@ -50,7 +50,7 @@ ok "main as_of=T0 = [100]"
 
 echo
 echo "[5/6] Demo exported an incident file"
-INCIDENT=$(sed -En 's/^\[gauntlet\] incident_path=(.+)$/\1/p' "$LOG" | tail -1)
+INCIDENT=$(sed -En 's/^\[temporal\] incident_path=(.+)$/\1/p' "$LOG" | tail -1)
 if [[ -z "$INCIDENT" || ! -s "$INCIDENT" ]]; then
   bad "incident_path missing or file empty (got: '$INCIDENT')"
 fi
@@ -72,4 +72,4 @@ grep -qF 'stock:AAPL / price = 110' "$CLI_LOG" \
 ok "replay CLI shows AAPL=100 and AAPL=110"
 
 echo
-echo -e "\033[32mGate Gauntlet: PASS\033[0m"
+echo -e "\033[32mGate Temporal: PASS\033[0m"

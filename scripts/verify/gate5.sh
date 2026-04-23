@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Gate 5 — as_of recall (bi-temporal)
-# Pass iff: examples/gauntlet_rewind.ts exits 0 AND live recall == 0 AND
+# Pass iff: examples/temporal_rewind.ts exits 0 AND live recall == 0 AND
 # past recall (as_of=pre-forget snapshot) == 1.
 
 set -euo pipefail
@@ -16,8 +16,8 @@ echo "Gate 5 — as_of recall (repo: $REPO_ROOT)"
 LOG=$(mktemp -t weavory-gate5.XXXXXX)
 trap 'rm -f "$LOG"' EXIT
 
-echo "[1/3] Running examples/gauntlet_rewind.ts"
-if ! pnpm exec tsx examples/gauntlet_rewind.ts >"$LOG" 2>&1; then
+echo "[1/3] Running examples/temporal_rewind.ts"
+if ! pnpm exec tsx examples/temporal_rewind.ts >"$LOG" 2>&1; then
   tail -30 "$LOG"
   bad "rewind demo exited non-zero"
 fi

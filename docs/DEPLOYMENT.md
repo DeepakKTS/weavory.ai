@@ -126,7 +126,7 @@ quarantined / low-trust claims.
 
 Leave it off for demo / dev. Turn it on for:
 - Regulated-workflow demos (BFSI, healthcare scenarios)
-- Incident-drill demos (`examples/wall_incident.ts`)
+- Incident-drill demos (`examples/tamper_detection.ts`)
 - Any deployment where clients should earn trust, not inherit it
 
 ---

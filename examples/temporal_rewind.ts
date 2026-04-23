@@ -1,5 +1,5 @@
 /**
- * examples/gauntlet_rewind.ts — Gate 5 demo
+ * examples/temporal_rewind.ts — Gate 5 demo
  *
  * Bi-temporal recall: an agent can ask "what did we think was true at time T?"
  * independently of what is true now.

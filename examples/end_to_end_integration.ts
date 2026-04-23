@@ -1,24 +1,24 @@
 /**
- * examples/throne_integration.ts — Phase G.6 · The Throne
+ * examples/end_to_end_integration.ts — Phase G.6 · end-to-end integration
  *
- * ONE weavory instance + ONE MCP connection drives ALL four Phase-G arena
+ * ONE weavory instance + ONE MCP connection drives ALL four Phase-G composite
  * features simultaneously:
  *
- *   COMMONS  — subscribe + queue drain + consensus merge pick the honest winner
- *   WALL     — adversarial mode + trust gate filter the attacker's belief
- *   GAUNTLET — cloneState branch diverges from main; incident exported
- *   BAZAAR   — four-stage escrow (offer → payment → delivered → settled)
+ *   SWARM  — subscribe + queue drain + consensus merge pick the honest winner
+ *   TAMPER   — adversarial mode + trust gate filter the attacker's belief
+ *   TEMPORAL — cloneState branch diverges from main; incident exported
+ *   ESCROW   — four-stage escrow (offer → payment → delivered → settled)
  *
- * All four arenas operate against the SAME EngineState without interference,
+ * All four composite features operate against the SAME EngineState without interference,
  * proving they compose rather than merely existing as isolated demos.
  *
  * On success the script prints a line:
  *
- *   [throne] ✓ Gate Throne integration passed · commons=<N> wall=<bool>
- *     gauntlet=<bool> bazaar=<bool>
+ *   [e2e] ✓ Gate E2E integration passed · swarm=<N> tamper=<bool>
+ *     temporal=<bool> escrow=<bool>
  *
- * which `scripts/verify/gate_throne.sh` greps together with the per-arena
- * markers (── COMMONS ── etc.).
+ * which `scripts/verify/gate_e2e.sh` greps together with the per-feature
+ * markers (── SWARM ── etc.).
  */
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
@@ -51,7 +51,7 @@ type RecallOut = {
 
 function assert(cond: boolean, msg: string): void {
   if (!cond) {
-    console.error("[throne] ✗ assertion failed:", msg);
+    console.error("[e2e] ✗ assertion failed:", msg);
     process.exit(1);
   }
 }
@@ -61,24 +61,24 @@ function short(id: string): string {
 }
 
 async function main(): Promise<void> {
-  console.log("[throne] starting throne_integration demo");
+  console.log("[e2e] starting end_to_end_integration demo");
   console.log(
-    "[throne] one EngineState, one MCP client, four arenas simultaneously"
+    "[e2e] one EngineState, one MCP client, four composite features simultaneously"
   );
 
-  // Adversarial mode ON — exercises the Wall's stricter trust floor while
-  // the other arenas still work cleanly.
+  // Adversarial mode ON — exercises the stricter trust floor (adversarial mode) while
+  // the others still work cleanly.
   const { server, state } = createServer(undefined, {
     runtimeWriter: false,
     adversarialMode: true,
   });
   const [clientT, serverT] = InMemoryTransport.createLinkedPair();
   await server.connect(serverT);
-  const client = new Client({ name: "throne", version: "1.0.0" });
+  const client = new Client({ name: "e2e", version: "1.0.0" });
   await client.connect(clientT);
 
-  // ---------------- COMMONS ----------------
-  console.log("\n[throne] ── COMMONS ──");
+  // ---------------- SWARM ----------------
+  console.log("\n[e2e] ── SWARM ──");
   // Bob subscribes FIRST so queue captures everything.
   const sub = (
     await client.callTool({
@@ -86,7 +86,7 @@ async function main(): Promise<void> {
       arguments: { pattern: "market:", signer_seed: "bob", queue_cap: 100 },
     })
   ).structuredContent as SubscribeOut;
-  console.log(`[throne] bob subscribed to "market:" · ${sub.subscription_id}`);
+  console.log(`[e2e] bob subscribed to "market:" · ${sub.subscription_id}`);
 
   // Alice (trusted) and mallet (untrusted) both publish BTC price.
   const alicePub = (
@@ -146,11 +146,11 @@ async function main(): Promise<void> {
     })
   ).structuredContent as RecallOut;
   console.log(
-    `[throne] bob drained subscription: delivered=${drain.delivered_count} dropped=${drain.dropped_count}`
+    `[e2e] bob drained subscription: delivered=${drain.delivered_count} dropped=${drain.dropped_count}`
   );
   assert(
     (drain.delivered_count ?? 0) === 3,
-    `commons drain should deliver 3 (got ${drain.delivered_count})`
+    `swarm drain should deliver 3 (got ${drain.delivered_count})`
   );
 
   // Consensus merge on the market:BTC conflict should pick alice's 50000.
@@ -173,12 +173,12 @@ async function main(): Promise<void> {
   const btcUsd = (btcWinner.object as { usd: number }).usd;
   assert(btcUsd === 50000, `BTC consensus winner should be 50000 (got ${btcUsd})`);
   console.log(
-    `[throne] consensus winner BTC=$${btcUsd} (alice trust > mallet trust)`
+    `[e2e] consensus winner BTC=$${btcUsd} (alice trust > mallet trust)`
   );
-  const commonsDelivered = drain.delivered_count ?? 0;
+  const swarmDelivered = drain.delivered_count ?? 0;
 
-  // ---------------- WALL ----------------
-  console.log("\n[throne] ── WALL ──");
+  // ---------------- TAMPER ----------------
+  console.log("\n[e2e] ── TAMPER ──");
   // Default recall (NO min_trust override) under adversarialMode=true
   // should filter mallet but keep alice.
   const defaultRecall = (
@@ -191,26 +191,26 @@ async function main(): Promise<void> {
   const mallerVisible = defaultIds.includes(malletPub.id);
   const aliceVisible = defaultIds.includes(alicePub.id);
   console.log(
-    `[throne] default recall (adversarial): alice_visible=${aliceVisible} mallet_visible=${mallerVisible}`
+    `[e2e] default recall (adversarial): alice_visible=${aliceVisible} mallet_visible=${mallerVisible}`
   );
-  assert(aliceVisible, "alice's belief must pass the Wall's trust gate");
-  assert(!mallerVisible, "mallet's belief must be filtered by the Wall's trust gate");
-  const wallFiltered = !mallerVisible && aliceVisible;
+  assert(aliceVisible, "alice's belief must pass the trust gate");
+  assert(!mallerVisible, "mallet's belief must be filtered by the trust gate");
+  const tamperFiltered = !mallerVisible && aliceVisible;
 
   // Tamper scan — clean (no audit mutation in this demo).
   const tamper = scanForTamper(state);
   assert(tamper.ok, "tamper scan should be clean on the main chain");
-  console.log(`[throne] tamper scan: ok (chain length ${tamper.length})`);
+  console.log(`[e2e] tamper scan: ok (chain length ${tamper.length})`);
 
-  // ---------------- GAUNTLET ----------------
-  console.log("\n[throne] ── GAUNTLET ──");
+  // ---------------- TEMPORAL ----------------
+  console.log("\n[e2e] ── TEMPORAL ──");
   const branchState = cloneState(state);
   const branch = createServer(branchState, { runtimeWriter: false });
   const [bT, bS] = InMemoryTransport.createLinkedPair();
   await branch.server.connect(bS);
-  const branchClient = new Client({ name: "throne-branch", version: "1.0.0" });
+  const branchClient = new Client({ name: "e2e-branch", version: "1.0.0" });
   await branchClient.connect(bT);
-  console.log("[throne] branch snapshot cloned from main");
+  console.log("[e2e] branch snapshot cloned from main");
 
   // Divergence: on branch, alice posts a crash ($30,000); on main, alice posts a pump ($60,000).
   await client.callTool({
@@ -249,7 +249,7 @@ async function main(): Promise<void> {
     .map((b) => (b.object as { usd: number }).usd)
     .sort();
   console.log(
-    `[throne] main BTC prices: ${JSON.stringify(mainPrices)} · branch BTC prices: ${JSON.stringify(branchPrices)}`
+    `[e2e] main BTC prices: ${JSON.stringify(mainPrices)} · branch BTC prices: ${JSON.stringify(branchPrices)}`
   );
   const mainHas60k = mainPrices.includes(60000);
   const mainLacks30k = !mainPrices.includes(30000);
@@ -259,17 +259,17 @@ async function main(): Promise<void> {
   assert(mainLacks30k, "main should NOT include BTC=$30000 (that's the branch)");
   assert(branchHas30k, "branch should include BTC=$30000");
   assert(branchLacks60k, "branch should NOT include BTC=$60000 (that's main)");
-  const gauntletDiverged = mainHas60k && mainLacks30k && branchHas30k && branchLacks60k;
+  const temporalDiverged = mainHas60k && mainLacks30k && branchHas30k && branchLacks60k;
 
   // Export an incident from main.
   const { path: incidentPath, incident_id } = exportIncident(state, {
-    reason: "throne_integration drill",
+    reason: "end_to_end_integration drill",
   });
-  console.log(`[throne] incident exported: ${incident_id}`);
-  console.log(`[throne] incident_path=${incidentPath}`);
+  console.log(`[e2e] incident exported: ${incident_id}`);
+  console.log(`[e2e] incident_path=${incidentPath}`);
 
-  // ---------------- BAZAAR ----------------
-  console.log("\n[throne] ── BAZAAR ──");
+  // ---------------- ESCROW ----------------
+  console.log("\n[e2e] ── ESCROW ──");
   const offer = (
     await client.callTool({
       name: "weavory.believe",
@@ -314,7 +314,7 @@ async function main(): Promise<void> {
   ).structuredContent as RecallOut;
   assert(
     discovery.beliefs.some((b) => b.id === offer.id),
-    "bazaar discovery must see alice's offer"
+    "escrow discovery must see alice's offer"
   );
   const repCall = (
     await client.callTool({
@@ -330,7 +330,7 @@ async function main(): Promise<void> {
   const rep = repCall.reputation;
   assert(rep !== undefined, "recall should attach reputation");
   console.log(
-    `[throne] bob reputation check: alice avg_trust=${rep!.avg_trust.toFixed(2)} attestations=${rep!.attestation_count}`
+    `[e2e] bob reputation check: alice avg_trust=${rep!.avg_trust.toFixed(2)} attestations=${rep!.attestation_count}`
   );
 
   // Four-stage escrow.
@@ -371,30 +371,30 @@ async function main(): Promise<void> {
 
   const status = escrowStatus(state, offer.id);
   const stages = status.steps.map((s) => s.stage).join(",");
-  console.log(`[throne] escrow thread: ${stages}`);
+  console.log(`[e2e] escrow thread: ${stages}`);
   assert(
     stages === "offer,payment,delivered,settled",
     `expected four-stage chain, got ${stages}`
   );
-  const bazaarSettled = isEscrowSettled(state, offer.id);
-  assert(bazaarSettled, "bazaar escrow must settle with outcome=accepted");
-  console.log(`[throne] isEscrowSettled=${bazaarSettled} outcome=${status.outcome}`);
+  const escrowSettled = isEscrowSettled(state, offer.id);
+  assert(escrowSettled, "escrow must settle with outcome=accepted");
+  console.log(`[e2e] isEscrowSettled=${escrowSettled} outcome=${status.outcome}`);
 
   // ---------------- INTEGRATION ----------------
-  console.log("\n[throne] ── INTEGRATION ──");
-  // Audit chain still clean after all four arenas banged on the same state.
+  console.log("\n[e2e] ── INTEGRATION ──");
+  // Audit chain still clean after all four composite features banged on the same state.
   const finalTamper = scanForTamper(state);
-  assert(finalTamper.ok, "audit chain must still verify after all arenas");
+  assert(finalTamper.ok, "audit chain must still verify after all four features");
   console.log(
-    `[throne] final chain length=${finalTamper.length} · verify=ok`
+    `[e2e] final chain length=${finalTamper.length} · verify=ok`
   );
 
   console.log(
-    `\n[throne] ✓ Gate Throne integration passed · commons=${commonsDelivered} wall=${wallFiltered} gauntlet=${gauntletDiverged} bazaar=${bazaarSettled}`
+    `\n[e2e] ✓ Gate E2E integration passed · swarm=${swarmDelivered} tamper=${tamperFiltered} temporal=${temporalDiverged} escrow=${escrowSettled}`
   );
 }
 
 main().catch((err) => {
-  console.error("[throne] fatal:", err instanceof Error ? err.stack ?? err.message : err);
+  console.error("[e2e] fatal:", err instanceof Error ? err.stack ?? err.message : err);
   process.exit(1);
 });

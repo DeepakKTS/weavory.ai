@@ -125,9 +125,9 @@ Every control in the mapping above is reproducible by the operator:
 | Evidence | How to reproduce |
 |----------|------------------|
 | Signed beliefs | `pnpm exec tsx examples/two_agents_collaborate.ts` prints a belief id + independent verification |
-| Hash-chain tamper detection | `pnpm exec tsx examples/wall_incident.ts` (tampers an entry, alarm fires, incident file is exported) |
-| Bi-temporal recall | `pnpm exec tsx examples/gauntlet_rewind.ts` (forget + `as_of` replay) |
-| Trust gating / adversarial mode | `pnpm exec tsx examples/wall_adversarial.ts` |
+| Hash-chain tamper detection | `pnpm exec tsx examples/tamper_detection.ts` (tampers an entry, alarm fires, incident file is exported) |
+| Bi-temporal recall | `pnpm exec tsx examples/temporal_rewind.ts` (forget + `as_of` replay) |
+| Trust gating / adversarial mode | `pnpm exec tsx examples/adversarial_filtering.ts` |
 | Policy denial | Start server with `WEAVORY_POLICY_FILE=<path>` and call `weavory.believe` with a blocked subject / predicate — server returns a structured `policy denial` error |
 | Persistence round-trip | Start with `WEAVORY_PERSIST=1 WEAVORY_DATA_DIR=/tmp/w`; write a belief; restart the server; recall returns the same belief id |
 | DuckDB fallback to JSONL | Remove `@duckdb/node-api` (`pnpm remove @duckdb/node-api`) and start with `WEAVORY_STORE=duckdb`; stderr warns once and JSONL is used |

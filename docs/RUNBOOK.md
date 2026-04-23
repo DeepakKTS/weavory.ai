@@ -66,7 +66,7 @@ migration tool in Phase 1. Rough procedure:
 kill -TERM <pid>
 
 # 2. Dump current state via incident export
-pnpm exec tsx scripts/verify/gate_wall.sh      # convenient reference
+pnpm exec tsx scripts/verify/gate_tamper.sh      # convenient reference
 # or call exportIncident() programmatically against the running state
 #   then weavory replay is how you'd verify the dump
 
@@ -147,7 +147,7 @@ Investigation steps:
    security incident per your organization's runbook.
 
 The bundled adversarial drill demo exercises this end-to-end:
-`pnpm exec tsx examples/wall_incident.ts` writes a deliberate bad entry
+`pnpm exec tsx examples/tamper_detection.ts` writes a deliberate bad entry
 and shows the alarm + incident export.
 
 ---
@@ -182,8 +182,8 @@ Policy reloads require a server restart. Hot-reload is on backlog.
 
 ```bash
 # On a running server (programmatic — exportIncident is not exposed as an MCP tool)
-# The wall_incident.ts example demonstrates the full flow:
-pnpm exec tsx examples/wall_incident.ts
+# The tamper_detection.ts example demonstrates the full flow:
+pnpm exec tsx examples/tamper_detection.ts
 
 # Incidents land under ops/data/incidents/
 ls -la ops/data/incidents/ | tail

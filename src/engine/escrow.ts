@@ -1,5 +1,5 @@
 /**
- * weavory.ai — The Bazaar (Phase G.5)
+ * weavory.ai — escrow marketplace & reputation (Phase G.5)
  *
  * Pure helpers for three trading primitives that ride on top of the existing
  * five-tool MCP surface — no new tools, no new schema at the wire edge.
@@ -92,7 +92,7 @@ export type CapabilityOffer = {
 /**
  * Enumerate every `capability.offers` belief in the state. When `name` is
  * provided, filter to offers whose `object.name` equals that value (the
- * Bazaar convention for capability identity). Returns offers sorted by
+ * escrow convention for capability identity). Returns offers sorted by
  * `recorded_at` descending so the freshest ads come first.
  */
 export function findCapabilities(state: EngineState, name?: string): CapabilityOffer[] {

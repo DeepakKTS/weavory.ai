@@ -1,9 +1,9 @@
 /**
- * Integration tests — Phase G.3 The Wall
+ * Integration tests — Phase G.3 · tamper detection & adversarial drill
  *
  * Covers adversarial mode (W-0120) + tamper-alarm + incident export from the
- * engine's perspective. The stock-agent demo lives in examples/wall_incident.ts
- * and is verified separately by scripts/verify/gate_wall.sh.
+ * engine's perspective. The stock-agent demo lives in examples/tamper_detection.ts
+ * and is verified separately by scripts/verify/gate_tamper.sh.
  */
 import { mkdtempSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";

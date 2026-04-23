@@ -9,7 +9,7 @@
  * manipulated freely without polluting the main process's runtime.json.
  *
  * Uses:
- *   - "What if…" strategy forks during gauntlet runs.
+ *   - "What if…" strategy forks during branch-snapshot runs.
  *   - Rehydrating an incident into a pristine engine (src/engine/replay.ts).
  *   - Test harnesses that need to compare two parallel timelines.
  *

@@ -17,7 +17,7 @@
 # Skipped on purpose:
 #   gate6         · Fresh-machine CI itself — redundant to run locally
 #   gate7         · Stock-agent simulation — requires ANTHROPIC_API_KEY
-#   arena gates   · commons/wall/gauntlet/bazaar/throne — covered elsewhere
+#   composite gates   · swarm/tamper/temporal/escrow/e2e — covered elsewhere
 #
 # Usage:
 #   bash scripts/rehearsal.sh

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Gate 4 — Trust & quarantine (adversarial)
-# Pass iff: examples/wall_adversarial.ts exits 0 AND the expected honest-
+# Pass iff: examples/adversarial_filtering.ts exits 0 AND the expected honest-
 # answer line is produced AND the attacker's belief is excluded from default
 # recall but observable at min_trust=-1.
 
@@ -17,8 +17,8 @@ echo "Gate 4 — Trust & quarantine (repo: $REPO_ROOT)"
 LOG=$(mktemp -t weavory-gate4.XXXXXX)
 trap 'rm -f "$LOG"' EXIT
 
-echo "[1/4] Running examples/wall_adversarial.ts"
-if ! pnpm exec tsx examples/wall_adversarial.ts >"$LOG" 2>&1; then
+echo "[1/4] Running examples/adversarial_filtering.ts"
+if ! pnpm exec tsx examples/adversarial_filtering.ts >"$LOG" 2>&1; then
   tail -40 "$LOG"
   bad "adversarial demo exited non-zero (trust gate did not hold)"
 fi
@@ -26,14 +26,14 @@ ok "demo exit 0"
 
 echo
 echo "[2/4] alice and mallet both published"
-grep -q '^\[wall\] alice believed' "$LOG"  || bad "alice did not publish"
-grep -q '^\[wall\] mallet believed' "$LOG" || bad "mallet did not publish"
+grep -q '^\[tamper\] alice believed' "$LOG"  || bad "alice did not publish"
+grep -q '^\[tamper\] mallet believed' "$LOG" || bad "mallet did not publish"
 ok "both honest and attacker signed beliefs"
 
 echo
 echo "[3/4] Charlie's default recall excluded the attacker"
-DEFAULT=$(sed -En 's/^\[wall\] charlie default recall: ([0-9]+) match.*/\1/p' "$LOG")
-AUDIT=$(sed -En 's/^\[wall\] charlie audit recall \(min_trust=-1\): ([0-9]+) match.*/\1/p' "$LOG")
+DEFAULT=$(sed -En 's/^\[tamper\] charlie default recall: ([0-9]+) match.*/\1/p' "$LOG")
+AUDIT=$(sed -En 's/^\[tamper\] charlie audit recall \(min_trust=-1\): ([0-9]+) match.*/\1/p' "$LOG")
 if [[ "$DEFAULT" != "1" ]]; then bad "default recall should return exactly 1 belief (got $DEFAULT)"; fi
 if [[ "$AUDIT" != "2" ]]; then bad "audit recall should return 2 beliefs (got $AUDIT)"; fi
 ok "default=1 (honest only), audit=2 (both)"

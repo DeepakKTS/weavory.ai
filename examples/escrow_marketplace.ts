@@ -1,5 +1,5 @@
 /**
- * examples/bazaar_trade.ts — Phase G.5 · The Bazaar
+ * examples/escrow_marketplace.ts — Phase G.5 · escrow marketplace & reputation
  *
  * End-to-end trade executed over MCP, exercising the three G.5 primitives:
  *
@@ -51,7 +51,7 @@ type RecallOut = {
 
 function assert(cond: boolean, msg: string): void {
   if (!cond) {
-    console.error("[bazaar] ✗ assertion failed:", msg);
+    console.error("[escrow] ✗ assertion failed:", msg);
     process.exit(1);
   }
 }
@@ -61,11 +61,11 @@ function shortId(id: string): string {
 }
 
 async function main(): Promise<void> {
-  console.log("[bazaar] starting bazaar_trade demo");
+  console.log("[escrow] starting escrow_marketplace demo");
   const { server, state } = createServer(undefined, { runtimeWriter: false });
   const [cT, sT] = InMemoryTransport.createLinkedPair();
   await server.connect(sT);
-  const client = new Client({ name: "bazaar-trade", version: "1.0.0" });
+  const client = new Client({ name: "escrow-marketplace", version: "1.0.0" });
   await client.connect(cT);
 
   // --- Stage 1: Alice advertises ---
@@ -85,7 +85,7 @@ async function main(): Promise<void> {
       },
     })
   ).structuredContent as BelieveOut;
-  console.log(`[bazaar] alice offered summarize_paragraph: offer_id=${shortId(offer.id)}`);
+  console.log(`[escrow] alice offered summarize_paragraph: offer_id=${shortId(offer.id)}`);
 
   // wally attests alice on the capability topic so her reputation is positive.
   await client.callTool({
@@ -128,7 +128,7 @@ async function main(): Promise<void> {
   assert(found !== undefined, "bob did not find alice's offer");
   const foundName = (found!.object as { name: string }).name;
   assert(foundName === "summarize_paragraph", `expected name 'summarize_paragraph', got ${foundName}`);
-  console.log(`[bazaar] bob discovered offer: name=${foundName}`);
+  console.log(`[escrow] bob discovered offer: name=${foundName}`);
 
   const repCall = (
     await client.callTool({
@@ -157,7 +157,7 @@ async function main(): Promise<void> {
     `reputation.beliefs_authored should be ≥ 1 (got ${rep!.beliefs_authored})`
   );
   console.log(
-    `[bazaar] bob fetched alice's reputation: avg_trust=${rep!.avg_trust.toFixed(2)} attestations=${rep!.attestation_count} beliefs=${rep!.beliefs_authored}`
+    `[escrow] bob fetched alice's reputation: avg_trust=${rep!.avg_trust.toFixed(2)} attestations=${rep!.attestation_count} beliefs=${rep!.beliefs_authored}`
   );
 
   // --- Stage 3: Bob pays ---
@@ -177,7 +177,7 @@ async function main(): Promise<void> {
       },
     })
   ).structuredContent as BelieveOut;
-  console.log(`[bazaar] bob paid 5 WEAVE: payment_id=${shortId(payment.id)}`);
+  console.log(`[escrow] bob paid 5 WEAVE: payment_id=${shortId(payment.id)}`);
 
   // --- Stage 4: Alice delivers ---
   const delivered = (
@@ -196,7 +196,7 @@ async function main(): Promise<void> {
       },
     })
   ).structuredContent as BelieveOut;
-  console.log(`[bazaar] alice delivered: delivery_id=${shortId(delivered.id)}`);
+  console.log(`[escrow] alice delivered: delivery_id=${shortId(delivered.id)}`);
 
   // --- Stage 5: Bob settles ---
   const settled = (
@@ -214,7 +214,7 @@ async function main(): Promise<void> {
       },
     })
   ).structuredContent as BelieveOut;
-  console.log(`[bazaar] bob settled: settlement_id=${shortId(settled.id)} outcome=accepted`);
+  console.log(`[escrow] bob settled: settlement_id=${shortId(settled.id)} outcome=accepted`);
 
   // --- Verify the full causal thread ---
   const status = escrowStatus(state, offer.id);
@@ -227,15 +227,15 @@ async function main(): Promise<void> {
   assert(isEscrowSettled(state, offer.id), "isEscrowSettled must return true");
   const stages = status.steps.map((s) => s.stage).join(",");
   assert(stages === "offer,payment,delivered,settled", `wrong stage order: ${stages}`);
-  console.log(`[bazaar] escrow thread stages: ${stages}`);
-  console.log(`[bazaar] isEscrowSettled = true, outcome = accepted`);
+  console.log(`[escrow] escrow thread stages: ${stages}`);
+  console.log(`[escrow] isEscrowSettled = true, outcome = accepted`);
 
   console.log(
-    "\n[bazaar] ✓ Gate Bazaar demo: discovery + reputation + four-stage escrow all verified."
+    "\n[escrow] ✓ Gate Escrow demo: discovery + reputation + four-stage escrow all verified."
   );
 }
 
 main().catch((err) => {
-  console.error("[bazaar] fatal:", err instanceof Error ? err.stack ?? err.message : err);
+  console.error("[escrow] fatal:", err instanceof Error ? err.stack ?? err.message : err);
   process.exit(1);
 });

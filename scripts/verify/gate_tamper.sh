@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Gate Wall — Phase G.3 arena verification
-# Pass iff wall_incident.ts exits 0 AND its scripted log lines appear AND
+# Gate Tamper — Phase G.3 phase verification
+# Pass iff tamper_detection.ts exits 0 AND its scripted log lines appear AND
 # a new incident file lands on disk AND that incident file's verify.ok
 # is false with bad_index=1.
 
@@ -12,7 +12,7 @@ cd "$REPO_ROOT"
 ok()  { printf "  \033[32m✓\033[0m %s\n" "$1"; }
 bad() { printf "  \033[31m✗\033[0m %s\n" "$1"; exit 1; }
 
-echo "Gate Wall — Phase G.3 adversarial drill"
+echo "Gate Tamper — Phase G.3 adversarial drill"
 
 LOG=$(mktemp -t weavory-wall.XXXXXX)
 trap 'rm -f "$LOG"' EXIT
@@ -20,18 +20,18 @@ trap 'rm -f "$LOG"' EXIT
 # Snapshot incident count before running.
 BEFORE=$(ls ops/data/incidents 2>/dev/null | grep -c '^incident-' || true)
 
-echo "[1/5] Running examples/wall_incident.ts"
-if ! pnpm exec tsx examples/wall_incident.ts >"$LOG" 2>&1; then
+echo "[1/5] Running examples/tamper_detection.ts"
+if ! pnpm exec tsx examples/tamper_detection.ts >"$LOG" 2>&1; then
   tail -30 "$LOG"
-  bad "wall_incident exited non-zero"
+  bad "tamper_detection exited non-zero"
 fi
 ok "demo exit 0"
 
 echo
 echo "[2/5] Pre-tamper scan reported ok; post-tamper alarm fired"
-grep -qF '[wall] pre-tamper scan: ok' "$LOG" \
+grep -qF '[tamper] pre-tamper scan: ok' "$LOG" \
   || { tail -20 "$LOG"; bad "pre-tamper 'ok' log line missing"; }
-grep -qE '^\[wall\] post-tamper scan: bad_index=1 reason=entry_hash' "$LOG" \
+grep -qE '^\[tamper\] post-tamper scan: bad_index=1 reason=entry_hash' "$LOG" \
   || { tail -20 "$LOG"; bad "post-tamper 'bad_index=1 reason=entry_hash' log line missing"; }
 ok "pre:ok, post:bad_index=1 reason=entry_hash"
 
@@ -60,4 +60,4 @@ if [[ "$BAD_INDEX" != "1" ]]; then bad "incident verify.bad_index=$BAD_INDEX (wa
 ok "$(basename "$LATEST") · verify.ok=false · bad_index=1"
 
 echo
-echo -e "\033[32mGate Wall: PASS\033[0m"
+echo -e "\033[32mGate Tamper: PASS\033[0m"

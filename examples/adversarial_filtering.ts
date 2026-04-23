@@ -1,5 +1,5 @@
 /**
- * examples/wall_adversarial.ts — Gate 4 demo
+ * examples/adversarial_filtering.ts — Gate 4 demo
  *
  * Three agents against one weavory:
  *   - alice  (honest, attested high-trust)
@@ -35,7 +35,7 @@ async function main() {
   const mallet = new Client({ name: "mallet", version: "1.0.0" });
   const charlie = new Client({ name: "charlie", version: "1.0.0" });
   await Promise.all([alice.connect(aliceT), mallet.connect(malletT), charlie.connect(charlieT)]);
-  console.log("[wall] alice + mallet + charlie connected");
+  console.log("[tamper] alice + mallet + charlie connected");
 
   // Alice (honest): traffic is congested.
   const aliceOut = (await alice.callTool({
@@ -47,7 +47,7 @@ async function main() {
       signer_seed: "alice",
     },
   })).structuredContent as BelieveOut;
-  console.log(`[wall] alice believed ${short(aliceOut.id)} (signer=${short(aliceOut.signer_id)})`);
+  console.log(`[tamper] alice believed ${short(aliceOut.id)} (signer=${short(aliceOut.signer_id)})`);
 
   // Mallet (attacker): false flag — "all clear."
   const malletOut = (await mallet.callTool({
@@ -59,7 +59,7 @@ async function main() {
       signer_seed: "mallet",
     },
   })).structuredContent as BelieveOut;
-  console.log(`[wall] mallet believed ${short(malletOut.id)} (signer=${short(malletOut.signer_id)})`);
+  console.log(`[tamper] mallet believed ${short(malletOut.id)} (signer=${short(malletOut.signer_id)})`);
 
   // Charlie attests: alice high, mallet low.
   await charlie.callTool({
@@ -80,14 +80,14 @@ async function main() {
       attestor_seed: "charlie",
     },
   });
-  console.log("[wall] charlie attested alice=+0.9, mallet=-0.9");
+  console.log("[tamper] charlie attested alice=+0.9, mallet=-0.9");
 
   // Charlie default recall — trust gate should filter mallet's claim.
   const defaultRecall = (await charlie.callTool({
     name: "weavory.recall",
     arguments: { query: "traffic", top_k: 10 },
   })).structuredContent as RecallOut;
-  console.log(`[wall] charlie default recall: ${defaultRecall.total_matched} match(es)`);
+  console.log(`[tamper] charlie default recall: ${defaultRecall.total_matched} match(es)`);
   const ids = defaultRecall.beliefs.map((b) => b.id);
   assert(ids.includes(aliceOut.id), "alice's belief must appear in default recall");
   assert(!ids.includes(malletOut.id), "mallet's belief must be filtered by default trust gate");
@@ -97,7 +97,7 @@ async function main() {
     name: "weavory.recall",
     arguments: { query: "traffic", top_k: 10, min_trust: -1 },
   })).structuredContent as RecallOut;
-  console.log(`[wall] charlie audit recall (min_trust=-1): ${auditRecall.total_matched} match(es)`);
+  console.log(`[tamper] charlie audit recall (min_trust=-1): ${auditRecall.total_matched} match(es)`);
   assert(
     auditRecall.beliefs.some((b) => b.id === malletOut.id),
     "mallet's belief must be observable when explicitly asking for low-trust content"
@@ -109,18 +109,18 @@ async function main() {
   const answer = obj.congested
     ? `traffic in cambridge is congested (+${obj.eta_delta_min} min)`
     : "traffic in cambridge is clear";
-  console.log("[wall] charlie's answer:", answer);
+  console.log("[tamper] charlie's answer:", answer);
   assert(
     answer === "traffic in cambridge is congested (+14 min)",
     "charlie's answer must match the honest (alice) reading"
   );
 
-  console.log("\n[wall] ✓ Gate 4 demo complete — trust gate filters attacker; honest belief wins.");
+  console.log("\n[tamper] ✓ Gate 4 demo complete — trust gate filters attacker; honest belief wins.");
 }
 
 function assert(cond: boolean, msg: string): void {
   if (!cond) {
-    console.error("[wall] ✗ assertion failed:", msg);
+    console.error("[tamper] ✗ assertion failed:", msg);
     process.exit(1);
   }
 }
@@ -130,6 +130,6 @@ function short(s: string): string {
 }
 
 main().catch((err) => {
-  console.error("[wall] fatal:", err instanceof Error ? err.message : err);
+  console.error("[tamper] fatal:", err instanceof Error ? err.message : err);
   process.exit(1);
 });

@@ -1,5 +1,5 @@
 /**
- * Integration tests — Phase G.2 The Commons · subscription match queue (W-0110)
+ * Integration tests — subscription queue (Phase G.2 · W-0110)
  *
  * Covers:
  *   - subscribe() returns a subscription with a bounded queue

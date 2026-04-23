@@ -1,5 +1,5 @@
 /**
- * examples/wall_incident.ts — Phase G.3 · The Wall
+ * examples/tamper_detection.ts — Phase G.3 · tamper detection & adversarial drill
  *
  * End-to-end adversarial drill exercising W-0120, W-0121, W-0122 together:
  *
@@ -14,7 +14,7 @@
  *   6. Demo asserts runtime.json has the alarm + the incident file exists
  *      on disk, then exits 0.
  *
- * Used by scripts/verify/gate_wall.sh. The incidents directory is created
+ * Used by scripts/verify/gate_tamper.sh. The incidents directory is created
  * under the real ops/data/incidents (gitignored) so the dashboard can pick
  * the file up in future panels.
  */
@@ -33,13 +33,13 @@ const INCIDENTS_DIR = resolve(REPO_ROOT, "ops/data/incidents");
 
 function assert(cond: boolean, msg: string): void {
   if (!cond) {
-    console.error("[wall] ✗ assertion failed:", msg);
+    console.error("[tamper] ✗ assertion failed:", msg);
     process.exit(1);
   }
 }
 
 async function main(): Promise<void> {
-  console.log("[wall] starting wall_incident demo (adversarial drill)");
+  console.log("[tamper] starting tamper_detection demo (adversarial drill)");
   mkdirSync(INCIDENTS_DIR, { recursive: true });
 
   // Clean slate for this demo run: baseline incident count before.
@@ -60,7 +60,7 @@ async function main(): Promise<void> {
     disableExitHandlers: true,
   });
   writer.attach();
-  console.log(`[wall] server online (adversarialMode=${state.adversarialMode}) writer→${RUNTIME_PATH}`);
+  console.log(`[tamper] server online (adversarialMode=${state.adversarialMode}) writer→${RUNTIME_PATH}`);
 
   const [clientT, serverT] = InMemoryTransport.createLinkedPair();
   await server.connect(serverT);
@@ -81,18 +81,18 @@ async function main(): Promise<void> {
   }
   writer.flushNow();
   assert(state.audit.length() === 3, "audit chain should have 3 entries after 3 believes");
-  console.log("[wall] honest chain length = 3 (pre-tamper)");
+  console.log("[tamper] honest chain length = 3 (pre-tamper)");
 
   // Pre-tamper scan — must be clean.
   const pre = scanForTamper(state, writer);
   assert(pre.ok === true, "pre-tamper scan must report ok");
-  console.log("[wall] pre-tamper scan: ok");
+  console.log("[tamper] pre-tamper scan: ok");
 
   // ATTACKER simulates a direct in-memory mutation to entry index 1 — flipping
   // the belief_id without recomputing the entry_hash. In production this
   // models a malicious actor with raw filesystem / memory access.
   state.audit._adversarialMutate(1, (e) => ({ ...e, belief_id: "0".repeat(64) }));
-  console.log("[wall] attacker mutated audit entry #1");
+  console.log("[tamper] attacker mutated audit entry #1");
 
   // Post-tamper scan — alarm should fire.
   const post = scanForTamper(state, writer);
@@ -100,7 +100,7 @@ async function main(): Promise<void> {
   assert(post.alarm !== null, "tamper alarm must be populated");
   assert(post.alarm?.bad_index === 1, "alarm should point at entry 1");
   console.log(
-    `[wall] post-tamper scan: bad_index=${post.alarm?.bad_index} reason=${post.alarm?.reason}`
+    `[tamper] post-tamper scan: bad_index=${post.alarm?.bad_index} reason=${post.alarm?.reason}`
   );
   writer.flushNow();
 
@@ -114,13 +114,13 @@ async function main(): Promise<void> {
     snap.tamper_alarm.bad_index === 1,
     "runtime.json.tamper_alarm.bad_index should be 1"
   );
-  console.log("[wall] runtime.json.tamper_alarm surfaced to dashboard");
+  console.log("[tamper] runtime.json.tamper_alarm surfaced to dashboard");
 
   // Export an incident — must write a new file under ops/data/incidents.
   const { path, incident_id } = exportIncident(state, {
-    reason: "wall_incident drill",
+    reason: "tamper_detection drill",
   });
-  console.log(`[wall] incident exported: ${incident_id} → ${path}`);
+  console.log(`[tamper] incident exported: ${incident_id} → ${path}`);
 
   const incidents = readdirSync(INCIDENTS_DIR).filter((f) =>
     f.startsWith("incident-")
@@ -159,10 +159,10 @@ async function main(): Promise<void> {
   fs.writeFileSync(tmp, JSON.stringify(clean, null, 2) + "\n", "utf8");
   renameSync(tmp, RUNTIME_PATH);
 
-  console.log("\n[wall] ✓ Gate Wall drill complete — tamper → alarm → incident captured.");
+  console.log("\n[tamper] ✓ Gate Tamper drill complete — tamper → alarm → incident captured.");
 }
 
 main().catch((err) => {
-  console.error("[wall] fatal:", err instanceof Error ? err.stack ?? err.message : err);
+  console.error("[tamper] fatal:", err instanceof Error ? err.stack ?? err.message : err);
   process.exit(1);
 });

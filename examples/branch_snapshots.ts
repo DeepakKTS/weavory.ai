@@ -1,7 +1,7 @@
 /**
- * examples/gauntlet_branch.ts — Phase G.4 · The Gauntlet
+ * examples/branch_snapshots.ts — Phase G.4 · branch snapshots & temporal replay
  *
- * End-to-end demo of the two Gauntlet primitives:
+ * End-to-end demo of the branch-snapshot primitives:
  *   - W-0131: in-memory branch snapshot via `cloneState`
  *   - (live) bi-temporal `as_of` recall (already shipped in Phase 1)
  *
@@ -18,7 +18,7 @@
  *     • BRANCH live: contains AAPL=100 and AAPL=90, does not contain AAPL=110.
  *     • MAIN as_of=T0: contains AAPL=100, does not contain AAPL=110 or AAPL=90.
  *
- * Also exports an incident from MAIN so `scripts/verify/gate_gauntlet.sh`
+ * Also exports an incident from MAIN so `scripts/verify/gate_temporal.sh`
  * can exercise the `weavory replay` CLI against a real artefact.
  */
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
@@ -37,7 +37,7 @@ type RecallOut = {
 
 function assert(cond: boolean, msg: string): void {
   if (!cond) {
-    console.error("[gauntlet] ✗ assertion failed:", msg);
+    console.error("[temporal] ✗ assertion failed:", msg);
     process.exit(1);
   }
 }
@@ -45,13 +45,13 @@ function assert(cond: boolean, msg: string): void {
 async function newClient(srv: Awaited<ReturnType<typeof createServer>>["server"]): Promise<Client> {
   const [cT, sT] = InMemoryTransport.createLinkedPair();
   await srv.connect(sT);
-  const c = new Client({ name: "gauntlet", version: "1.0.0" });
+  const c = new Client({ name: "branch-snapshots", version: "1.0.0" });
   await c.connect(cT);
   return c;
 }
 
 async function main(): Promise<void> {
-  console.log("[gauntlet] starting gauntlet_branch demo");
+  console.log("[temporal] starting branch_snapshots demo");
 
   // MAIN state.
   const main = createServer(undefined, { runtimeWriter: false });
@@ -90,7 +90,7 @@ async function main(): Promise<void> {
     },
   });
   console.log(
-    `[gauntlet] T0 publishes complete (alice AAPL=100, GOOG=200); attestation applied`
+    `[temporal] T0 publishes complete (alice AAPL=100, GOOG=200); attestation applied`
   );
 
   // Capture T0 snapshot time via a recall.
@@ -102,13 +102,13 @@ async function main(): Promise<void> {
   ).structuredContent as RecallOut;
   const t0 = t0Recall.now;
   assert(t0Recall.total_matched === 2, "T0 recall should see both stocks");
-  console.log(`[gauntlet] T0 snapshot captured: ${t0} · main has ${t0Recall.total_matched} beliefs`);
+  console.log(`[temporal] T0 snapshot captured: ${t0} · main has ${t0Recall.total_matched} beliefs`);
 
   // Branch: deep-copy the main state, open a second MCP server against the copy.
   const branchState = cloneState(main.state);
   const branch = createServer(branchState, { runtimeWriter: false });
   const branchClient = await newClient(branch.server);
-  console.log("[gauntlet] branch created (deep-copy of main)");
+  console.log("[temporal] branch created (deep-copy of main)");
 
   // Sleep so subsequent publishes have strictly-later recorded_at than t0.
   await new Promise((r) => setTimeout(r, 15));
@@ -133,7 +133,7 @@ async function main(): Promise<void> {
       signer_seed: "alice",
     },
   });
-  console.log("[gauntlet] main posted AAPL=110; branch posted AAPL=90");
+  console.log("[temporal] main posted AAPL=110; branch posted AAPL=90");
 
   // Recall on main — should see 100 and 110, NOT 90.
   const mainLive = (
@@ -147,7 +147,7 @@ async function main(): Promise<void> {
   assert(mainValues.includes(110), "main live should include AAPL=110");
   assert(!mainValues.includes(90), "main live must NOT include AAPL=90 (that's the branch)");
   console.log(
-    `[gauntlet] main live AAPL values: ${JSON.stringify(mainValues.sort())} (expected 100 and 110)`
+    `[temporal] main live AAPL values: ${JSON.stringify(mainValues.sort())} (expected 100 and 110)`
   );
 
   // Recall on branch — should see 100 and 90, NOT 110.
@@ -162,7 +162,7 @@ async function main(): Promise<void> {
   assert(branchValues.includes(90), "branch live should include AAPL=90");
   assert(!branchValues.includes(110), "branch live must NOT include AAPL=110 (that's main)");
   console.log(
-    `[gauntlet] branch live AAPL values: ${JSON.stringify(branchValues.sort())} (expected 90 and 100)`
+    `[temporal] branch live AAPL values: ${JSON.stringify(branchValues.sort())} (expected 90 and 100)`
   );
 
   // as_of on main at T0 — should see AAPL=100 only, not 110 (came later) and not 90 (branch).
@@ -186,23 +186,23 @@ async function main(): Promise<void> {
     `as_of=T0 should NOT include AAPL=90 (branch, not main)`
   );
   console.log(
-    `[gauntlet] main as_of=T0 AAPL values: ${JSON.stringify(pastValues.sort())} (expected only 100)`
+    `[temporal] main as_of=T0 AAPL values: ${JSON.stringify(pastValues.sort())} (expected only 100)`
   );
 
   // Export an incident from main so the gate script can run the CLI against it.
   const { path, incident_id } = exportIncident(main.state, {
-    reason: "gauntlet_branch demo",
+    reason: "branch_snapshots demo",
   });
-  console.log(`[gauntlet] incident exported: ${incident_id} → ${path}`);
-  // Echo the path for gate_gauntlet.sh to grep.
-  console.log(`[gauntlet] incident_path=${path}`);
+  console.log(`[temporal] incident exported: ${incident_id} → ${path}`);
+  // Echo the path for gate_temporal.sh to grep.
+  console.log(`[temporal] incident_path=${path}`);
 
   console.log(
-    "\n[gauntlet] ✓ Gate Gauntlet demo: branch divergence + as_of rewind both verified."
+    "\n[temporal] ✓ Gate Temporal demo: branch divergence + as_of rewind both verified."
   );
 }
 
 main().catch((err) => {
-  console.error("[gauntlet] fatal:", err instanceof Error ? err.stack ?? err.message : err);
+  console.error("[temporal] fatal:", err instanceof Error ? err.stack ?? err.message : err);
   process.exit(1);
 });
