@@ -113,8 +113,27 @@ pnpm verify:gate3     # two-agent belief exchange
 pnpm verify:gate4     # trust / quarantine
 pnpm verify:gate5     # bi-temporal recall
 pnpm bench            # throughput smoke bench
-pnpm test             # full Vitest suite (178 tests)
+pnpm test             # full Vitest suite
 ```
 
 All four must pass on a healthy install. If any fails, see
 [RUNBOOK.md § Install failures](./RUNBOOK.md#install--first-run-failures).
+
+### One-shot end-to-end rehearsal
+
+Chain the six gates that together demonstrate install → demo → audit
+verify in one command:
+
+```bash
+bash scripts/rehearsal.sh
+```
+
+Typical runtime: ~5 s on a warm checkout; ~2 min on a truly fresh VM
+(includes `pnpm install` + `pnpm build`). Evidence is written to
+`ops/data/rehearsal.json` with per-gate pass/fail, wall-clock duration,
+git commit, Node/pnpm versions, and platform. Per-gate logs go to
+`ops/data/rehearsal-logs/<gate>.log`.
+
+Requires `node`, `pnpm`, `jq`, and `python3` on `PATH`. Exits non-zero
+if any gate fails (the rehearsal.json is still written so you can see
+which).
