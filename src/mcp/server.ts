@@ -22,7 +22,17 @@ import {
 } from "../engine/ops.js";
 import { EngineState } from "../engine/state.js";
 import { RuntimeWriter } from "../engine/runtime_writer.js";
-import { VERSION } from "../core/version.js";
+
+/**
+ * Shipped package version. Exported so cli.ts (banner) and index.ts (public
+ * library surface) can reuse the same literal. Hand-edited on every release;
+ * tests/unit/version_sync.test.ts enforces the match against package.json at
+ * CI time so the literal can't silently drift.
+ *
+ * Deliberately a string literal — NOT a runtime `readFileSync` on
+ * package.json — so this module has zero side effects at load time.
+ */
+export const VERSION = "0.1.7";
 
 // ---- Shared Zod fragments ----
 const JsonValueSchema: z.ZodType = z.lazy(() =>

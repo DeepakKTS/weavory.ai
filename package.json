@@ -1,6 +1,6 @@
 {
   "name": "@weavory/mcp",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "weavory.ai — Shared belief coordination substrate for AI agents. MCP-native, NANDA AgentFacts-compatible.",
   "type": "module",
   "license": "Apache-2.0",
@@ -42,7 +42,7 @@
     "docs/SECURITY.md"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "rm -rf dist && tsc -p tsconfig.json",
     "dev": "tsx src/mcp/server.ts",
     "start": "node dist/cli.js",
     "test": "vitest run --reporter=default --reporter=json --outputFile=ops/data/tests.json",

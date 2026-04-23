@@ -16,7 +16,7 @@
  * The binary is `weavory` via the package.json `bin` field after `pnpm build`.
  * During development, use `pnpm dev` which runs this under tsx.
  */
-import { runStdio } from "./mcp/server.js";
+import { runStdio, VERSION } from "./mcp/server.js";
 import { loadIncident, rehydrateState, runReplay, type ReplayOptions } from "./engine/replay.js";
 import { EngineState } from "./engine/state.js";
 import {
@@ -26,7 +26,6 @@ import {
   persistEnabledFromEnv,
 } from "./store/persist.js";
 import { loadPolicy, policyPathFromEnv } from "./engine/policy.js";
-import { VERSION } from "./core/version.js";
 
 /**
  * Startup banner (ANSI Shadow figlet of "weavory.ai"). Printed to stderr

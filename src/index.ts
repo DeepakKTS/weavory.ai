@@ -13,7 +13,7 @@
  */
 
 // ─── MCP server ────────────────────────────────────────────────────────
-export { createServer, runStdio } from "./mcp/server.js";
+export { createServer, runStdio, VERSION } from "./mcp/server.js";
 export type { CreateServerOptions } from "./mcp/server.js";
 
 // ─── Engine state + mutation ops ───────────────────────────────────────
@@ -126,6 +126,3 @@ export type {
 } from "./core/schema.js";
 
 export { AuditStore } from "./store/audit.js";
-
-/** Library version string (matches package.json). */
-export const VERSION = "0.1.4" as const;
