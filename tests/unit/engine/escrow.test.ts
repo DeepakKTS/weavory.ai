@@ -219,18 +219,21 @@ describe("walkEscrowThread + escrowStatus (W-0142)", () => {
     expect(isEscrowSettled(s, offer.id)).toBe(true);
   });
 
-  it("escrowStatus records 'disputed' without flagging settled=true", () => {
+  it("escrowStatus records 'disputed' without flagging settled=true", async () => {
     const { s, offer, delivered } = fourStageEscrow();
     // Override the settlement to a dispute by publishing a newer settled
-    // step with outcome=disputed. (The existing 'accepted' settled is
-    // still part of the chain, but a later disputed overrides it.)
+    // step with outcome=disputed. LWW merge picks the latest recorded_at,
+    // so we need to ensure the disputed belief has a strictly later
+    // timestamp than the original 'accepted' one from fourStageEscrow().
+    // Node's Date.now() resolution is 1ms, so a 2ms sleep guarantees
+    // monotonic ordering without depending on real-time scheduler jitter.
+    await new Promise((r) => setTimeout(r, 2));
     believe(s, {
       subject: "agent:bob",
       predicate: ESCROW_SETTLED_PREDICATE,
       object: { delivery_id: delivered.id, outcome: "disputed" },
       signer_seed: "bob",
       causes: [delivered.id],
-      recorded_at: new Date(Date.now() + 60_000).toISOString(),
     });
     const status = escrowStatus(s, offer.id);
     expect(status.has_settled).toBe(true);

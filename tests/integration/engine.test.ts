@@ -67,6 +67,33 @@ describe("two-agent belief exchange (T-I-001)", () => {
   });
 });
 
+describe("attest ordering independence (v0.1.13 lock)", () => {
+  it("attest can land BEFORE the target signer's first believe; belief arrives pre-trusted", () => {
+    const s = new EngineState();
+    // Derive the deterministic signer_id from a seed without actually calling believe().
+    const { signer_id } = s.signerFromSeed("future-agent");
+    attest(s, { signer_id, topic: "news", score: 1, attestor_seed: "judge" });
+
+    // No beliefs yet — recall finds nothing.
+    expect(recall(s, { query: "", min_trust: 0.6 }).total_matched).toBe(0);
+
+    // The target signer now publishes.
+    const out = believe(s, {
+      subject: "x",
+      predicate: "news",
+      object: "hello",
+      signer_seed: "future-agent",
+    });
+    expect(out.signer_id).toBe(signer_id);
+
+    // Recall at min_trust: 0.6 should include the belief — pre-placed
+    // attestation (trust=1.0) clears the 0.6 floor on predicate='news'.
+    const r = recall(s, { query: "", min_trust: 0.6 });
+    expect(r.total_matched).toBe(1);
+    expect(r.beliefs[0].signer_id).toBe(signer_id);
+  });
+});
+
 describe("recall filters and trust gating (T-T-001, T-T-003)", () => {
   it("default min_trust hides untrusted signers until an attestation raises them", () => {
     const s = new EngineState();
@@ -271,6 +298,24 @@ describe("recall query uses token-AND substring match", () => {
     expect(recall(s, { query: "" }).total_matched).toBe(1);
     expect(recall(s, { query: "   " }).total_matched).toBe(1);
     expect(recall(s, { query: "\t\n  " }).total_matched).toBe(1);
+  });
+
+  it("token 'all' accidentally hits substrings like 'mallet' (locked behavior)", () => {
+    // Documents a known quirk of the substring-token-AND design: the query
+    // 'all' will match any belief whose subject/predicate/stringified object
+    // contains 'all' anywhere, including as a substring of 'mallet'. Users
+    // should pass query='' when relying on structured filters only.
+    const s = new EngineState();
+    believe(s, { subject: "c/1", predicate: "p", object: "mallet_stamp", signer_seed: "m" });
+    believe(s, { subject: "c/1", predicate: "p", object: "intake_received", signer_seed: "i" });
+    for (const b of s.beliefs.values()) s.setTrust(b.signer_id, "p", 0.9);
+
+    const r = recall(s, { query: "all" });
+    expect(r.total_matched).toBe(1);
+    expect(r.beliefs[0].object).toBe("mallet_stamp");
+
+    // Empty query matches everything regardless of substring collisions.
+    expect(recall(s, { query: "" }).total_matched).toBe(2);
   });
 
   it("tokens matching ACROSS fields still count — subject+predicate+object together", () => {

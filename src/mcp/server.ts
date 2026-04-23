@@ -32,7 +32,7 @@ import { RuntimeWriter } from "../engine/runtime_writer.js";
  * Deliberately a string literal — NOT a runtime `readFileSync` on
  * package.json — so this module has zero side effects at load time.
  */
-export const VERSION = "0.1.12";
+export const VERSION = "0.1.13";
 
 // ---- Shared Zod fragments ----
 const JsonValueSchema: z.ZodType = z.lazy(() =>
@@ -137,7 +137,18 @@ export function createServer(
         "IMPORTANT — query semantics: `query` is a STRICT substring filter, NOT natural language. The string is split on whitespace and EVERY token must appear as a substring in at least one of subject / predicate / JSON.stringify(object). So query='claim events' with a belief having subject='claim/X' and predicate='claim_event' MATCHES ('claim' and 'events' both hit). But query='claim/X all records' would NOT match that belief because 'all' and 'records' are not substrings of any field. When you want to use only the structured filters (filters.subject, filters.predicate, etc.) and not substring-filter the results further, pass query='' (empty string). Empty query matches every candidate and is the safe default for compliance / audit enumeration.\n\n" +
         "Trust floor math (for filtering unattested signers): the default min_trust is 0.3 in normal mode and 0.6 under WEAVORY_ADVERSARIAL=1. Neutral trust for an unattested signer is 0.5, so in normal mode unattested signers ARE visible by default. To enforce 'show me only attested signers' without adversarial mode, pass min_trust: 0.6 explicitly.\n\n" +
         "Trust is per-predicate: the trust gate looks up state.trust[belief.signer_id][belief.predicate]. So an attestation at topic='claim' does NOT gate beliefs with predicate='amount' — you need an attestation at topic='amount' for that. If you're filtering by filters.subject, make sure attestations on the target signers cover each predicate used on that subject (commonly one attest per predicate).\n\n" +
-        "Full compliance / audit view showing EVERY belief regardless of trust, quarantine, or tombstone: combine query='' with min_trust: -1, include_quarantined: true, and include_tombstoned: true.",
+        "Full compliance / audit view showing EVERY belief regardless of trust, quarantine, or tombstone: combine query='' with min_trust: -1, include_quarantined: true, and include_tombstoned: true.\n\n" +
+        "Canonical recipes (copy-paste for common patterns):\n" +
+        "  • \"Audit everything under a subject\" (full compliance view):\n" +
+        "      { query: \"\", filters: { subject: \"X\" }, min_trust: -1, include_quarantined: true, include_tombstoned: true, top_k: 100 }\n" +
+        "  • \"Live view, attested signers only\" (hide unattested without adversarial mode):\n" +
+        "      { query: \"\", filters: { subject: \"X\" }, min_trust: 0.6 }\n" +
+        "  • \"Find beliefs containing a specific literal string\" (substring search):\n" +
+        "      { query: \"needle\", min_trust: -1 }\n" +
+        "  • \"Replay state at a past instant\" (bi-temporal):\n" +
+        "      { query: \"\", filters: { subject: \"X\" }, as_of: \"<ISO 8601>\", min_trust: -1 }\n" +
+        "  • \"Drain a subscription queue\":\n" +
+        "      { query: \"\", subscription_id: \"sub_<hex>\" }",
       inputSchema: {
         query: z
           .string()
@@ -145,7 +156,15 @@ export function createServer(
           .describe(
             "Whitespace-tokenized substring filter. Every non-empty token must appear as a substring in subject / predicate / JSON.stringify(object) — case-insensitive, AND semantics. Pass '' (empty string) to disable substring filtering and match all beliefs that pass the other filters. Do NOT put natural-language words here; it is a literal substring match, not a semantic search."
           ),
-        top_k: z.number().int().min(1).max(100).optional(),
+        top_k: z
+          .number()
+          .int()
+          .min(1)
+          .max(100)
+          .optional()
+          .describe(
+            "Maximum beliefs returned (default 10, max 100). For audit / compliance enumeration where silent truncation is unacceptable, pass top_k: 100. The total_matched count in the response always reflects the full match set regardless of top_k, so truncation is visible as `total_matched > beliefs.length`."
+          ),
         as_of: z.string().nullable().optional(),
         min_trust: z.number().min(-1).max(1).optional(),
         include_quarantined: z.boolean().optional(),
@@ -225,8 +244,14 @@ export function createServer(
     },
     async (args) => {
       const out = subscribe(state, args);
+      const signerClause = out.signer_id ? ` signer=${out.signer_id}` : "";
       return {
-        content: [{ type: "text", text: `subscription ${out.subscription_id} created (queue_cap=${out.queue_cap})` }],
+        content: [
+          {
+            type: "text",
+            text: `subscription ${out.subscription_id} created${signerClause} (queue_cap=${out.queue_cap})`,
+          },
+        ],
         structuredContent: out,
       };
     }
@@ -255,7 +280,7 @@ export function createServer(
         content: [
           {
             type: "text",
-            text: `attested ${out.signer_id} on "${out.topic}" → ${out.applied_score.toFixed(2)}`,
+            text: `attested ${out.signer_id} on "${out.topic}" → ${out.applied_score.toFixed(2)} attestor=${out.attestor_id}`,
           },
         ],
         structuredContent: out,

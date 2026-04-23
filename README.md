@@ -83,6 +83,19 @@ Full walkthrough in [`docs/REAL_WORLD_USAGE.md`](./docs/REAL_WORLD_USAGE.md).
 - **Incident export + replay** — `exportIncident()` snapshots state; `weavory replay --from <path>` rehydrates off-process for review.
 - **Honest scope** — G-Set beliefs + LWW tombstones + optional consensus merge. Not a full state-merging CRDT; we don't overclaim.
 
+**Canonical audit view** — compliance-grade enumeration of every belief under a subject, including tombstoned and quarantined:
+
+```ts
+weavory_recall({
+  query: "",
+  filters: { subject: "claim/CLM-42017" },
+  min_trust: -1,
+  include_quarantined: true,
+  include_tombstoned: true,
+  top_k: 100,
+})
+```
+
 ---
 
 ## Documentation
