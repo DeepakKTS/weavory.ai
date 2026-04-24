@@ -84,13 +84,17 @@ jobs:
         env:
           SUFFIX: ${{ inputs.commit_message }}
         run: |
-          git add docs/evidence/
-          if git diff --cached --quiet; then
+          # Detect changes FIRST (while worktree is still untouched) so we
+          # can cleanly bail without staging if there's nothing new.
+          if git diff --quiet docs/evidence/ && git diff --cached --quiet docs/evidence/; then
             echo "No transcript changes — nothing to commit."
             exit 0
           fi
-          # Pull latest main to avoid non-fast-forward on concurrent pushes.
-          git pull --rebase origin main
+          # Stash the generated transcript so we can pull cleanly in case
+          # someone else pushed to main between checkout and here.
+          git stash push --include-untracked -m "capture-evidence-stash" -- docs/evidence/
+          git pull --ff-only origin main || git pull --rebase origin main
+          git stash pop
           git add docs/evidence/
           git commit -m "docs(N.4.5): capture stock-agent transcript ${SUFFIX}"
           git push origin HEAD:main
