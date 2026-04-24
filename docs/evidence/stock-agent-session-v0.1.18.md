@@ -4,11 +4,11 @@
 
 **Model.** `claude-opus-4-7` with adaptive thinking + xhigh effort.
 
-**Captured.** 2026-04-24T00:17:17.832Z
+**Captured.** 2026-04-24T00:21:16.902Z
 
 **weavory version.** `0.1.18`
 
-**Setup.** Seeded Alice's belief `734f2f50268c9a77…` (signer `61fa216baff6…`, subject `scenario:traffic-cambridge`, predicate `observation`, object `{congested: true, eta_delta_min: 14, signal_source: "field-sensor-7"}`). Claude plays Bob and must find Alice's belief, assess trust, and report.
+**Setup.** Seeded Alice's belief `7f7a564bfe26aeaf…` (signer `61fa216baff6…`, subject `scenario:traffic-cambridge`, predicate `observation`, object `{congested: true, eta_delta_min: 14, signal_source: "field-sensor-7"}`). Claude plays Bob and must find Alice's belief, assess trust, and report.
 
 ## User prompt (Bob's scenario)
 
@@ -24,7 +24,7 @@ Full `docs/README.md` is loaded verbatim as cached system context. The entire RE
 
 ### Iteration 1 · stop_reason=`tool_use`
 
-- usage: input=510 / output=130 / cache_read=0 / cache_write=7010
+- usage: input=510 / output=126 / cache_read=7010 / cache_write=0
 
 **Tool call** `weavory_recall` — input `{"query":"traffic cambridge","top_k":5}`
 
@@ -32,7 +32,7 @@ Result (truncated, redacted):
 
 ```
 recalled 1 / 1 match(es)
-  • 734f2f50268c9a77… scenario:traffic-cambridge / observation → {"congested":true,"eta_delta_min":14,"signal_source":"field-sensor-7"} (confidence=1, signer=61fa216baff6…)
+  • 7f7a564bfe26aeaf… scenario:traffic-cambridge / observation → {"congested":true,"eta_delta_min":14,"signal_source":"field-sensor-7"} (confidence=1, signer=61fa216baff6…)
 structured:
 {
   "beliefs": [
@@ -44,7 +44,7 @@ structured:
 
 ### Iteration 2 · stop_reason=`tool_use`
 
-- usage: input=1233 / output=181 / cache_read=0 / cache_write=7010
+- usage: input=1241 / output=181 / cache_read=7010 / cache_write=0
 
 **Tool call** `weavory_attest` — input `{"signer_id":"61fa216baff6…","topic":"observation","score":0.8,"attestor_seed":"bob"}`
 
@@ -62,7 +62,7 @@ structured:
 
 ### Iteration 3 · stop_reason=`end_turn`
 
-- usage: input=1731 / output=23 / cache_read=7010 / cache_write=0
+- usage: input=1742 / output=23 / cache_read=7010 / cache_write=0
 
 Assistant text:
 
