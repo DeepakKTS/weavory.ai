@@ -733,3 +733,55 @@ Everything in-repo that Phase N can land is landed. The remaining action items a
 3. Submit to NandaHack Responsible AI track. Verify cutoff on the official participant dashboard before relying on any date.
 
 Phase N: code-complete. Honest state.
+
+---
+
+## 2026-04-24 · Phase O — Liquid-glass redesign + live-demo driver
+
+### O.0 · Baseline lock before Phase O
+
+Pinned: commit `5d492b9`, npm `@weavory/mcp@0.1.18`, 239/239 tests in 3.02 s, `pnpm lint` clean, rehearsal 7/7 mandatory gates in 7 s, latest `fresh-machine.yml` runs on v0.1.18 all green.
+
+### O.1 + O.2 + O.3 · Liquid-glass redesign across all three public pages (v0.1.19)
+
+First Phase-O release. Replaces the navy palette on the landing page, status dashboard, and live demo dashboard with the user-supplied premium iOS-style liquid-glass token system. Zero engine changes; zero MCP surface changes; only CSS + minor frontend JS additions.
+
+**`ops/demo-dashboard.html` (demo dashboard, ~900 lines rewritten):**
+- Purple-black background (`--bg #050212` + three stacked radial violet/indigo/cyan washes) with `background-attachment: fixed` so glass surfaces have true content behind them.
+- New palette: purple-black surfaces; warm-grey text (`--text #f3f2ee`); accents `--teal #5eead4`, `--cyan #22d3ee`, `--indigo #818cf8`, `--amber #fcd34d`, `--violet #a855f7`, `--ok`, `--warn`, `--bad`.
+- Fonts: Geist + Geist Mono (retained) plus General Sans via `https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&display=swap` for the `.font-display` utility.
+- Glass components: `.lg-pill` (mode badge, quarantine LED), `.lg-pill-primary` (new Play-demo CTA, gradient-filled, hidden until `demo_drive_enabled=true`), `.lg-card` (counters + feed + each panel), `.lg-chip` (kind tags), `.liquid-glass` (install-command tiles). Every glass piece carries the `::before` 1-px gradient-ring drawn through `-webkit-mask-composite: xor` / `mask-composite: exclude` so the edge survives `backdrop-filter`.
+- Hero logo: violet→indigo→cyan gradient box; `h1` uses the signature warm→violet→indigo text-gradient via `background-clip: text`.
+- Quarantine LED: grey bulb at rest; flashes `--bad` with 10-px + 22-px red glow on `kind:"quarantine"` events; decays to grey over 500 ms after the 3 s decay timer.
+- Belief-feed rows: kind-colored text, row-level quarantine row gets `rgba(248,113,113,0.06)` translucent background; kind chip promoted to `.lg-chip` with per-kind color accent.
+- Scrubber: `accent-color: var(--cyan)`; HISTORICAL RAW VIEW banner uses `rgba(252,211,77,0.10)` background + `--amber` text; LIVE banner stays glass.
+- Focus ring: `2px solid rgba(34,211,238,0.75)` with 3-px offset on every interactive element.
+- Violet selection; reduced-motion clamp; iOS-style toast (bottom-right, 3.2 s auto-dismiss) for Play-demo feedback.
+- **REPLAY auto-loop (O.1's single functional change):** `loadFixtureReplay()` now wraps the existing play in an async loop: play 13 events with 260 ms stagger → pause 4 s → 320 ms fade → clear feed and quarantine counter → repeat. Stops cleanly when `mode` flips to `"live"` (sidecar appears mid-loop). No server calls; pure JS; negligible CPU.
+- **Play-demo button scaffolding:** the CTA and `showToast()` helper are wired but hidden — they only become visible when `/api/state` starts returning `demo_drive_enabled: true` (lands in O.5).
+
+**`docs-site/index.html` (landing page):**
+- Same token system. `h1` gets the signature gradient; hero logo tile (68×68) has a violet drop-shadow.
+- Pills (`Apache 2.0` · `Responsible AI` · `MCP-native`) → `.lg-pill` with per-pill accent coloring (teal/amber/cyan).
+- Three feature cards → `.lg-card.lg-card-hover` with translate-Y on hover; General Sans display headings.
+- Install section → glass card with three `pre.liquid-glass` tiles (low-blur 6 px + luminosity blend for the ultra-light "under-glass" effect).
+- Fontshare preconnects added.
+
+**`ops/weavory-dashboard.html` (truthful status dashboard):**
+- Same token sweep. Cards become glass with the xor-mask ring; status tags get translucent tinted backgrounds (e.g. `.tag.done` → `rgba(52,211,153,0.08)` with `--ok` border).
+- All data-fetch JS (`SOURCES` map, `renderStatus`, etc.) untouched — existing `../control/*.json` and `./data/*.json` paths still work.
+- Auto-refresh every 5 s unchanged.
+
+**`scripts/serve-dashboard.ts` (CSP tightening-and-loosening):**
+- `style-src` allowlists add `https://api.fontshare.com`.
+- `font-src` allowlists add `https://cdn.fontshare.com`.
+- All other directives (`default-src`, `script-src`, `connect-src`, `object-src`, `frame-ancestors`, `base-uri`) unchanged — still `'self'` / `'none'`, so SSE exfiltration and script-injection surfaces remain locked.
+
+**`scripts/verify/gate_dashboard.ts` (test 2 assertion update):**
+- Test 2 now also asserts `https://api.fontshare.com` is in CSP and `https://cdn.fontshare.com` is in `font-src`. Existing 6 other groups + sub-asserts unchanged; gate remains 7/7 green.
+
+**`package.json` + `src/mcp/server.ts`:** `VERSION` 0.1.18 → 0.1.19.
+
+Verification: `pnpm lint` clean; `pnpm test` 239/239 in 3.07 s; `gate_dashboard.sh` 7/7 PASS with new Fontshare assertions in test 2; `rehearsal.sh` green. Tag `v0.1.19`.
+
+No MCP surface change. ADR-005 five-tool lock untouched.

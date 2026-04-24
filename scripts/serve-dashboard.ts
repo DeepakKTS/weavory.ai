@@ -64,12 +64,12 @@ const MIME: Record<string, string> = {
 
 const CSP_HEADER =
   // Strict by default. Connect / script / frame / object locked to 'self' so
-  // an XSS payload can't exfiltrate the SSE stream or execute remote code;
-  // Google Fonts is the only external origin allowed (matches the docs-site
-  // landing page so the two dashboards share their Geist+Geist Mono look).
+  // an XSS payload can't exfiltrate the SSE stream or execute remote code.
+  // External origins allowed only for web fonts used across all three pages
+  // (Google Fonts: Geist + Geist Mono; Fontshare: General Sans display face).
   "default-src 'self'; script-src 'self'; " +
-  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
-  "font-src 'self' https://fonts.gstatic.com; " +
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://api.fontshare.com; " +
+  "font-src 'self' https://fonts.gstatic.com https://cdn.fontshare.com; " +
   "img-src 'self' data:; connect-src 'self'; object-src 'none'; " +
   "frame-ancestors 'none'; base-uri 'none'";
 

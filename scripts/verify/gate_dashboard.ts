@@ -121,6 +121,8 @@ async function test2_CspCorsHeaders(): Promise<void> {
     if (!csp.includes("default-src 'self'")) bad(`missing default-src 'self' in CSP: ${csp}`);
     if (!csp.includes("connect-src 'self'")) bad(`missing connect-src 'self' in CSP: ${csp}`);
     if (!csp.includes("frame-ancestors 'none'")) bad(`missing frame-ancestors 'none' in CSP`);
+    if (!csp.includes("https://api.fontshare.com")) bad(`Fontshare not in CSP style-src: ${csp}`);
+    if (!csp.includes("https://cdn.fontshare.com")) bad(`Fontshare CDN not in CSP font-src: ${csp}`);
     if (r.headers.get("cache-control") !== "no-store") bad("cache-control not no-store");
     // Static CORS stays permissive for backwards-compat with existing truthful dashboard tooling.
     if (r.headers.get("access-control-allow-origin") !== "*") {
