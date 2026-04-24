@@ -843,3 +843,23 @@ Verification: `pnpm lint` clean; `pnpm test` 239/239; `gate_dashboard.sh` 9/9 gr
 Version: 0.1.20 → 0.1.21. Tag `v0.1.21` pushed so `publish-pages.yml` deploys the fixed dashboard to `https://deepakkts.github.io/weavory.ai/demo/`.
 
 No MCP surface change. ADR-005 five-tool lock untouched.
+
+### O.8 · Play-button parity + REPLAY pulse on Pages (v0.1.22)
+
+Closes the last three visible gaps a user flagged when comparing the Pages `/demo/` URL to the localhost sidecar side-by-side. HTML was already byte-identical; the gaps were runtime-behavior differences that made Pages *look* less alive than localhost.
+
+**Three surgical edits to `ops/demo-dashboard.html`:**
+
+1. **REPLAY pill now pulses.** Added `.lg-pill.replay .dot { animation: pulse 1.8s ease-in-out infinite; }` so the amber dot breathes the same way the teal LIVE dot does. `prefers-reduced-motion` at the bottom of the style block already clamps both to 0.001 ms — no extra rule needed.
+2. **Play demo scenario button visible in REPLAY too.** New `updatePlayButtonVisibility()` helper is called from `setMode()` and `pollCounters()`. Logic: LIVE → show iff `demo_drive_enabled === true` (unchanged sidecar path); REPLAY → always show (fixture loop IS the scenario); `initializing` → hidden to avoid flicker before mode detection finishes.
+3. **Click handler branches on mode.** When `mode === "replay"`, click calls `replayResumeFromNow()` from O.7 (clears feed, resets `replayState` + trust graph + subscriptions, restarts `replayLoop(fixtureEvents)`) and shows a toast `"scenario replayed · 13 events"`. When `mode === "live"`, click still POSTs `/api/demo/play` — same 200 / 429 / 404 handling.
+
+**Honest labels preserved.** The REPLAY pill still reads `REPLAY` — the pulse is visual parity only. Nobody is misled into thinking the static site runs a live engine.
+
+**No backend change.** No new CSP, no new env vars, no new route, no new test. `gate_dashboard` stayed 9/9 green.
+
+**Version bump.** `package.json` 0.1.21 → 0.1.22; `src/mcp/server.ts` VERSION matches.
+
+Verification: `pnpm lint` clean; `pnpm test` 239/239 green; `gate_dashboard.sh` 9/9 groups PASS.
+
+No MCP surface change. ADR-005 five-tool lock untouched.

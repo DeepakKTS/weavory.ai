@@ -249,6 +249,7 @@
         flex: 0 0 auto;
       }
       .lg-pill.live .dot { animation: pulse 1.8s ease-in-out infinite; }
+      .lg-pill.replay .dot { animation: pulse 1.8s ease-in-out infinite; }
       @keyframes pulse {
         0%, 100% { opacity: 0.45; }
         50% { opacity: 1; box-shadow: 0 0 10px currentColor; }
@@ -987,6 +988,18 @@
           $modePill.appendChild(dot);
         }
         $modePill.appendChild(document.createTextNode(next));
+        updatePlayButtonVisibility();
+      }
+
+      // Play button shows:
+      //   - in LIVE mode only when the sidecar reports demo_drive_enabled
+      //   - in REPLAY mode always (click restarts the fixture loop)
+      //   - hidden while initializing to avoid flicker before mode detection
+      function updatePlayButtonVisibility() {
+        let shouldShow = false;
+        if (mode === "live") shouldShow = demoDriveEnabled === true;
+        else if (mode === "replay") shouldShow = true;
+        $playDemo.classList.toggle("visible", shouldShow);
       }
 
       function flashQuarantine() {
@@ -1122,12 +1135,11 @@
             $scrubberLeft.textContent = s.oldest_ingested_at.slice(11, 19);
           }
 
-          // demo-drive-enabled button visibility
-          const prev = demoDriveEnabled;
+          // Play button visibility in LIVE mode is gated on the sidecar's
+          // demo-drive-enabled flag (set when WEAVORY_ENABLE_DEMO_DRIVE=1).
+          // In REPLAY mode the button is handled by updatePlayButtonVisibility().
           demoDriveEnabled = Boolean(s.demo_drive_enabled);
-          if (demoDriveEnabled !== prev) {
-            $playDemo.classList.toggle("visible", demoDriveEnabled);
-          }
+          updatePlayButtonVisibility();
         } catch {
           /* ignore */
         }
@@ -1507,6 +1519,19 @@
         const prevLabel = $playDemo.querySelectorAll("span")[1].textContent;
         $playDemo.querySelectorAll("span")[1].textContent = "Playing…";
         try {
+          // REPLAY mode: no sidecar to POST to. Restart the fixture loop from
+          // event 0 — same visible affordance (scenario plays start-to-finish),
+          // just entirely client-side. Pages path.
+          if (mode === "replay") {
+            if (!fixtureEvents.length) {
+              showToast("no fixture loaded", { error: true });
+              return;
+            }
+            replayResumeFromNow();
+            showToast("scenario replayed · " + fixtureEvents.length + " events");
+            return;
+          }
+          // LIVE mode: POST to the sidecar's demo-drive endpoint.
           const url = TOKEN_PARAM
             ? "/api/demo/play?token=" + encodeURIComponent(TOKEN_PARAM)
             : "/api/demo/play";
