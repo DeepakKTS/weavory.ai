@@ -290,8 +290,72 @@ async function test5_ReplayTopKClamp(): Promise<void> {
   });
 }
 
+async function test8_DemoDriveDisabled(): Promise<void> {
+  process.stdout.write("[8/9] POST /api/demo/play returns 404 when demo-drive is disabled (default)\n");
+  await withSidecar({ bindHost: "127.0.0.1", port: 0 }, async (h) => {
+    const base = `http://${h.address.host}:${h.address.port}`;
+    const r = await fetch(`${base}/api/demo/play`, { method: "POST", body: "{}" });
+    if (r.status !== 404) bad(`expected 404 with demo-drive disabled, got ${r.status}`);
+    ok("demo-drive disabled → POST /api/demo/play returns 404");
+
+    const state = await fetch(`${base}/api/state`);
+    const s = (await state.json()) as { demo_drive_enabled?: boolean };
+    if (s.demo_drive_enabled !== false) bad(`expected demo_drive_enabled=false, got ${s.demo_drive_enabled}`);
+    ok("/api/state reports demo_drive_enabled=false");
+  });
+}
+
+async function test9_DemoDriveEnabled(): Promise<void> {
+  process.stdout.write("[9/9] Demo-drive enabled: POST /api/demo/play runs the scenario and fans events to SSE\n");
+  await withSidecar(
+    { bindHost: "127.0.0.1", port: 0, perIpMinIntervalMs: 0, demoDrive: true },
+    async (h) => {
+      const base = `http://${h.address.host}:${h.address.port}`;
+
+      const state = await fetch(`${base}/api/state`);
+      const s = (await state.json()) as { demo_drive_enabled?: boolean };
+      if (s.demo_drive_enabled !== true) bad(`expected demo_drive_enabled=true, got ${s.demo_drive_enabled}`);
+      ok("/api/state reports demo_drive_enabled=true");
+
+      // Start SSE reader BEFORE triggering the play so we can verify events land.
+      const framesP = readSseFrames(base, 13);
+      await sleep(60);
+
+      const r = await fetch(`${base}/api/demo/play`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: "{}",
+      });
+      if (r.status !== 200) bad(`expected 200 on demo/play, got ${r.status}`);
+      const body = (await r.json()) as { played: boolean; events_emitted: number };
+      if (body.played !== true) bad("demo/play response missing played=true");
+      if ((body.events_emitted ?? 0) <= 0) bad(`events_emitted should be > 0, got ${body.events_emitted}`);
+      ok(`demo/play → 200 · events_emitted=${body.events_emitted}`);
+
+      const frames = await framesP;
+      const kinds = new Set<string>();
+      for (const f of frames) {
+        try {
+          kinds.add((JSON.parse(f.data) as { kind: string }).kind);
+        } catch {
+          /* ignore */
+        }
+      }
+      for (const needed of ["attest", "believe", "quarantine", "forget"] as const) {
+        if (!kinds.has(needed)) bad(`SSE missing kind="${needed}"; got kinds: ${Array.from(kinds).join(", ")}`);
+      }
+      ok("SSE streamed all four expected kinds (attest / believe / quarantine / forget)");
+
+      // Second POST within 10 s should hit the rate limit.
+      const r2 = await fetch(`${base}/api/demo/play`, { method: "POST", body: "{}" });
+      if (r2.status !== 429) bad(`expected 429 on rapid second play, got ${r2.status}`);
+      ok("second play within 10 s → 429 (rate-limited)");
+    }
+  );
+}
+
 async function main(): Promise<void> {
-  process.stdout.write("Gate dashboard — Phase N.2 SSE sidecar verification\n\n");
+  process.stdout.write("Gate dashboard — Phase N.2 + O.5 SSE sidecar verification\n\n");
   await test1_SseFrameShape();
   process.stdout.write("\n");
   await test2_CspCorsHeaders();
@@ -305,6 +369,10 @@ async function main(): Promise<void> {
   await test6_Histogram();
   process.stdout.write("\n");
   await test7_BeliefLookup();
+  process.stdout.write("\n");
+  await test8_DemoDriveDisabled();
+  process.stdout.write("\n");
+  await test9_DemoDriveEnabled();
   process.stdout.write("\n[32mGATE DASHBOARD: PASS[0m\n");
 }
 

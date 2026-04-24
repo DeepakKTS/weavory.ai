@@ -159,6 +159,45 @@ substrate — tracked as backlog item B-0008.
 
 ---
 
+## SEC-09 · Dashboard demo-drive endpoint (Phase O.5)
+
+**What it is.** The dashboard sidecar (`scripts/serve-dashboard.ts`) exposes an opt-in `POST /api/demo/play` route that drives a fixed 13-event BFSI-style scenario (`scripts/demo_scenario.ts`) against its in-process `EngineState`. Purpose: pitch-video recording and live-presentation demos where the presenter wants one command to populate the dashboard with motion. **This is a sidecar-only admin route, not an MCP tool** — ADR-005's five-tool lock is untouched.
+
+**Threat model.**
+
+| Risk | Mitigation |
+|---|---|
+| Unintended exposure | Off by default. Endpoint returns HTTP 404 when `WEAVORY_ENABLE_DEMO_DRIVE` is unset — indistinguishable-from-missing. |
+| Unauthenticated trigger on exposed sidecar | Non-loopback bind still requires `?token=<WEAVORY_DASHBOARD_TOKEN>` (or `X-Weavory-Token` header). Token compared in constant time via `crypto.timingSafeEqual`. |
+| Resource exhaustion from repeated plays | Global rate limit: 1 play per 10 s (429 on excess). |
+| Unbounded state growth | Hard cap: refuses further plays when `state.beliefs.size > 500`. Operator resets by restarting the sidecar. |
+| SSRF | Scenario is fixed in `scripts/demo_scenario.ts`; no user-controlled URLs reach any network call. |
+| CSRF | No cookies; token in query string / header; POST-only. Same posture as `POST /api/replay`. |
+| XSS / stream exfiltration | CSP `connect-src 'self'` prevents a malicious page from streaming `/events` or posting to `/api/demo/play` even if injected. |
+| Log leakage | Demo-play logs include only event count, not payloads. Token is never logged in full anywhere. |
+
+**Enabling.**
+
+Two env flags, both off by default:
+
+- `WEAVORY_ENABLE_DEMO_DRIVE=1` — makes the `POST /api/demo/play` endpoint respond. `/api/state` starts returning `demo_drive_enabled: true` so the dashboard UI renders the "Play demo scenario" button.
+- `WEAVORY_DEMO_AUTOPLAY=1` — **implies** `WEAVORY_ENABLE_DEMO_DRIVE=1` AND schedules one scenario play 3 s after the sidecar starts listening. Helpful for pitch-video recording: one command boots a dashboard that populates itself hands-free.
+
+Presenters can wrap both in the helper script:
+
+```bash
+pnpm dashboard:demo      # sets both env flags + starts the sidecar
+```
+
+**Defaults when enabled.** Adversarial mode is turned on by default for demo-mode sidecars (unknown signers → quarantine events → LED flashes red on the dashboard). The caller can override by passing a pre-built `EngineState` with `adversarialMode = false`.
+
+**What NOT to do.**
+
+- **Do not expose a demo-drive sidecar to the public internet.** The feature is designed for localhost presentations. If you must expose it (e.g., for a remote demo), set a strong `WEAVORY_DASHBOARD_TOKEN` AND a firewall ACL restricting source IP.
+- **Do not enable demo-drive on the same process that serves a real MCP client via stdio.** The demo scenario writes real beliefs into the engine that become visible to any live `recall()` caller.
+
+---
+
 ## Reporting security issues
 
 This is an early-stage open-source substrate. For suspected

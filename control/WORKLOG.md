@@ -785,3 +785,34 @@ First Phase-O release. Replaces the navy palette on the landing page, status das
 Verification: `pnpm lint` clean; `pnpm test` 239/239 in 3.07 s; `gate_dashboard.sh` 7/7 PASS with new Fontshare assertions in test 2; `rehearsal.sh` green. Tag `v0.1.19`.
 
 No MCP surface change. ADR-005 five-tool lock untouched.
+
+### O.4 + O.5 + O.6 · Shared scenario + demo-drive endpoint + autoplay (v0.1.20)
+
+Second Phase-O release. Closes the "live-sync while demoing" gap flagged during the redesign review.
+
+**O.4 — Scenario extracted.** New `scripts/demo_scenario.ts` exports `runBfsiScenario(state: EngineState): Promise<void>` — the 13-event narrative that both the Pages REPLAY fixture and the live sidecar now share (attest ×4 → believe → believe → quarantine → believe → believe → quarantine → attest × 2 → forget). `scripts/demo-capture.ts` refactored to `await runBfsiScenario(state)`. `pnpm demo:capture` still writes the 13-event fixture in the expected order.
+
+**O.5 — Demo-drive endpoint + autoplay + UI button.**
+
+- **`scripts/serve-dashboard.ts`:**
+  - New `DashboardSidecarOptions.demoDrive?: boolean` (env: `WEAVORY_ENABLE_DEMO_DRIVE=1`) and `demoAutoplay?: boolean` (env: `WEAVORY_DEMO_AUTOPLAY=1`, implies demoDrive).
+  - When `demoDrive` is on AND no external state was supplied, sidecar sets `state.adversarialMode = true` so the BFSI narrative's quarantine events fire (that's the LED-flash moment in the Responsible-AI story).
+  - New `POST /api/demo/play` handler, gated behind `demoDrive`. Security posture: `404` when demo-drive is off (indistinguishable-from-missing); `401` without valid token on non-loopback; `429` on rapid second play within 10 s; `429` with `{reason:"state_cap_reached"}` when `state.beliefs.size > 500`; `200 {played:true, events_emitted:N}` on success.
+  - `/api/state` now reports `demo_drive_enabled: boolean` so the UI can conditionally reveal the Play button.
+  - `autoplayTimer` schedules one scenario play 3 s after listen; `.unref()`-ed so it doesn't pin the event loop open; `close()` clears it cleanly.
+  - Banner prints a `demo` URL line when demo-drive is active.
+- **`ops/demo-dashboard.html`:** the `.lg-pill-primary` Play button already shipped in v0.1.19 (scaffolding); it now flips `.visible` when `/api/state` reports `demo_drive_enabled=true`. Clicking POSTs to `/api/demo/play` and shows an iOS-style toast with success (`events_emitted`) or failure reason.
+- **`package.json`:** new `dashboard:demo` script wraps both env flags — `pnpm dashboard:demo` is the one-command path for pitch recording.
+
+**O.6 — Verification + docs.**
+
+- **`scripts/verify/gate_dashboard.ts`** grew from 7 to **9 test groups**:
+  - Group 8: demo-drive disabled → `POST /api/demo/play` returns 404; `/api/state` reports `demo_drive_enabled: false`.
+  - Group 9: demo-drive enabled → `/api/state.demo_drive_enabled = true`; `POST /api/demo/play` returns `200 {played:true, events_emitted≥1}`; SSE client receives frames with kinds `attest`, `believe`, `quarantine`, `forget`; second POST within 10 s returns 429.
+- **`docs/SECURITY.md`** gains a **SEC-09** section covering the demo-drive threat model (unintended exposure, resource exhaustion, SSRF, CSRF, XSS/stream exfiltration, log leakage), enable/disable knobs, and the "do not expose publicly" caveat.
+
+**Version bump.** `package.json` 0.1.19 → 0.1.20; `src/mcp/server.ts` VERSION matches.
+
+Verification: `pnpm lint` clean; `pnpm test` 239/239 in 2.93 s; `gate_dashboard.sh` 9/9 groups PASS; `rehearsal.sh` 7/7 mandatory gates green; `pnpm demo:capture` regenerates 13-event fixture via the extracted scenario module.
+
+No MCP surface change. ADR-005 five-tool lock untouched.

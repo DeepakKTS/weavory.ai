@@ -1,6 +1,6 @@
 {
   "name": "@weavory/mcp",
-  "version": "0.1.19",
+  "version": "0.1.20",
   "description": "weavory.ai — Responsible-AI memory for agent swarms. Every belief signed, every decision auditable. MCP-native.",
   "type": "module",
   "license": "Apache-2.0",
@@ -51,6 +51,7 @@
     "collect:git": "tsx scripts/collect/git.ts",
     "collect:all": "pnpm collect:git",
     "dashboard:serve": "tsx scripts/serve-dashboard.ts",
+    "dashboard:demo": "WEAVORY_ENABLE_DEMO_DRIVE=1 WEAVORY_DEMO_AUTOPLAY=1 tsx scripts/serve-dashboard.ts",
     "demo:capture": "tsx scripts/demo-capture.ts",
     "capture:gate7": "tsx scripts/capture-gate7-transcript.ts",
     "verify:gate1": "bash scripts/verify/gate1.sh",

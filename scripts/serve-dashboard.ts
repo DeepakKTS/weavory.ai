@@ -45,6 +45,7 @@ import { timingSafeEqual } from "node:crypto";
 import { EngineState } from "../src/engine/state.js";
 import type { StreamEvent } from "../src/engine/stream_event.js";
 import { recall } from "../src/engine/ops.js";
+import { runBfsiScenario } from "./demo_scenario.js";
 
 const REPO_ROOT = resolve(new URL("..", import.meta.url).pathname);
 const DEFAULT_PATH = "/ops/weavory-dashboard.html";
@@ -139,6 +140,21 @@ export interface DashboardSidecarOptions {
   /** Override the per-IP SSE-reconnect interval (ms). Default 1000. Tests may
    *  set to 0 to exercise the concurrency cap without waiting out the rate limit. */
   perIpMinIntervalMs?: number;
+  /**
+   * Phase O.5 — opt-in demo-drive endpoint. When false (the default), the
+   * sidecar treats `POST /api/demo/play` as 404 so the endpoint is
+   * indistinguishable-from-missing in the default security posture. When
+   * true, the endpoint runs `runBfsiScenario(state)` (same auth as every
+   * other API route; rate-limited 1 play per 10 s; refused when
+   * `state.beliefs.size > 500`).
+   */
+  demoDrive?: boolean;
+  /**
+   * Phase O.5 — opt-in autoplay. When true (and `demoDrive` is also on),
+   * the sidecar runs `runBfsiScenario(state)` 3 s after boot so the demo
+   * dashboard populates hands-free. Helpful for pitch-video recording.
+   */
+  demoAutoplay?: boolean;
 }
 
 export interface DashboardSidecarHandle {
@@ -205,6 +221,27 @@ export async function startDashboardSidecar(
     opts.allowedOrigin ?? process.env.WEAVORY_DASHBOARD_ALLOWED_ORIGIN ?? `http://${host}:${port}`;
   const perIpMinIntervalMs =
     opts.perIpMinIntervalMs ?? SSE_PER_IP_MIN_INTERVAL_MS_DEFAULT;
+
+  // ─── Demo-drive (Phase O.5) ─────────────────────────────────────────
+  const demoDriveEnabled =
+    opts.demoDrive ??
+    (process.env.WEAVORY_ENABLE_DEMO_DRIVE === "1" ||
+      process.env.WEAVORY_DEMO_AUTOPLAY === "1");
+  const demoAutoplayEnabled =
+    demoDriveEnabled &&
+    (opts.demoAutoplay ?? process.env.WEAVORY_DEMO_AUTOPLAY === "1");
+  const DEMO_STATE_BELIEF_CAP = 500;
+  const DEMO_PLAY_MIN_INTERVAL_MS = 10_000;
+  let lastDemoPlayAt = 0;
+  let autoplayTimer: NodeJS.Timeout | null = null;
+
+  // Demo mode expects adversarial behaviour (unknown signers fire quarantine
+  // events — the LED-flash moment in the Responsible-AI story). Only flip the
+  // flag when the caller didn't pass their own state (tests may drive their
+  // own state; don't overwrite their choice).
+  if (demoDriveEnabled && opts.state === undefined) {
+    state.adversarialMode = true;
+  }
 
   state.onEvent = (event): void => {
     const id = ring.push(event);
@@ -428,6 +465,7 @@ export async function startDashboardSidecar(
       newest_ingested_at: newestIngestedAt,
       trust_graph,
       subscriptions,
+      demo_drive_enabled: demoDriveEnabled,
     });
     res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
     res.end(body);
@@ -499,6 +537,53 @@ export async function startDashboardSidecar(
     res.end(JSON.stringify({ beliefs: trimmed, total_matched: out.total_matched, now: out.now }));
   }
 
+  /**
+   * Phase O.5 — demo-drive endpoint. Runs the shared BFSI scenario against
+   * this sidecar's own EngineState so events flow through `state.onEvent`
+   * → ring buffer → SSE clients. Opt-in via `demoDriveEnabled`;
+   * rate-limited; hard-capped on belief count.
+   */
+  async function handleApiDemoPlay(req: IncomingMessage, res: ServerResponse): Promise<void> {
+    // When the flag is off, we pretend the endpoint doesn't exist at all.
+    if (!demoDriveEnabled) {
+      res.writeHead(404, { "content-type": "text/plain" });
+      res.end("not found");
+      return;
+    }
+    if (req.method !== "POST") {
+      res.writeHead(405, { "content-type": "text/plain" });
+      res.end("POST only");
+      return;
+    }
+    // Hard cap: refuse further plays if the engine has grown past the
+    // demo cap. Operator resets by restarting the sidecar.
+    if (state.beliefs.size > DEMO_STATE_BELIEF_CAP) {
+      res.writeHead(429, { "content-type": "application/json" });
+      res.end(JSON.stringify({ reason: "state_cap_reached", belief_count: state.beliefs.size }));
+      return;
+    }
+    // Rate limit: 1 play per 10 s globally.
+    const nowMs = Date.now();
+    if (nowMs - lastDemoPlayAt < DEMO_PLAY_MIN_INTERVAL_MS) {
+      res.writeHead(429, { "content-type": "application/json" });
+      res.end(JSON.stringify({ reason: "rate_limited", retry_after_ms: DEMO_PLAY_MIN_INTERVAL_MS - (nowMs - lastDemoPlayAt) }));
+      return;
+    }
+    lastDemoPlayAt = nowMs;
+
+    const auditBefore = state.audit.length();
+    try {
+      await runBfsiScenario(state);
+    } catch (err) {
+      process.stderr.write(
+        `[dashboard] demo-play failed partway: ${err instanceof Error ? err.message : String(err)}\n`
+      );
+    }
+    const emitted = state.audit.length() - auditBefore;
+    res.writeHead(200, { "content-type": "application/json" });
+    res.end(JSON.stringify({ played: true, events_emitted: emitted }));
+  }
+
   // ─── HTTP server ──────────────────────────────────────────────────────
 
   const server = createServer(async (req, res) => {
@@ -506,7 +591,10 @@ export async function startDashboardSidecar(
       const url = new URL(req.url ?? "/", `http://${host}:${port}`);
       const path = url.pathname;
       const isApiOrSse =
-        path === "/events" || path === "/api/state" || path === "/api/replay";
+        path === "/events" ||
+        path === "/api/state" ||
+        path === "/api/replay" ||
+        path === "/api/demo/play";
 
       // Preflight CORS for API routes.
       if (req.method === "OPTIONS" && isApiOrSse) {
@@ -519,6 +607,16 @@ export async function startDashboardSidecar(
       }
 
       setCorsFor(url, req, res, isApiOrSse);
+
+      // Auth check. For /api/demo/play specifically: when demo-drive is
+      // disabled we short-circuit to a 404 FIRST so the endpoint is
+      // indistinguishable-from-missing — auth-required behaviour would leak
+      // the fact that the route exists.
+      if (path === "/api/demo/play" && !demoDriveEnabled) {
+        res.writeHead(404, { "content-type": "text/plain" });
+        res.end("not found");
+        return;
+      }
 
       if (isApiOrSse && !authOk(url, req)) {
         res.writeHead(401, { "content-type": "text/plain" });
@@ -536,6 +634,10 @@ export async function startDashboardSidecar(
       }
       if (path === "/api/replay") {
         await handleApiReplay(req, res);
+        return;
+      }
+      if (path === "/api/demo/play") {
+        await handleApiDemoPlay(req, res);
         return;
       }
       await handleStatic(req, res, url);
@@ -557,6 +659,28 @@ export async function startDashboardSidecar(
     process.stdout.write(`[weavory dashboard] serving ${REPO_ROOT}\n`);
     process.stdout.write(`[weavory dashboard] open  ${origin}${DEFAULT_PATH}\n`);
     process.stdout.write(`[weavory dashboard] SSE   ${origin}/events${tokenNote}\n`);
+    if (demoDriveEnabled) {
+      process.stdout.write(
+        `[weavory dashboard] demo  ${origin}/api/demo/play` +
+          (demoAutoplayEnabled ? " (autoplay in 3s)\n" : " (manual)\n")
+      );
+    }
+  }
+
+  // Phase O.5 — autoplay. Schedule 3 s after listen so any SSE client
+  // opened in the meantime sees the event stream from the first frame.
+  if (demoAutoplayEnabled) {
+    autoplayTimer = setTimeout(() => {
+      autoplayTimer = null;
+      lastDemoPlayAt = Date.now();
+      runBfsiScenario(state).catch((err) => {
+        process.stderr.write(
+          `[dashboard] autoplay failed: ${err instanceof Error ? err.message : String(err)}\n`
+        );
+      });
+    }, 3000);
+    // Don't keep the event loop alive just for the autoplay timer.
+    autoplayTimer.unref?.();
   }
 
   return {
@@ -566,6 +690,10 @@ export async function startDashboardSidecar(
     address: { host, port: actualPort },
     sseClientCount: () => sseClients.size,
     close: async (): Promise<void> => {
+      if (autoplayTimer) {
+        clearTimeout(autoplayTimer);
+        autoplayTimer = null;
+      }
       for (const c of sseClients) {
         if (c.idleTimer) clearTimeout(c.idleTimer);
         try {
