@@ -816,3 +816,30 @@ Second Phase-O release. Closes the "live-sync while demoing" gap flagged during 
 Verification: `pnpm lint` clean; `pnpm test` 239/239 in 2.93 s; `gate_dashboard.sh` 9/9 groups PASS; `rehearsal.sh` 7/7 mandatory gates green; `pnpm demo:capture` regenerates 13-event fixture via the extracted scenario module.
 
 No MCP surface change. ADR-005 five-tool lock untouched.
+
+### O.7 · Path aliases + REPLAY-mode client-side state machine (v0.1.21)
+
+Closes two gaps the user saw when comparing the localhost sidecar to the Pages `/demo/` URL:
+
+**Path aliases on the sidecar.** `scripts/serve-dashboard.ts` now rewrites `/`, `/demo/`, `/demo/index.html`, `/demo/fixtures.json`, `/dashboard/`, and `/dashboard/index.html` to the same file paths `publish-pages.yml` publishes to. So `http://127.0.0.1:4317/demo/` resolves the same as `https://deepakkts.github.io/weavory.ai/demo/` — one URL shape across both deployments. `DEFAULT_PATH` also flipped from the truthful status dashboard to the live demo dashboard (more often what a presenter opens).
+
+**REPLAY-mode client-side state machine.** Pages cannot run a sidecar, so `/api/state`, `/api/replay`, and `/api/demo/play` all 404 there. Before O.7 that meant every panel except the belief feed stayed on its empty placeholder. Now, in REPLAY mode the dashboard maintains a client-side state that mirrors what a live sidecar would report:
+
+- `replayState` object — `beliefs_total`, `beliefs_live`, `quarantine_count`, `audit_length`, `active_subscriptions`.
+- `replayTrustGraph` — `{signer_short: {predicate: score}}`.
+- `replaySubscriptions` — array populated from `kind:"subscribe"` events.
+- `applyReplayEvent(ev)` increments / decrements counters exactly the way `EngineState` does: `believe` + `quarantine` both add to `beliefs_total` + `beliefs_live` + `audit_length`; `forget` decrements `beliefs_live` + increments `audit_length`; `attest` writes into `replayTrustGraph[target_signer][predicate] = trust_after` + increments `audit_length`; `subscribe` pushes a row + increments `active_subscriptions`.
+- `renderReplayCounters()` writes to the same DOM refs `pollCounters()` uses in LIVE mode. `sse_clients` counter reads `"replay"` on Pages — honest rather than pretending there's a live stream.
+- `pollCounters()` early-returns when `mode === "replay"` so a late 404 from `/api/state` can't stomp the client-side values.
+
+**Scrubber works in REPLAY now.** Dragging the slider in REPLAY mode (no sidecar) maps position to a fixture event index: `replayRebuildToIndex(targetIdx)` stops the loop, clears the feed, resets the state machine, then replays events `[0..targetIdx)` synchronously. Banner flips amber with `HISTORICAL · event N/13 of the recorded BFSI fixture`. Releasing the slider back to 100 → `replayResumeFromNow()` restarts the continuous loop.
+
+**Smoother fixture loop.** `clearFeed({ fade: true })` staggers row removal over `14 ms × rowCount + 260 ms` with a per-row opacity + translate-Y transition, so the end-of-cycle clear feels like rows falling out rather than an abrupt flash. Pause window unchanged (4 s).
+
+**No backend changes** (beyond the sidecar path aliases). CSP, auth, rate limits, demo-drive endpoint, all untouched. `gate_dashboard` remains 9/9 green.
+
+Verification: `pnpm lint` clean; `pnpm test` 239/239; `gate_dashboard.sh` 9/9 groups PASS; manual check — `curl -s /demo/` serves the new HTML with `applyReplayEvent`, `replayRebuildToIndex`, and `setReplayBanner` present; loading `/demo/` with no sidecar behind it (simulating Pages) populates counters + trust graph on the first cycle rather than staying on placeholders.
+
+Version: 0.1.20 → 0.1.21. Tag `v0.1.21` pushed so `publish-pages.yml` deploys the fixed dashboard to `https://deepakkts.github.io/weavory.ai/demo/`.
+
+No MCP surface change. ADR-005 five-tool lock untouched.

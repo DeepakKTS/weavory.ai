@@ -845,6 +845,21 @@
       let replayLoopStopRequested = false;
       let replayLoopRunning = false;
       let demoDriveEnabled = false;
+      // REPLAY-mode client-side state. Pages has no sidecar, so these
+      // are what populate counters / trust graph / subscriptions on the
+      // static deployment. Maintained in lockstep with the event stream.
+      let fixtureEvents = [];
+      let replayEventIdx = 0;           // index of the last event rendered
+      let replayPausedIdx = null;        // non-null when scrubber is held off NOW
+      const replayState = {
+        beliefs_total: 0,
+        beliefs_live: 0,
+        quarantine_count: 0,
+        audit_length: 0,
+        active_subscriptions: 0,
+      };
+      const replayTrustGraph = {};
+      const replaySubscriptions = [];   // [{id, pattern, queue_depth, matches_since_created, dropped_count, signer_short}]
 
       // ── DOM refs ─────────────────────────────────────────────────────────
       const $feed = document.getElementById("feed");
@@ -872,13 +887,94 @@
       };
 
       // ── Helpers ─────────────────────────────────────────────────────────
-      function clearFeed() {
+      function clearFeed(opts) {
         const rows = $feed.querySelectorAll(".row:not(.header-row)");
-        rows.forEach((r) => r.parentElement.removeChild(r));
-        if (!$feedEmpty.parentElement) $feed.appendChild($feedEmpty);
+        const fade = opts && opts.fade;
+        if (fade) {
+          // Stagger the row removals so the feed clears with motion rather
+          // than a sudden flash (the jarring "glitching" on the Pages loop).
+          rows.forEach((r, i) => {
+            setTimeout(() => {
+              try {
+                r.style.transition = "opacity 240ms ease, transform 240ms ease";
+                r.style.opacity = "0";
+                r.style.transform = "translateY(-6px)";
+              } catch {}
+              setTimeout(() => {
+                if (r.parentElement) r.parentElement.removeChild(r);
+              }, 260);
+            }, i * 14);
+          });
+          setTimeout(() => {
+            if (!$feedEmpty.parentElement) $feed.appendChild($feedEmpty);
+          }, rows.length * 14 + 280);
+        } else {
+          rows.forEach((r) => r.parentElement.removeChild(r));
+          if (!$feedEmpty.parentElement) $feed.appendChild($feedEmpty);
+        }
         sessionQuarantineCount = 0;
         $qCount.textContent = "0";
         $qLed.classList.remove("hot");
+      }
+
+      // Reset REPLAY-mode client-side state (used when looping).
+      function resetReplayState() {
+        replayState.beliefs_total = 0;
+        replayState.beliefs_live = 0;
+        replayState.quarantine_count = 0;
+        replayState.audit_length = 0;
+        replayState.active_subscriptions = 0;
+        for (const k of Object.keys(replayTrustGraph)) delete replayTrustGraph[k];
+        replaySubscriptions.length = 0;
+        replayEventIdx = 0;
+        renderReplayCounters();
+        renderTrustGrid(replayTrustGraph);
+        renderSubscriptions(replaySubscriptions);
+      }
+
+      // Apply a single event to the REPLAY-mode client-side counters + trust
+      // graph + subscriptions. Mirrors what EngineState + state.trust do in the
+      // live path (see src/engine/ops.ts + state.ts) so the numbers on Pages
+      // match what a live sidecar would show.
+      function applyReplayEvent(ev) {
+        if (ev.kind === "believe" || ev.kind === "quarantine") {
+          replayState.beliefs_total++;
+          replayState.beliefs_live++;
+          replayState.audit_length++;
+        } else if (ev.kind === "forget") {
+          if (replayState.beliefs_live > 0) replayState.beliefs_live--;
+          replayState.audit_length++;
+        } else if (ev.kind === "attest") {
+          replayState.audit_length++;
+          // buildAttestEvent: subject = target signer (12-hex), predicate = topic,
+          // signer_short = attestor, trust_after = new score.
+          const target = String(ev.subject || "");
+          const predicate = String(ev.predicate || "");
+          if (!replayTrustGraph[target]) replayTrustGraph[target] = {};
+          if (typeof ev.trust_after === "number") {
+            replayTrustGraph[target][predicate] = ev.trust_after;
+          }
+        } else if (ev.kind === "subscribe") {
+          replayState.active_subscriptions++;
+          const sub = {
+            id: "sub_" + (ev.belief_id_prefix || "????"),
+            pattern: String(ev.subject || "(empty)"),
+            queue_depth: 0,
+            matches_since_created: 0,
+            dropped_count: 0,
+            signer_short: String(ev.signer_short || ""),
+          };
+          replaySubscriptions.push(sub);
+        }
+      }
+
+      function renderReplayCounters() {
+        counters.total.textContent = String(replayState.beliefs_total);
+        counters.live.textContent = String(replayState.beliefs_live);
+        counters.quarantine.textContent = String(replayState.quarantine_count);
+        counters.audit.textContent = String(replayState.audit_length);
+        counters.subs.textContent = String(replayState.active_subscriptions);
+        counters.sse.textContent = "replay";
       }
 
       function setMode(next) {
@@ -990,10 +1086,21 @@
           flashQuarantine();
         }
         appendEventRow(ev);
+        // REPLAY mode: derive counters + trust graph + subscriptions
+        // client-side since /api/state is unreachable on Pages.
+        if (mode === "replay") {
+          applyReplayEvent(ev);
+          renderReplayCounters();
+          renderTrustGrid(replayTrustGraph);
+          renderSubscriptions(replaySubscriptions);
+        }
       }
 
       // ── Counters + trust graph + subscriptions (polled from /api/state) ──
       async function pollCounters() {
+        // Skip in REPLAY mode: on Pages there's no sidecar, /api/state would
+        // 404, and the client-side state machine is already populating these.
+        if (mode === "replay") return;
         try {
           const url = TOKEN_PARAM ? "/api/state?token=" + encodeURIComponent(TOKEN_PARAM) : "/api/state";
           const r = await fetch(url, { cache: "no-store" });
@@ -1231,24 +1338,68 @@
         );
       }
 
+      function setReplayBanner(idx, total) {
+        $scrubberBanner.classList.add("historical");
+        while ($scrubberBanner.firstChild) $scrubberBanner.removeChild($scrubberBanner.firstChild);
+        $scrubberBanner.appendChild(
+          document.createTextNode("HISTORICAL · event " + idx + " / " + total + " of the recorded BFSI fixture")
+        );
+      }
+
+      function replayRebuildToIndex(targetIdx) {
+        // Stop the loop while we rebuild from scratch.
+        replayLoopStopRequested = true;
+        replayPausedIdx = targetIdx;
+        clearFeed();
+        resetReplayState();
+        for (let i = 0; i < targetIdx && i < fixtureEvents.length; i++) {
+          onEvent(fixtureEvents[i]);
+        }
+      }
+
+      function replayResumeFromNow() {
+        replayPausedIdx = null;
+        if (fixtureEvents.length === 0) return;
+        // Re-start the replay loop from a fresh state.
+        clearFeed();
+        resetReplayState();
+        replayLoopStopRequested = false;
+        replayLoop(fixtureEvents);
+      }
+
       $scrubber.addEventListener("input", () => {
         const pct = Number($scrubber.value);
         if (scrubberTimer) clearTimeout(scrubberTimer);
         scrubberTimer = setTimeout(async () => {
+          // LIVE path (sidecar present): as before — POST /api/replay with as_of.
+          if (mode === "live") {
+            if (pct >= 100) {
+              setLiveBanner();
+              return;
+            }
+            if (!histogram || histogram.bucket_count === 0) {
+              await loadHistogram();
+            }
+            if (!histogram || histogram.bucket_count === 0 || !histogram.buckets.length) {
+              return;
+            }
+            const idx = Math.max(0, Math.min(histogram.buckets.length - 1, Math.floor((pct / 100) * (histogram.buckets.length - 1))));
+            const asOf = histogram.buckets[idx].t;
+            const result = await runReplay(asOf);
+            if (result) setHistoricalBanner(asOf, result.total_matched);
+            return;
+          }
+          // REPLAY path (Pages or no sidecar): map slider to fixture event index.
+          if (fixtureEvents.length === 0) return;
           if (pct >= 100) {
+            replayResumeFromNow();
             setLiveBanner();
             return;
           }
-          if (!histogram || histogram.bucket_count === 0) {
-            await loadHistogram();
-          }
-          if (!histogram || histogram.bucket_count === 0 || !histogram.buckets.length) {
-            return;
-          }
-          const idx = Math.max(0, Math.min(histogram.buckets.length - 1, Math.floor((pct / 100) * (histogram.buckets.length - 1))));
-          const asOf = histogram.buckets[idx].t;
-          const result = await runReplay(asOf);
-          if (result) setHistoricalBanner(asOf, result.total_matched);
+          const total = fixtureEvents.length;
+          const targetIdx = Math.max(0, Math.min(total, Math.floor((pct / 100) * total)));
+          replayRebuildToIndex(targetIdx);
+          setReplayBanner(targetIdx, total);
         }, SCRUBBER_DEBOUNCE_MS);
       });
 
@@ -1278,24 +1429,30 @@
         }
       }
 
-      // REPLAY loop: play all fixture events with stagger, pause, clear, repeat.
-      // Stops cleanly when mode flips to live (sidecar appeared mid-loop).
+      // REPLAY loop: play all fixture events with stagger, pause, fade+clear,
+      // reset counters, repeat. Stops cleanly when mode flips to live (sidecar
+      // appeared mid-loop) or when the scrubber pauses at a historical index.
       async function replayLoop(events) {
         if (replayLoopRunning) return;
         replayLoopRunning = true;
         replayLoopStopRequested = false;
         try {
-          while (!replayLoopStopRequested) {
+          while (!replayLoopStopRequested && replayPausedIdx === null) {
+            resetReplayState();
             for (let i = 0; i < events.length; i++) {
-              if (replayLoopStopRequested) return;
+              if (replayLoopStopRequested || replayPausedIdx !== null) return;
               onEvent(events[i]);
+              replayEventIdx = i + 1;
               await new Promise((rs) => setTimeout(rs, REPLAY_LOOP_STAGGER_MS));
             }
-            if (replayLoopStopRequested) return;
+            if (replayLoopStopRequested || replayPausedIdx !== null) return;
+            // Pause with the completed session on-screen so a judge arriving
+            // late sees the full story before the next cycle.
             await new Promise((rs) => setTimeout(rs, REPLAY_LOOP_PAUSE_MS));
-            if (replayLoopStopRequested) return;
+            if (replayLoopStopRequested || replayPausedIdx !== null) return;
+            // Staggered fade — much smoother than the old instant-remove.
+            clearFeed({ fade: true });
             await new Promise((rs) => setTimeout(rs, REPLAY_LOOP_FADE_MS));
-            clearFeed();
           }
         } finally {
           replayLoopRunning = false;
@@ -1308,7 +1465,9 @@
           if (!r.ok) return;
           const data = await r.json();
           if (!Array.isArray(data.events) || data.events.length === 0) return;
-          replayLoop(data.events);
+          // Stash globally so the scrubber can jump to any event index.
+          fixtureEvents = data.events.slice();
+          replayLoop(fixtureEvents);
         } catch {
           /* no fixtures; empty */
         }

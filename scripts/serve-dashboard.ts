@@ -48,7 +48,18 @@ import { recall } from "../src/engine/ops.js";
 import { runBfsiScenario } from "./demo_scenario.js";
 
 const REPO_ROOT = resolve(new URL("..", import.meta.url).pathname);
-const DEFAULT_PATH = "/ops/weavory-dashboard.html";
+const DEFAULT_PATH = "/ops/demo-dashboard.html";
+
+/** Path aliases that mirror the GitHub Pages build (publish-pages.yml).
+ *  So the same URLs work on localhost and on https://deepakkts.github.io/weavory.ai/. */
+const PATH_ALIASES: Record<string, string> = {
+  "/": "/docs-site/index.html",
+  "/demo/": "/ops/demo-dashboard.html",
+  "/demo/index.html": "/ops/demo-dashboard.html",
+  "/demo/fixtures.json": "/ops/data/demo-fixtures.json",
+  "/dashboard/": "/ops/weavory-dashboard.html",
+  "/dashboard/index.html": "/ops/weavory-dashboard.html",
+};
 
 const MIME: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
@@ -293,7 +304,10 @@ export async function startDashboardSidecar(
 
   async function handleStatic(req: IncomingMessage, res: ServerResponse, url: URL): Promise<void> {
     const rawPath = decodeURIComponent(url.pathname);
-    const relPath = rawPath === "/" || rawPath === "" ? DEFAULT_PATH : rawPath;
+    // First resolve any Pages-style alias (/, /demo/, /dashboard/, ...).
+    // This keeps localhost URLs identical to https://deepakkts.github.io/weavory.ai/.
+    const aliased = PATH_ALIASES[rawPath];
+    const relPath = aliased ?? (rawPath === "" ? DEFAULT_PATH : rawPath);
     const resolved = resolve(join(REPO_ROOT, relPath));
     if (!resolved.startsWith(REPO_ROOT)) {
       res.writeHead(403, { "content-type": "text/plain" });
