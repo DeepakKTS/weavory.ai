@@ -686,3 +686,50 @@ Stages everything needed to capture the "a stock MCP-native agent uses weavory f
 Verification: `pnpm lint` clean; `pnpm test` 239/239 (unchanged); `bash scripts/rehearsal.sh` 7/7 mandatory gates green + `[gate7] SKIP` line printed when key is absent; `ops/data/rehearsal.json` now carries the new `gate7_optional` key.
 
 **Remaining step** (user-gated): run `ANTHROPIC_API_KEY=<key> pnpm capture:gate7` to produce the transcript; hand-review for redaction completeness; commit the transcript. The infrastructure is in place and the README already links the target path so the broken link will be fixed the moment the transcript lands.
+
+### N.4.5 follow-up · transcript captured via CI workflow (commit 97f1a85)
+
+User placed `ANTHROPIC_API_KEY` in the repo's Actions secrets and triggered `.github/workflows/capture-evidence.yml`. The workflow captured the transcript successfully but its commit step failed (non-fatal — the artifact was still produced + uploaded). Downloaded the artifact via `gh run download`, hand-reviewed for redaction, committed to `docs/evidence/stock-agent-session-v0.1.18.md`. Also fixed the workflow commit ordering so future re-runs succeed cleanly.
+
+**Transcript content (hand-reviewed 2026-04-24):**
+- Pass criterion: **✓** · 3 iterations · `stop_reason=end_turn`
+- Final answer: *"Traffic in Cambridge is congested (+14 min)."*
+- Tool-call sequence: `weavory_recall` → `weavory_attest` → (no more tools)
+- Redaction checks: signer ids 12-hex, belief ids 16-hex, zero `sk-ant-*` patterns, no private-key material
+- Token usage: input=510 · output=130 · cache_write=7010 on turn 1; cache_read=7010 on turn 3 (confirms the 5763-char README was cached and reused across turns)
+- Model: `claude-opus-4-7` · adaptive thinking · xhigh effort
+
+**Workflow commit-step fix:**
+- Bug: `git add docs/evidence/` ran BEFORE `git pull --rebase origin main`; rebase refused with "cannot pull with rebase: Your index contains uncommitted changes." Worked around in this capture run by downloading the artifact locally and committing by hand.
+- Fix: reordered to *detect → stash (include untracked) → pull (ff-only, fall back rebase) → stash pop → add → commit → push*. Future dispatches of the workflow land the bot commit directly, no manual intervention.
+
+### N.6 · Final verification sweep (pre-submission, code-side complete)
+
+Everything in-repo that Phase N can land is landed. The remaining action items are user-owned content: record the pitch video and submit.
+
+**On-HEAD green-bar (commit `97f1a85`, 2026-04-24):**
+- `pnpm lint` → clean
+- `pnpm test` → **239 / 239 passed** in 3.10 s · 23 test files
+- `bash scripts/rehearsal.sh` → **7 / 7 mandatory gates PASS** in 7 s (gate1-5 + gate_bfsi + gate_dashboard); `[gate7] SKIP` (no local API key — expected)
+- CI matrix across Phase N releases (`fresh-machine.yml`): v0.1.15 ✓ · v0.1.16 ✓ · v0.1.17 ✓ · v0.1.18 ✓ · latest HEAD currently in_progress; older runs all green
+- Pages live: <https://deepakkts.github.io/weavory.ai/demo/> returns 200; `demo/fixtures.json` serves 13 events (scenario `bfsi-claims-triage-minimal`)
+- MCP surface: still exactly five tools (`weavory_{believe, recall, subscribe, attest, forget}`); ADR-005 lock intact across every commit
+
+**Submission payload (NandaHack Responsible-AI track):**
+
+| Field | Value |
+|-------|-------|
+| Pitch video URL | *(to be recorded — 3-min script + 60-sec variant in `control/PITCH_SCRIPT.md`)* |
+| Repo URL | <https://github.com/DeepakKTS/weavory.ai> |
+| Install one-liner | `npx -y @weavory/mcp start` |
+| Fresh-machine CI evidence | <https://github.com/DeepakKTS/weavory.ai/actions/workflows/fresh-machine.yml> — pick latest green on `v0.1.18` |
+| Stock-agent transcript | <https://github.com/DeepakKTS/weavory.ai/blob/main/docs/evidence/stock-agent-session-v0.1.18.md> |
+| Live demo URL | <https://deepakkts.github.io/weavory.ai/demo/> (REPLAY mode) |
+| Abstract | One paragraph derived from root README hero + "Why Responsible AI" section |
+
+**User-owned remaining steps:**
+1. Record the pitch video per `control/PITCH_SCRIPT.md`. Pre-flight: `pnpm demo:capture` (regenerates fixtures), `pnpm exec tsx examples/bfsi_claims_triage.ts` (prints the 9-step expanded narrative), `pnpm dashboard:serve` + open `http://127.0.0.1:4317/demo/` (for local recording) OR the Pages URL (for remote visitors). Reshoot triggers are documented in the script.
+2. Upload the video Unlisted, then flip public only when the URL is in the submission form.
+3. Submit to NandaHack Responsible AI track. Verify cutoff on the official participant dashboard before relying on any date.
+
+Phase N: code-complete. Honest state.
